@@ -1,149 +1,149 @@
 # Build Status & Handoff — Voicing AI SuperAdmin Platform
 
-> Snapshot to resume the build cleanly. Last updated: Phase 0 core UI complete + build green.
+> Snapshot to resume the build cleanly. **Last updated: Business Health module shipped.**
 > Language: all code/docs in **English**. Conversation may be Spanish.
+> Companion docs: [`README.md`](./README.md), [`DOCUMENTATION.md`](./DOCUMENTATION.md), [`PRD/`](./PRD/).
 
 ## TL;DR — where we are
 
-PRD is **complete** (`PRD/` 00–15). The app is scaffolded, the **data/engine backbone + API layer +
-client plumbing** is written, the **app shell + 5 core pages are built and rendering**, and
-**`npm run build` passes** (23 routes). `npm run dev` → all routes return 200 with mock data.
+PRD is **complete** (`PRD/` 00–15). The app is built and running: **data/engine backbone + API layer +
+client plumbing + app shell + 6 pages** (Overview, Cost & Margin, Performance, Call Logs + Call Detail,
+Live Operations, **Business Health**). `npm run build` passes (**24 routes**); `npm run dev` → all routes
+200 with mock data. The whole project is **pushed to GitHub** (`origin/main`).
 
-**Verified working:** role switch (View-as) hides financials, org/project/range filters, cost &
-margin reconcile (headline = sum of org margins; MGF floors applied), Live Ops, call detail.
+What remains: 4 module UIs (Issues/Thresholds, Infra k8s+ELB, Fallbacks, Call Flagging), QA Bench
+(Phase 2 design only), the **Supabase wiring**, and minor housekeeping (`.env.example`, tests).
 
-What remains: the **non-core module UIs** (Issues, Infra k8s/ELB, Fallbacks, Business Health, Flag
-queue — currently stubs), the **Supabase wiring**, and **housekeeping** (README, .env.example).
+## Repo & deploy
 
-> ⚠️ shadcn was initialized with the **`base-nova` preset → Base UI** (`@base-ui/react`), NOT Radix.
-> Components use the **`render` prop** (e.g. `render={<Link/>}`), NOT `asChild`. Tooltip uses
-> `delay` not `delayDuration`. Keep this in mind when adding/altering UI.
+- Remote: `git@github.com:stamayovoicingai/superadmin-monitor-businesshealth.git` (branch `main`).
+  Push via the SSH alias **`github-nuevo`** (key `~/.ssh/stamayoVoicingAI`), e.g. the remote URL is
+  `git@github-nuevo:stamayovoicingai/…`.
+- Deploy target: **Vercel** (import repo → auto-detect Next.js → deploy; no env vars for mock mode).
 
-## ⚠️ Environment gotchas
+## ⚠️ Environment & framework gotchas (read before coding)
 
-- **`npx` is rewritten by the RTK hook** → it behaves like `npm` and fails. Always run npx via
-  `rtk proxy npx <...>` (e.g. `rtk proxy npx shadcn@latest add ...`). Plain `npm install` is fine.
-- No **Docker** and no **Supabase CLI** installed → local Supabase is out. "Connect Supabase" means a
-  **Supabase Cloud** project. Need credentials (see Pending §Supabase).
-- Project folder name has a space ("SuperAdmin Platform") → npm package name is `superadmin-platform`
-  (app was scaffolded in a temp subfolder then moved to root; git repo initialized at root).
+1. **shadcn = Base UI, NOT Radix** (`base-nova` preset, `@base-ui/react`). Use the **`render` prop**
+   (`render={<Link/>}`) not `asChild`; Tooltip uses `delay` not `delayDuration`; `Select.onValueChange`
+   can yield `null` → coerce `(v) => set(v && v !== ALL ? v : undefined)`. See DOCUMENTATION §15.
+2. **`npx` is rewritten by the RTK shell hook** and fails → run npx via **`rtk proxy npx <…>`**
+   (e.g. `rtk proxy npx shadcn@latest add <name> --yes`). Plain `npm install` / `npm run …` are fine.
+3. No **Docker** / **Supabase CLI** → use **Supabase Cloud** (needs credentials) when wiring the backend.
+4. Large `curl` outputs get summarized to a schema by RTK → `curl … -o file.json` then read the file.
+5. **Voicing codes in Python.** TS here is demo/UI-only; real backend logic belongs in Python (see
+   DOCUMENTATION §5 & §20).
 
-## Stack (installed)
+## Stack
 
-Next.js 16.2.7 (App Router) · React 19 · TypeScript · Tailwind v4 (CSS `@theme`, no JS config) ·
-shadcn/ui (radix base) · Recharts · TanStack Query + Table · Supabase JS + SSR · next-themes · zod ·
-date-fns · lucide-react · sonner.
+Next.js 16.2.7 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 (CSS `@theme`) ·
+shadcn/ui on **Base UI** · Recharts · TanStack Query (+ Table available) · Supabase JS/SSR (installed,
+not yet wired) · next-themes · zod · date-fns · lucide-react · sonner.
 
-Decisions locked: **light default + dark toggle**, **cloud alloc = talk-minutes**, **revenue = minutes/MGF only (no markups)**, **MGF = B1**, **User sees cost-to-serve but not revenue/margin**, **Supabase from Phase 0**, seed **3 orgs / 6 projects**.
+**Locked decisions:** light default + dark toggle · cloud alloc = talk-minutes · revenue = minutes/MGF,
+no markups · MGF = B1 · User sees cost-to-serve but not revenue/margin · Supabase from Phase 0 ·
+2 roles (SuperAdmin/User).
+
+**Demo dataset:** 3 orgs — **TP Latam** (pure usage), **TP PH** (MGF), **LTM** (MGF); **12 projects** —
+TP Latam: Telmex, Metlife, Sura EPS, Sura SAC, Bridgeway, Colsubsidio · TP PH: Pacifica Bank, IslaTel,
+MediCare PH · LTM: Allegiant, LLA, Vega Air. ~30 days of calls, anchored to "now".
 
 ---
 
 ## ✅ DONE
 
-### PRD
-- `PRD/00`–`PRD/15` complete + `PRD/README.md` index.
+### Docs
+- `PRD/00`–`15` (+ index), `README.md` (full), `DOCUMENTATION.md` (architecture & contributor guide).
 
-### Design system
-- `src/app/globals.css` — Voicing Platform brand tokens (light + dark), chart palette, brand extras
-  (`success`/`warning`/`critical`/`brand-blue`/`brand-violet`). Radius 10px.
-- Fonts wired in `src/app/layout.tsx` (Plus Jakarta Sans + Inter + Instrument Serif + Geist Mono).
-
-### shadcn components added
-button, card, table, badge, dropdown-menu, select, input, tabs, separator, sheet, tooltip, avatar,
-skeleton, switch, label, dialog, scroll-area, breadcrumb, sonner, chart, sidebar, popover.
+### Foundation
+- **Design tokens** — `src/app/globals.css` (Voicing Platform palette, light + dark, chart hues,
+  `success/warning/critical` extras, radius 10px). Fonts in `layout.tsx` (Jakarta/Inter/Instrument Serif/Geist Mono).
+- **shadcn components** — button, card, table, badge, dropdown-menu, select, input, tabs, separator,
+  sheet, tooltip, avatar, skeleton, switch, label, dialog, scroll-area, breadcrumb, sonner, chart,
+  sidebar, popover. (`hooks/use-mobile.ts` from shadcn.)
 
 ### Domain + engine (`src/lib`)
-- `types.ts` — all domain types (aligned to PRD/12). Money = integer micro-USD.
-- `money.ts` — micro-USD helpers + formatters.
-- `engine/pricing.ts` — provider rate catalog (LLM/STT/TTS/telephony/cloud), illustrative.
-- `engine/cost.ts` — `computeCallCost`, `computeOrgMonthlyRevenue` (MGF B1), `computeMrr`, `marginPct`.
-- `engine/aggregate.ts` — `filterCalls`, `computeTotals`, `projectRollups`, `orgRollups`,
-  `dailySeries`, `podLoads`, `endReasonCounts`, `statusCounts`.
-- `seed/rng.ts` — deterministic PRNG (mulberry32).
-- `seed/index.ts` — `buildDataset()`/`getDataset()`: 3 orgs (TP Latam pure-usage, Telmex mgf,
-  Sampras Health mgf), 6 projects w/ namespaces + per-project model mix, agents, 30 days of calls,
-  some ACTIVE calls today for Live Ops.
+- `types.ts`, `money.ts` (micro-USD), `period.ts`, `scope.ts`, `nav.ts`, `auth/policy.ts`.
+- `engine/pricing.ts` (provider rates), `engine/cost.ts` (`computeCallCost`, `computeOrgMonthlyRevenue`
+  MGF-B1, `computeMrr`, `marginPct`), `engine/aggregate.ts` (`filterCalls`, `computeTotals`,
+  `projectRollups`, `orgRollups`, `dailySeries`, `podLoads`, `endReasonCounts`, `statusCounts`,
+  **`callerSeries`**, **`activeAgentsCount`**).
+- `seed/rng.ts` (mulberry32), `seed/index.ts` (`buildDataset`/`getDataset`; bounded caller pool;
+  MGF `includedMinutes` tuned so MGF orgs show overage→expansion).
 
 ### Data layer + API
-- `lib/data/source.ts` — `DataSource` interface + result types + `Scope`.
-- `lib/data/mock.ts` — `MockAdapter` (full implementation from seed).
-- `lib/data/index.ts` — `getDataSource()` selector (env `DATA_SOURCE`, defaults mock; supabase case stubbed).
-- `lib/period.ts` — range presets. `lib/scope.ts` — parse search params → Scope.
-- API routes (`src/app/api/`): `meta`, `overview`, `cost`, `performance`, `calls`, `calls/[callId]`, `live`.
+- `data/source.ts` (DataSource interface + result types incl. `BusinessHealthResult`), `data/mock.ts`
+  (MockAdapter — full), `data/index.ts` (env selector; `supabase` case stubbed).
+- API routes: `meta`, `overview`, `cost`, `performance`, `calls`, `calls/[callId]`, `live`, **`business`**.
 
-### Auth + nav
-- `lib/auth/policy.ts` — `canSeeFinancials`, `canSeeCost`, `canSeeSuperAdminOnly`, role labels.
-- `lib/nav.ts` — sidebar config + `visibleNav(role)`.
+### Client + UI
+- `view-context.tsx` (role/org/project/range, localStorage, query string), `providers.tsx`,
+  `lib/hooks.ts` (`useMeta/useOverview/useCost/usePerformance/useCalls/useCall/useLiveOps/useBusiness`).
+- Shell: `app/(dashboard)/layout.tsx`, `app-sidebar.tsx`, `top-bar.tsx`, `scope-filters.tsx`,
+  `role-switcher.tsx`, `theme-toggle.tsx`, `brand-logo.tsx`.
+- Shared: `kpi-card.tsx`, `chips.tsx`, `financial-gate.tsx`, `page-header.tsx`, `coming-soon.tsx`,
+  `charts.tsx` (CostByService, CostRevenue, LatencyTrend, ServiceDonut, SimpleDonut, HBarChart,
+  **MrrChart, CallersChart, VBarChart**).
 
-### Client plumbing
-- `components/view-context.tsx` — role + org/project/range state, localStorage-persisted, builds API query string.
-- `components/providers.tsx` — QueryClient + ThemeProvider + Tooltip + Toaster + ViewProvider.
-- `lib/hooks.ts` — React Query hooks: `useMeta/useOverview/useCost/usePerformance/useCalls/useCall/useLiveOps`.
-- `app/layout.tsx` (fonts+providers), `app/page.tsx` (redirect → /overview).
-- `components/brand-logo.tsx` (waveform mark + lockup), `app-sidebar.tsx`, `theme-toggle.tsx`,
-  `role-switcher.tsx`, `scope-filters.tsx`.
+### Pages built & rendering (HTTP 200)
+`/overview` · `/cost` · `/performance` · `/calls` · `/calls/[callId]` · `/live` (20s refetch) ·
+**`/business`** (MRR composition, org growth, new/returning callers, usage KPIs, org leaderboard;
+SuperAdmin-gated with access-denied card for User).
+
+### Verified behaviors
+- Role switch (View-as) hides revenue/margin/business for `User`.
+- Org/project/range filters drive every page via the data seam.
+- Cost/revenue/margin reconcile: headline = contract-based (MGF floors) at org/global scope; per-call
+  (usage) at project scope. Business Health: MRR $13.5K, +6.8% MoM, expansion $1.08K, churn 0%.
 
 ---
 
-## ✅ DONE since last snapshot (Phase 0 core UI)
+## 🚧 NOT DONE — resume here (priority order)
 
-- **App shell** — `components/top-bar.tsx` + `src/app/(dashboard)/layout.tsx` (SidebarProvider +
-  AppSidebar + SidebarInset + TopBar). All pages live under the `(dashboard)` route group; routes match `lib/nav.ts`.
-- **Shared UI** — `kpi-card.tsx`, `chips.tsx` (status/end-reason/disposition/live), `charts.tsx`
-  (CostByService area, CostRevenue, LatencyTrend, ServiceDonut, SimpleDonut, HBarChart),
-  `financial-gate.tsx` (+ `useFinancials`), `page-header.tsx`, `coming-soon.tsx`, `brand-logo.tsx`.
-  (No generic `data-table.tsx` yet — pages use shadcn `Table` directly; build one if reuse grows.)
-- **Core pages built & rendering (200):** `/overview`, `/cost`, `/performance`, `/calls`,
-  `/calls/[callId]` (transcript generated client-side, recording player, latency waterfall, per-service
-  cost, error logs, flag toast), `/live` (20s refetch), **`/business` (Business Health — MRR composition,
-  org growth, new/returning callers, usage, org leaderboard; SuperAdmin-gated)**.
-- **Stubs (ComingSoon):** `/issues`, `/infra/kubernetes`, `/infra/elb`, `/controls/fallbacks`,
-  `/controls/thresholds`, `/controls/flags`, `/qa-bench`.
-- **Build:** `npm run build` green; `next.config.ts` sets `turbopack.root` (multiple-lockfile warning fixed).
-- **Engine reconciliation:** headline revenue/margin = contract-based (MGF floor) at org/global scope,
-  per-call (usage) at project scope — so KPIs match the per-org chart. (`lib/data/mock.ts`)
+> For the exact recipe see **DOCUMENTATION.md §19 "How to add a new page or module"**. Each module
+> = extend `DataSource` + `MockAdapter` (+ `types`/`seed` if new fields) → API route → hook → page →
+> nav. Replacing a `ComingSoon` stub reuses the existing route.
 
-## 🚧 NOT DONE — resume here
+1. **Issues + Thresholds** (PRD/05 §4–5) — add `threshold` + `issue` shapes; derive active issues by
+   comparing calls/rollups to thresholds; Active Issues + Issues-by-Category views; threshold config UI
+   (SuperAdmin). Routes already stubbed: `/issues`, `/controls/thresholds`.
+2. **Infra: Kubernetes + AWS ELB** (PRD/06) — replicate the real Grafana panels (mapped in
+   `PRD/04-data-sources.md`): k8s gauges/timeseries (Prometheus metrics) + ELB CloudWatch panels.
+   Build reusable declarative panel components + mock timeseries generators keyed to template vars.
+   Routes: `/infra/kubernetes`, `/infra/elb`.
+3. **Fallbacks STT/TTS/LLM** (PRD/08) — config UI + `fallback_config`/`fallback_event` mock state;
+   LLM = drag-and-drop ordered list with cost badges. Route: `/controls/fallbacks`.
+4. **Call Flagging** (PRD/10) — flag action (already a toast on Call Detail) → real `call_flag` state +
+   review queue. Route: `/controls/flags`.
+5. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
 
-### 4. Modules to flesh out after the core (map to PRD)
-- [ ] Issues + Thresholds (PRD/05 §4-5) — derive issues from thresholds vs calls; add `threshold`/`issue` to seed.
-- [ ] Infra k8s + ELB (PRD/06) — declarative panel specs from Grafana metrics; mock timeseries generators keyed to template vars.
-- [ ] Fallbacks STT/TTS/LLM (PRD/08) — config UI + `fallback_config`/`fallback_event` mock state + drag-drop LLM list.
-- [x] Business Health (PRD/09) — usage timeseries + MRR/churn/growth/expansion (superadmin only). **DONE.**
-- [ ] Call Flagging (PRD/10) — flag action + review queue; add `call_flag` state.
-- [ ] QA Bench (PRD/11) — Phase 2, design only.
+### Supabase wiring (decision: connect from Phase 0)
+- [ ] Create a Supabase Cloud project (Supabase MCP auth OR user provides URL + anon + service-role keys).
+- [ ] `supabase/migrations/0001_init.sql` — schema from `PRD/12-data-model.md` (mirror call-DB names:
+  `chat_conversations`/`conversation_details`/`chat_messages`, `host_id`, `closed_reason`, …).
+- [ ] Seed Postgres — reuse `lib/seed` + `lib/engine` (same code path). **Per team convention this
+  belongs in Python** (a Python job/FastAPI service), see DOCUMENTATION §20.
+- [ ] `lib/data/supabase.ts` — `SupabaseAdapter implements DataSource` (same return shapes as mock).
+- [ ] `.env.local`/`.env.example` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `DATA_SOURCE=supabase`) + enable the `case "supabase"` in `data/index.ts`.
+- [ ] RLS mirroring `lib/auth/policy.ts` (org/project scoping + financial gating).
 
-### 5. Supabase (decision: connect from Phase 0)
-- [ ] Create a **Supabase Cloud** project (via Supabase MCP auth OR user provides URL + anon key + service-role key).
-- [ ] `supabase/migrations/0001_init.sql` — schema from PRD/12 (organization, project, agent, call,
-  call_cost, conversation_details, chat_message, call_error_log, pricing_*, org_contract, period_rollup,
-  issue_category, threshold, issue, issue_affected_call, call_flag(+comment), fallback_config(+event), app_user).
-- [ ] `supabase/seed.sql` (or a TS seed script) — emit the deterministic dataset into Postgres.
-- [ ] `lib/data/supabase.ts` — `SupabaseAdapter implements DataSource` (same shapes as mock).
-- [ ] `.env.local` / `.env.example` — `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-  `SUPABASE_SERVICE_ROLE_KEY`, `DATA_SOURCE=supabase`. Enable the `case "supabase"` in `lib/data/index.ts`.
-- [ ] RLS policies mirroring `lib/auth/policy.ts` (org_id / project_ids scoping). Optional for demo.
-
-### 6. Housekeeping
-- [ ] Replace default root `README.md` (still create-next-app) with a real project README (link PRD + run steps).
+### Housekeeping / quality
 - [ ] `.env.example`.
-- [ ] **Run `npm run build` / `npm run lint`** — NOT done yet; expect type fixes. Watch for:
-  shadcn `Select` `size` prop on `SelectTrigger`, `Toaster` from sonner wrapper, `chart.tsx` usage,
-  lucide icon names, server/client boundaries on API route imports.
-- [ ] Optional: client live ticker for `/live` (mutate active set every 15–30s) behind a `LiveSource`.
+- [ ] Unit tests for the pure engine (`lib/engine/*`) — Vitest recommended (formulas in DOCUMENTATION §9).
+- [ ] Optional: true streaming `LiveSource` for `/live` (SSE/WebSocket) instead of 20s polling.
+- [ ] Optional: generic `data-table.tsx` (TanStack) if table reuse grows.
 
 ---
 
 ## How to resume
 
-1. Read this file + `PRD/README.md`.
-2. `npm install` (already done; re-run if fresh clone).
-3. Build the shell (§1), then shared UI (§2), then pages (§3) in priority order.
-4. First milestone to verify visually: `npm run dev` → `/overview` and `/cost` render with mock data,
-   role switch hides financials, dark toggle works.
-5. Then Supabase (§5), then remaining modules (§4).
+1. Read this file + `DOCUMENTATION.md` (esp. §6 layout, §7 data layer, §15 Base UI, §19 add-a-module).
+2. `npm install` (if fresh clone) → `npm run dev` → http://localhost:3000.
+3. Pick the next module (suggested order above). Follow DOCUMENTATION §19.
+4. `npm run build` must stay green; click through with **both roles** and a couple of scopes.
+5. Commit + push to `origin/main` (deploys via Vercel if connected).
 
 ## Useful commands
-- Dev: `npm run dev`
-- Build/typecheck: `npm run build`
+- Dev: `npm run dev`  ·  Build/typecheck: `npm run build`  ·  Lint: `npm run lint`
 - Add shadcn component: `rtk proxy npx shadcn@latest add <name> --yes`
+- Inspect an API JSON without RTK summarizing it: `curl -s "http://localhost:3000/api/<x>" -o /tmp/x.json`
