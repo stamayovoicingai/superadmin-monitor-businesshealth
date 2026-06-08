@@ -73,6 +73,28 @@ export interface LiveOpsResult {
   activeCalls: (Call & { projectName: string })[];
 }
 
+export interface BusinessHealthResult {
+  // Voicing business KPIs
+  mrrMicros: number;
+  mrrDeltaPct: number; // MoM
+  churnRatePct: number;
+  expansionMicros: number;
+  // Platform usage KPIs (period)
+  activeOrgs: number;
+  newOrgs: number;
+  activeAgents: number;
+  totalMinutes: number;
+  totalCalls: number;
+  newCallers: number;
+  returningCallers: number;
+  // Series
+  mrrSeries: { month: string; committedMicros: number; usageMicros: number; expansionMicros: number }[];
+  orgGrowthSeries: { month: string; activeOrgs: number }[];
+  usageSeries: { date: string; minutes: number; calls: number }[];
+  callersSeries: { date: string; newCallers: number; returningCallers: number }[];
+  orgs: { name: string; mrrMicros: number; marginMicros: number; minutes: number }[];
+}
+
 export interface DataSource {
   listOrgs(): Promise<Organization[]>;
   listProjects(orgId?: string): Promise<Project[]>;
@@ -85,4 +107,5 @@ export interface DataSource {
   listCalls(filter: CallFilter, page: number, pageSize: number): Promise<CallPage>;
   getCall(callId: string): Promise<CallDetail | null>;
   liveOps(scope: Scope): Promise<LiveOpsResult>;
+  businessHealth(scope: Scope): Promise<BusinessHealthResult>;
 }

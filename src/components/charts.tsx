@@ -163,6 +163,90 @@ export function SimpleDonut({
   );
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthLabel = (m: string) => {
+  const [, mm] = m.split("-");
+  return MONTHS[Number(mm) - 1] ?? m;
+};
+const usdAxis = (v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`;
+
+export function MrrChart({
+  series,
+}: {
+  series: { month: string; committedMicros: number; usageMicros: number; expansionMicros: number }[];
+}) {
+  const config: ChartConfig = {
+    committed: { label: "Committed (MGF)", color: "var(--chart-1)" },
+    usage: { label: "Usage", color: "var(--chart-2)" },
+    expansion: { label: "Expansion", color: "var(--chart-3)" },
+  };
+  const data = series.map((p) => ({
+    month: monthLabel(p.month),
+    committed: microsToUsd(p.committedMicros),
+    usage: microsToUsd(p.usageMicros),
+    expansion: microsToUsd(p.expansionMicros),
+  }));
+  return (
+    <ChartContainer config={config} className="aspect-auto h-[280px] w-full">
+      <AreaChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <XAxis dataKey="month" tickLine={false} axisLine={false} minTickGap={12} />
+        <YAxis tickFormatter={usdAxis} tickLine={false} axisLine={false} width={48} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        {(["committed", "usage", "expansion"] as const).map((k) => (
+          <Area key={k} dataKey={k} type="monotone" stackId="1" stroke={`var(--color-${k})`} fill={`var(--color-${k})`} fillOpacity={0.25} />
+        ))}
+      </AreaChart>
+    </ChartContainer>
+  );
+}
+
+export function CallersChart({
+  series,
+}: {
+  series: { date: string; newCallers: number; returningCallers: number }[];
+}) {
+  const config: ChartConfig = {
+    newCallers: { label: "New", color: "var(--chart-1)" },
+    returningCallers: { label: "Returning", color: "var(--chart-3)" },
+  };
+  return (
+    <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
+      <AreaChart data={series} margin={{ left: 4, right: 8, top: 8 }}>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <XAxis dataKey="date" tickFormatter={shortDate} tickLine={false} axisLine={false} minTickGap={24} />
+        <YAxis tickLine={false} axisLine={false} width={36} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        <Area dataKey="newCallers" type="monotone" stackId="1" stroke="var(--color-newCallers)" fill="var(--color-newCallers)" fillOpacity={0.25} />
+        <Area dataKey="returningCallers" type="monotone" stackId="1" stroke="var(--color-returningCallers)" fill="var(--color-returningCallers)" fillOpacity={0.25} />
+      </AreaChart>
+    </ChartContainer>
+  );
+}
+
+export function VBarChart({
+  data,
+  isMonth,
+}: {
+  data: { label: string; value: number }[];
+  isMonth?: boolean;
+}) {
+  const config: ChartConfig = { value: { label: "Value", color: "var(--chart-1)" } };
+  return (
+    <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
+      <BarChart data={data.map((d) => ({ ...d, label: isMonth ? monthLabel(d.label) : d.label }))} margin={{ left: 4, right: 8, top: 8 }}>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={8} />
+        <YAxis tickLine={false} axisLine={false} width={36} allowDecimals={false} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="value" fill="var(--color-value)" radius={4} />
+      </BarChart>
+    </ChartContainer>
+  );
+}
+
 export function HBarChart({
   data,
   unit = "$",

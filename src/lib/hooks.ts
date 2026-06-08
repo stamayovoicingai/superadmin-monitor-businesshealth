@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useView } from "@/components/view-context";
 import type {
+  BusinessHealthResult,
   CallDetail,
   CallPage,
   CostResult,
@@ -70,6 +71,14 @@ export function useCall(callId: string) {
     queryKey: ["call", callId],
     queryFn: () => fetchJson<CallDetail>(`/api/calls/${callId}`),
     enabled: !!callId,
+  });
+}
+
+export function useBusiness() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["business", query],
+    queryFn: () => fetchJson<BusinessHealthResult>(`/api/business?${query}`),
   });
 }
 

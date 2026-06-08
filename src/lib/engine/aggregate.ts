@@ -182,6 +182,41 @@ export function endReasonCounts(calls: Call[]): EndReasonCount[] {
   return order.map((reason) => ({ reason, count: m.get(reason) ?? 0 }));
 }
 
+/** New vs returning callers per day (first-seen across the given calls = "new"). */
+export function callerSeries(calls: Call[]): {
+  series: { date: string; newCallers: number; returningCallers: number }[];
+  newTotal: number;
+  returningTotal: number;
+} {
+  const sorted = [...calls].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const seen = new Set<string>();
+  const byDay = new Map<string, { n: number; r: number }>();
+  let newTotal = 0;
+  let returningTotal = 0;
+  for (const c of sorted) {
+    const d = c.startTime.slice(0, 10);
+    const e = byDay.get(d) ?? { n: 0, r: 0 };
+    if (seen.has(c.callerHash)) {
+      e.r++;
+      returningTotal++;
+    } else {
+      seen.add(c.callerHash);
+      e.n++;
+      newTotal++;
+    }
+    byDay.set(d, e);
+  }
+  const series = Array.from(byDay.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, e]) => ({ date, newCallers: e.n, returningCallers: e.r }));
+  return { series, newTotal, returningTotal };
+}
+
+/** Count of distinct agents that handled at least one call. */
+export function activeAgentsCount(calls: Call[]): number {
+  return new Set(calls.map((c) => c.agentId)).size;
+}
+
 export function statusCounts(calls: Call[]): StatusCount[] {
   const order: CallStatus[] = ["ACTIVE", "COMPLETED", "FAILED"];
   const m = new Map<CallStatus, number>();

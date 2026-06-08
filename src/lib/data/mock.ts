@@ -2,6 +2,8 @@
 import type { Call } from "@/lib/types";
 import { getDataset } from "@/lib/seed";
 import {
+  activeAgentsCount,
+  callerSeries,
   computeTotals,
   dailySeries,
   endReasonCounts,
@@ -13,6 +15,7 @@ import {
   type CallFilter,
 } from "@/lib/engine/aggregate";
 import type {
+  BusinessHealthResult,
   CallDetail,
   CallPage,
   CostResult,
@@ -22,6 +25,22 @@ import type {
   PerformanceResult,
   Scope,
 } from "./source";
+
+/** Last N calendar months as "YYYY-MM" (oldest → newest, ending current month). */
+function lastMonths(n: number): string[] {
+  const now = new Date();
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return out;
+}
+/** ISO cutoff = first day of the month AFTER the given "YYYY-MM" (i.e. that month's end). */
+function monthEndIso(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(y, m, 1).toISOString();
+}
 
 function scopedCalls(scope: Scope): Call[] {
   const { calls } = getDataset();
@@ -220,6 +239,83 @@ export class MockAdapter implements DataSource {
       statusCounts: statusCounts(calls),
       endReasonCounts: endReasonCounts(calls),
       activeCalls: active.map((c) => ({ ...c, projectName: projName(c.projectId) })),
+    };
+  }
+
+  async businessHealth(scope: Scope): Promise<BusinessHealthResult> {
+    const { orgs, contracts } = getDataset();
+    const calls = scopedCalls(scope);
+    const t = computeTotals(calls);
+    const scopedContracts = scope.orgId ? contracts.filter((c) => c.orgId === scope.orgId) : contracts;
+    const orgName = (id: string) => orgs.find((o) => o.id === id)?.name ?? id;
+    const orgRoll = orgRollups(calls, scopedContracts);
+
+    // MRR composition (now): committed = MGF floors; usage = pay-as-you-go run-rate; expansion = MGF overage.
+    let committedNow = 0;
+    let usageNow = 0;
+    let expansionNow = 0;
+    for (const c of scopedContracts) {
+      const roll = orgRoll.find((r) => r.orgId === c.orgId);
+      if (!roll) continue;
+      if (c.contractType === "mgf") {
+        committedNow += c.mgfAmountMicros;
+        expansionNow += Math.max(0, roll.revenueMicros - c.mgfAmountMicros);
+      } else {
+        usageNow += roll.mrrMicros;
+      }
+    }
+    const mrrMicros = orgRoll.reduce((s, r) => s + r.mrrMicros, 0);
+
+    // 12-month MRR ramp — synthesized deterministically (business history isn't in the 30d call data).
+    const months = lastMonths(12);
+    const mrrSeries = months.map((month, i) => {
+      const factor = 0.55 + (0.45 * i) / (months.length - 1);
+      const jitter = 1 + 0.025 * Math.sin(i * 1.7);
+      return {
+        month,
+        committedMicros: Math.round(committedNow * factor * jitter),
+        usageMicros: Math.round(usageNow * factor * jitter),
+        expansionMicros: Math.round(expansionNow * factor),
+      };
+    });
+    const prevPoint = mrrSeries[mrrSeries.length - 2];
+    const prev = prevPoint ? prevPoint.committedMicros + prevPoint.usageMicros + prevPoint.expansionMicros : 0;
+    const mrrDeltaPct = prev > 0 ? (mrrMicros - prev) / prev : 0;
+
+    // Org growth — cumulative active orgs by month-end (from onboardedAt).
+    const scopedOrgs = scope.orgId ? orgs.filter((o) => o.id === scope.orgId) : orgs;
+    const orgGrowthSeries = months.map((month) => {
+      const end = monthEndIso(month);
+      return {
+        month,
+        activeOrgs: scopedOrgs.filter((o) => o.onboardedAt <= end).length,
+      };
+    });
+
+    const newOrgs = scope.from ? scopedOrgs.filter((o) => o.onboardedAt >= scope.from!).length : 0;
+    const churned = scopedOrgs.filter((o) => o.status === "churned").length;
+    const churnRatePct = scopedOrgs.length ? churned / scopedOrgs.length : 0;
+    const callers = callerSeries(calls);
+
+    return {
+      mrrMicros,
+      mrrDeltaPct,
+      churnRatePct,
+      expansionMicros: expansionNow,
+      activeOrgs: scopedOrgs.filter((o) => o.status === "active").length,
+      newOrgs,
+      activeAgents: activeAgentsCount(calls),
+      totalMinutes: t.minutes,
+      totalCalls: t.calls,
+      newCallers: callers.newTotal,
+      returningCallers: callers.returningTotal,
+      mrrSeries,
+      orgGrowthSeries,
+      usageSeries: dailySeries(calls).map((p) => ({ date: p.date, minutes: p.minutes, calls: p.calls })),
+      callersSeries: callers.series,
+      orgs: orgRoll
+        .map((r) => ({ name: orgName(r.orgId), mrrMicros: r.mrrMicros, marginMicros: r.marginMicros, minutes: r.minutes }))
+        .sort((a, b) => b.mrrMicros - a.mrrMicros),
     };
   }
 }

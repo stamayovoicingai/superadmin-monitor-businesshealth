@@ -95,9 +95,10 @@ skeleton, switch, label, dialog, scroll-area, breadcrumb, sonner, chart, sidebar
   (No generic `data-table.tsx` yet — pages use shadcn `Table` directly; build one if reuse grows.)
 - **Core pages built & rendering (200):** `/overview`, `/cost`, `/performance`, `/calls`,
   `/calls/[callId]` (transcript generated client-side, recording player, latency waterfall, per-service
-  cost, error logs, flag toast), `/live` (20s refetch).
+  cost, error logs, flag toast), `/live` (20s refetch), **`/business` (Business Health — MRR composition,
+  org growth, new/returning callers, usage, org leaderboard; SuperAdmin-gated)**.
 - **Stubs (ComingSoon):** `/issues`, `/infra/kubernetes`, `/infra/elb`, `/controls/fallbacks`,
-  `/controls/thresholds`, `/controls/flags`, `/business`, `/qa-bench`.
+  `/controls/thresholds`, `/controls/flags`, `/qa-bench`.
 - **Build:** `npm run build` green; `next.config.ts` sets `turbopack.root` (multiple-lockfile warning fixed).
 - **Engine reconciliation:** headline revenue/margin = contract-based (MGF floor) at org/global scope,
   per-call (usage) at project scope — so KPIs match the per-org chart. (`lib/data/mock.ts`)
@@ -108,7 +109,7 @@ skeleton, switch, label, dialog, scroll-area, breadcrumb, sonner, chart, sidebar
 - [ ] Issues + Thresholds (PRD/05 §4-5) — derive issues from thresholds vs calls; add `threshold`/`issue` to seed.
 - [ ] Infra k8s + ELB (PRD/06) — declarative panel specs from Grafana metrics; mock timeseries generators keyed to template vars.
 - [ ] Fallbacks STT/TTS/LLM (PRD/08) — config UI + `fallback_config`/`fallback_event` mock state + drag-drop LLM list.
-- [ ] Business Health (PRD/09) — usage timeseries + MRR/churn/growth/expansion (superadmin only).
+- [x] Business Health (PRD/09) — usage timeseries + MRR/churn/growth/expansion (superadmin only). **DONE.**
 - [ ] Call Flagging (PRD/10) — flag action + review queue; add `call_flag` state.
 - [ ] QA Bench (PRD/11) — Phase 2, design only.
 

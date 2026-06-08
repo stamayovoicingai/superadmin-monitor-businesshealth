@@ -58,7 +58,7 @@ const CONTRACTS: OrgContract[] = [
     ratePerMinMicros: usdToMicros(0.1),
     mgfAmountMicros: usdToMicros(6000),
     overageRatePerMinMicros: usdToMicros(0.11),
-    includedMinutes: 60000,
+    includedMinutes: 7000, // MGF covers 7k min; overage billed beyond (drives expansion)
     billingCycleDay: 1,
     currency: "USD",
   },
@@ -69,7 +69,7 @@ const CONTRACTS: OrgContract[] = [
     ratePerMinMicros: usdToMicros(0.14),
     mgfAmountMicros: usdToMicros(5000),
     overageRatePerMinMicros: usdToMicros(0.15),
-    includedMinutes: 35714,
+    includedMinutes: 6000, // MGF covers 6k min; overage billed beyond (drives expansion)
     billingCycleDay: 1,
     currency: "USD",
   },
@@ -158,6 +158,8 @@ export function buildDataset(): Dataset {
     }
 
     const pods = Array.from({ length: ps.pods }, (_, i) => `${shortNs(ps.namespace)}-pod-${i + 1}`);
+    // Bounded caller pool so "new vs returning" callers is meaningful (~repeat rate).
+    const callerPool = Math.max(50, ps.dailyBase * 8);
 
     for (let d = DAYS - 1; d >= 0; d--) {
       const day = new Date(now.getTime() - d * 86400000);
@@ -228,7 +230,7 @@ export function buildDataset(): Dataset {
           status,
           closedReason: reason,
           disposition: dispositionFor(reason ?? "OTHER", failed),
-          callerHash: `clr_${rng.int(100000, 999999)}`,
+          callerHash: `clr_${shortNs(ps.namespace)}_${rng.int(1, callerPool)}`,
           usage,
           latency,
           cost,
