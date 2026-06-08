@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Voicing AI — SuperAdmin Platform
 
-## Getting Started
+Internal control tower for the Voicing AI voice-agent business: observability, **cost & margin**,
+infrastructure monitoring and operator controls — across every organization, project and agent.
 
-First, run the development server:
+This is a **navigable demo** (high-fidelity UI on realistic simulated data) architected to plug into
+a real backend (Supabase + provider/billing integrations) without a frontend rewrite.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · shadcn/ui (Base UI) · Recharts ·
+TanStack Query/Table · Supabase (planned) · next-themes.
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000  → /overview
+npm run build    # production build + typecheck
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+By default the app reads from a deterministic in-memory mock dataset (`DATA_SOURCE=mock`). A Supabase
+adapter can be enabled later via env (see `BUILD-STATUS.md`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What's inside
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Overview** — role-aware KPIs, cost-by-service, margin by org, projects table.
+- **Cost & Margin** — real per-service cost (LLM/STT/TTS/telephony/cloud), revenue and margin (priority #1).
+- **Performance** — latency (overall + per service) and error rate.
+- **Call Logs / Call Detail** — filterable history, transcript, recording, latency waterfall, per-service cost.
+- **Live Operations** — active calls per pod, status & end-reason breakdowns (auto-refresh).
+- Modules designed and stubbed: Issues/Thresholds, Infra (k8s + AWS ELB), Fallbacks, Business Health,
+  Flag Queue, QA Bench.
 
-## Learn More
+Two roles: **SuperAdmin** (full access incl. financials) and **User** (project performance +
+cost-to-serve, no revenue/margin). Use the **"View as"** switcher to preview scoping.
 
-To learn more about Next.js, take a look at the following resources:
+## Documentation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **`PRD/`** — full product requirements (00–15): vision, roles, IA, cost/revenue/margin engine,
+  data sources (mapped from real Grafana dashboards), module specs, data model, architecture, design system.
+- **`BUILD-STATUS.md`** — current build state, conventions, and what's pending.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> Confidential — internal Voicing AI use only.

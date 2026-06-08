@@ -1,26 +1,186 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Voicing AI — SuperAdmin Platform
+ * Design tokens based on the official Voicing AI Brand Kit (2024), Platform brand
+ * (platform.voicing.ai): Indigo Blue + Violet on cool light gray.
+ * See PRD/14-design-system.md
+ */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-jakarta);
+  --font-heading: var(--font-jakarta);
+  --font-serif: var(--font-instrument-serif);
   --font-mono: var(--font-geist-mono);
+
+  /* Brand semantic extras (usable as text-success, bg-warning, etc.) */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-critical: var(--critical);
+  --color-critical-foreground: var(--critical-foreground);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-violet: var(--brand-violet);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------- LIGHT (default) ---------- */
+:root {
+  --radius: 0.625rem; /* 10px cards (brand) */
+
+  --background: #f4f5fa; /* App Background — cool light gray */
+  --foreground: #1e2060; /* Dark Text — deep indigo */
+
+  --card: #ffffff;
+  --card-foreground: #1e2060;
+  --popover: #ffffff;
+  --popover-foreground: #1e2060;
+
+  --primary: #3b5bdb; /* Primary Blue */
+  --primary-foreground: #ffffff;
+
+  --secondary: #e8ebf7;
+  --secondary-foreground: #1e2060;
+
+  --muted: #eef0f6;
+  --muted-foreground: #667099; /* Muted Text */
+
+  --accent: #ece9fb; /* subtle violet tint for hovers */
+  --accent-foreground: #4b2f9e;
+
+  --destructive: #dc2626;
+  --border: #cdd0e0; /* Border */
+  --input: #cdd0e0;
+  --ring: #3b5bdb;
+
+  /* Brand extras */
+  --brand-blue: #3b5bdb;
+  --brand-violet: #7c3aed; /* Accent Violet */
+  --success: #22c55e; /* Success / Live */
+  --success-foreground: #ffffff;
+  --warning: #da5326; /* Warning (marketing orange) */
+  --warning-foreground: #ffffff;
+  --critical: #dc2626;
+  --critical-foreground: #ffffff;
+
+  /* Chart palette — fixed brand hues (blue, violet, green, orange, muted) */
+  --chart-1: #3b5bdb;
+  --chart-2: #7c3aed;
+  --chart-3: #22c55e;
+  --chart-4: #da5326;
+  --chart-5: #667099;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1e2060;
+  --sidebar-primary: #3b5bdb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef0f8;
+  --sidebar-accent-foreground: #1e2060;
+  --sidebar-border: #e2e5f0;
+  --sidebar-ring: #3b5bdb;
+}
+
+/* ---------- DARK ---------- */
+.dark {
+  --background: #0f1130;
+  --foreground: #e8eaf6;
+
+  --card: #1a1c3a;
+  --card-foreground: #e8eaf6;
+  --popover: #1a1c3a;
+  --popover-foreground: #e8eaf6;
+
+  --primary: #6e8aed;
+  --primary-foreground: #0f1130;
+
+  --secondary: #242747;
+  --secondary-foreground: #e8eaf6;
+
+  --muted: #242747;
+  --muted-foreground: #9aa3c7;
+
+  --accent: #2a2456;
+  --accent-foreground: #e8eaf6;
+
+  --destructive: #f0616d;
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: #6e8aed;
+
+  --brand-blue: #6e8aed;
+  --brand-violet: #9b6bf0;
+  --success: #34d27b;
+  --success-foreground: #06231a;
+  --warning: #f0814f;
+  --warning-foreground: #2a0f06;
+  --critical: #f0616d;
+  --critical-foreground: #2a0608;
+
+  --chart-1: #6e8aed;
+  --chart-2: #9b6bf0;
+  --chart-3: #34d27b;
+  --chart-4: #e8734a;
+  --chart-5: #9aa3c7;
+
+  --sidebar: #141631;
+  --sidebar-foreground: #e8eaf6;
+  --sidebar-primary: #6e8aed;
+  --sidebar-primary-foreground: #0f1130;
+  --sidebar-accent: #242747;
+  --sidebar-accent-foreground: #e8eaf6;
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #6e8aed;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
