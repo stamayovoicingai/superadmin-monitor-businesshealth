@@ -7,6 +7,12 @@ import type {
   Agent,
   Call,
   EndReasonCount,
+  FallbackConfig,
+  FallbackEvent,
+  FallbackScopeType,
+  FallbackService,
+  HealthIncident,
+  HealthService,
   IpDefaultPolicy,
   IpListType,
   IpRule,
@@ -18,6 +24,8 @@ import type {
   Project,
   ProjectRollup,
   RollupTotals,
+  ServiceNotifyOverride,
+  ServiceStatus,
   StatusCount,
   SubagentKey,
   TimePoint,
@@ -132,6 +140,45 @@ export interface AssistantUsageResult {
   series: { date: string; costMicros: number; invocations: number }[];
 }
 
+export interface ServiceFallback {
+  service: FallbackService;
+  config: FallbackConfig;
+  isOverride: boolean; // true if a scope-specific override (not the global default)
+}
+
+export interface FallbacksResult {
+  scopeLabel: string;
+  services: ServiceFallback[];
+  events: FallbackEvent[];
+}
+
+export interface UpdateFallbackInput {
+  service: FallbackService;
+  scopeType: FallbackScopeType;
+  scopeId: string | null;
+  enabled?: boolean;
+  fallbackModel?: string;
+  orderedModels?: string[];
+}
+
+export interface HealthResult {
+  services: HealthService[];
+  incidents: HealthIncident[];
+  summary: Record<ServiceStatus, number>;
+  recipients: string[]; // per-project recipients (when a project is in scope)
+  overrides: ServiceNotifyOverride[]; // overrides for services in scope
+}
+
+export interface SetRecipientsInput {
+  scopeId: string; // project id
+  emails: string[];
+}
+
+export interface SetServiceOverrideInput {
+  serviceId: string;
+  emails: string[];
+}
+
 export interface DataSource {
   listOrgs(): Promise<Organization[]>;
   listProjects(orgId?: string): Promise<Project[]>;
@@ -151,4 +198,11 @@ export interface DataSource {
   addIpRule(input: AddIpRuleInput): Promise<IpRule>;
   deleteIpRule(id: string): Promise<void>;
   setIpPolicy(input: SetIpPolicyInput): Promise<void>;
+
+  getFallbacks(scope: Scope): Promise<FallbacksResult>;
+  updateFallback(input: UpdateFallbackInput): Promise<void>;
+
+  health(scope: Scope): Promise<HealthResult>;
+  setRecipients(input: SetRecipientsInput): Promise<void>;
+  setServiceOverride(input: SetServiceOverrideInput): Promise<void>;
 }

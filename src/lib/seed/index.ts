@@ -9,16 +9,24 @@ import type {
   CallEndReason,
   CallStatus,
   Disposition,
+  FallbackConfig,
+  FallbackEvent,
+  HealthIncident,
+  HealthService,
   IpRule,
   IpScopePolicy,
+  NotifyRecipients,
   Organization,
   OrgContract,
   Project,
+  ServiceNotifyOverride,
+  ServiceStatus,
   SubagentUsageRow,
 } from "@/lib/types";
 import { usdToMicros } from "@/lib/money";
 import { computeCallCost, llmCostMicros } from "@/lib/engine/cost";
 import { SUBAGENTS } from "@/lib/engine/subagents";
+import { LLM_RATES, STT_RATES, TTS_RATES } from "@/lib/engine/pricing";
 import { Rng } from "./rng";
 
 const SEED = 0x5a17c0de;
@@ -114,6 +122,43 @@ const IP_POLICIES_SEED: IpScopePolicy[] = [
   { scopeType: "org", scopeId: "org-ltm", defaultPolicy: "allow" },
 ];
 
+const FALLBACK_CONFIGS_SEED: FallbackConfig[] = [
+  { service: "stt", scopeType: "global", scopeId: null, enabled: true, fallbackModel: "whisper", updatedBy: "ops@voicing.ai", updatedAt: iso(daysAgo(15)) },
+  { service: "tts", scopeType: "global", scopeId: null, enabled: true, fallbackModel: "cartesia", updatedBy: "ops@voicing.ai", updatedAt: iso(daysAgo(15)) },
+  { service: "llm", scopeType: "global", scopeId: null, enabled: true, orderedModels: ["gpt-4o", "claude-sonnet", "gemini-flash", "gpt-4o-mini"], updatedBy: "ops@voicing.ai", updatedAt: iso(daysAgo(10)) },
+];
+
+const FALLBACK_EVENTS_SEED: FallbackEvent[] = [
+  { id: "fb-1", timestamp: iso(daysAgo(2)), service: "llm", scopeLabel: "All orgs", fromModel: "gpt-4o", toModel: "claude-sonnet", reason: "OpenAI 5xx spike (per-call)" },
+  { id: "fb-2", timestamp: iso(daysAgo(1)), service: "tts", scopeLabel: "All orgs", fromModel: "elevenlabs", toModel: "cartesia", reason: "ElevenLabs latency > timeout" },
+  { id: "fb-3", timestamp: iso(daysAgo(1)), service: "stt", scopeLabel: "Telmex", fromModel: "deepgram-nova", toModel: "whisper", reason: "Deepgram degraded" },
+  { id: "fb-4", timestamp: iso(daysAgo(4)), service: "llm", scopeLabel: "All orgs", fromModel: "gpt-4o", toModel: "claude-sonnet", reason: "Rate limit (429)" },
+];
+
+const EXTERNAL_SERVICES: { provider: string; name: string; category: string; status: ServiceStatus }[] = [
+  { provider: "openai", name: "OpenAI API", category: "LLM", status: "operational" },
+  { provider: "anthropic", name: "Anthropic API", category: "LLM", status: "operational" },
+  { provider: "google", name: "Google Gemini", category: "LLM", status: "operational" },
+  { provider: "deepgram", name: "Deepgram STT", category: "STT", status: "degraded" },
+  { provider: "assemblyai", name: "AssemblyAI STT", category: "STT", status: "operational" },
+  { provider: "elevenlabs", name: "ElevenLabs TTS", category: "TTS", status: "operational" },
+  { provider: "cartesia", name: "Cartesia TTS", category: "TTS", status: "down" },
+  { provider: "twilio", name: "Twilio Telephony", category: "Telephony", status: "operational" },
+  { provider: "aws", name: "AWS", category: "Cloud", status: "operational" },
+  { provider: "gcp", name: "GCP", category: "Cloud", status: "operational" },
+];
+
+const INTERNAL_TEMPLATES = ["Call Orchestrator", "STT Pipeline", "TTS Pipeline", "LLM Router", "Webhooks", "Recordings Storage"];
+
+const NOTIFY_SEED: NotifyRecipients[] = [
+  { scopeId: "prj-telmex", emails: ["ops-telmex@tp.com", "oncall@voicing.ai"] },
+  { scopeId: "prj-allegiant", emails: ["sre@ltm.com"] },
+];
+
+const SERVICE_OVERRIDE_SEED: ServiceNotifyOverride[] = [
+  { serviceId: "svc-ext-deepgram", emails: ["stt-oncall@voicing.ai"] },
+];
+
 const SUBAGENT_WEIGHT: Record<string, number> = {
   prompt_writer: 1.4,
   general: 1.3,
@@ -156,6 +201,12 @@ export interface Dataset {
   ipRules: IpRule[];
   ipPolicies: IpScopePolicy[];
   subagentUsage: SubagentUsageRow[];
+  fallbackConfigs: FallbackConfig[];
+  fallbackEvents: FallbackEvent[];
+  healthServices: HealthService[];
+  healthIncidents: HealthIncident[];
+  notifyRecipients: NotifyRecipients[];
+  serviceNotifyOverrides: ServiceNotifyOverride[];
 }
 
 export function buildDataset(): Dataset {
@@ -302,6 +353,96 @@ export function buildDataset(): Dataset {
     }
   }
 
+  // Service health (Uptime-Kuma style) — external dependencies + internal per-project services.
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const projectsUsingProvider = (provider: string): string[] => {
+    if (provider === "twilio" || provider === "aws" || provider === "gcp") return PROJECTS.map((p) => p.name);
+    return PROJECTS.filter((p) =>
+      [LLM_RATES[p.llmModel]?.provider, STT_RATES[p.sttModel]?.provider, TTS_RATES[p.ttsModel]?.provider].includes(provider),
+    ).map((p) => p.name);
+  };
+  const heartbeats = (status: ServiceStatus, n = 30): ServiceStatus[] => {
+    const hb: ServiceStatus[] = [];
+    for (let i = 0; i < n; i++) {
+      const recent = i >= n - 4;
+      if (status === "operational") hb.push(rng.bool(0.04) ? "degraded" : "operational");
+      else if (status === "degraded") hb.push(recent ? (rng.bool(0.6) ? "degraded" : "operational") : rng.bool(0.12) ? "degraded" : "operational");
+      else if (status === "down") hb.push(recent ? (rng.bool(0.7) ? "down" : "degraded") : rng.bool(0.08) ? "down" : "operational");
+      else hb.push("maintenance");
+    }
+    return hb;
+  };
+  const uptimeFor = (status: ServiceStatus): number => {
+    if (status === "operational") return +rng.float(99.5, 99.99).toFixed(2);
+    if (status === "degraded") return +rng.float(98.0, 99.4).toFixed(2);
+    if (status === "down") return +rng.float(95.0, 98.5).toFixed(2);
+    return 99.9;
+  };
+
+  const healthServices: HealthService[] = [];
+  const healthIncidents: HealthIncident[] = [];
+
+  for (const ext of EXTERNAL_SERVICES) {
+    const id = `svc-ext-${ext.provider}`;
+    healthServices.push({
+      id,
+      name: ext.name,
+      kind: "external",
+      category: ext.category,
+      provider: ext.provider,
+      scopeType: "global",
+      scopeId: null,
+      status: ext.status,
+      uptimePct: uptimeFor(ext.status),
+      responseMs: Math.round(rng.gaussian(ext.status === "operational" ? 220 : 700, 200, 60, 2500)),
+      lastCheck: iso(new Date(now.getTime() - rng.int(5, 90) * 1000)),
+      heartbeats: heartbeats(ext.status),
+    });
+    if (ext.status !== "operational") {
+      healthIncidents.push({
+        id: `inc-ext-${ext.provider}`,
+        serviceId: id,
+        serviceName: ext.name,
+        status: ext.status === "down" ? "down" : "degraded",
+        startedAt: iso(new Date(now.getTime() - rng.int(30, 240) * 60000)),
+        resolvedAt: null,
+        affectedProjects: projectsUsingProvider(ext.provider),
+      });
+    }
+  }
+
+  for (const ps of PROJECTS) {
+    for (const tmpl of INTERNAL_TEMPLATES) {
+      const roll = rng.float(0, 1);
+      const status: ServiceStatus = roll < 0.04 ? "down" : roll < 0.12 ? "degraded" : "operational";
+      const id = `svc-${ps.id}-${slug(tmpl)}`;
+      healthServices.push({
+        id,
+        name: tmpl,
+        kind: "internal",
+        category: "Internal",
+        scopeType: "project",
+        scopeId: ps.id,
+        status,
+        uptimePct: uptimeFor(status),
+        responseMs: Math.round(rng.gaussian(120, 80, 20, 1200)),
+        lastCheck: iso(new Date(now.getTime() - rng.int(5, 90) * 1000)),
+        heartbeats: heartbeats(status),
+      });
+      if (status !== "operational") {
+        healthIncidents.push({
+          id: `inc-${id}`,
+          serviceId: id,
+          serviceName: `${ps.name} · ${tmpl}`,
+          status: status === "down" ? "down" : "degraded",
+          startedAt: iso(new Date(now.getTime() - rng.int(15, 180) * 60000)),
+          resolvedAt: null,
+          affectedProjects: [ps.name],
+        });
+      }
+    }
+  }
+
   return {
     generatedAt: iso(now),
     orgs: ORGS,
@@ -312,6 +453,12 @@ export function buildDataset(): Dataset {
     ipRules: IP_RULES_SEED,
     ipPolicies: IP_POLICIES_SEED,
     subagentUsage,
+    fallbackConfigs: FALLBACK_CONFIGS_SEED,
+    fallbackEvents: FALLBACK_EVENTS_SEED,
+    healthServices,
+    healthIncidents,
+    notifyRecipients: NOTIFY_SEED,
+    serviceNotifyOverrides: SERVICE_OVERRIDE_SEED,
   };
 }
 

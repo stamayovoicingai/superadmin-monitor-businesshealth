@@ -14,6 +14,11 @@ import type {
   OverviewResult,
   PerformanceResult,
   SetIpPolicyInput,
+  FallbacksResult,
+  UpdateFallbackInput,
+  HealthResult,
+  SetRecipientsInput,
+  SetServiceOverrideInput,
 } from "@/lib/data/source";
 import type { Agent, IpRule, Organization, Project } from "@/lib/types";
 
@@ -141,6 +146,68 @@ export function useSetIpPolicy() {
       if (!res.ok) throw new Error("request_failed");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["access"] }),
+  });
+}
+
+export function useFallbacks() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["fallbacks", query],
+    queryFn: () => fetchJson<FallbacksResult>(`/api/fallbacks?${query}`),
+  });
+}
+
+export function useUpdateFallback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateFallbackInput) => {
+      const res = await fetch("/api/fallbacks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["fallbacks"] }),
+  });
+}
+
+export function useHealth() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["health", query],
+    queryFn: () => fetchJson<HealthResult>(`/api/health?${query}`),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useSetRecipients() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetRecipientsInput) => {
+      const res = await fetch("/api/health", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "recipients", ...input }),
+      });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["health"] }),
+  });
+}
+
+export function useSetServiceOverride() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetServiceOverrideInput) => {
+      const res = await fetch("/api/health", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "override", ...input }),
+      });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["health"] }),
   });
 }
 

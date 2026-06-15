@@ -197,6 +197,74 @@ export interface IpRule {
   createdAt: string; // ISO
 }
 
+/* ----- Provider Fallbacks (STT / TTS / LLM) ----- */
+
+export type FallbackService = "stt" | "tts" | "llm";
+export type FallbackScopeType = "global" | "org" | "project";
+
+export interface FallbackConfig {
+  service: FallbackService;
+  scopeType: FallbackScopeType;
+  scopeId: string | null; // null for global
+  enabled: boolean;
+  fallbackModel?: string; // stt / tts (single fallback)
+  orderedModels?: string[]; // llm (cost-ordered list)
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface FallbackEvent {
+  id: string;
+  timestamp: string;
+  service: FallbackService;
+  scopeLabel: string;
+  fromModel: string;
+  toModel: string;
+  reason: string;
+}
+
+/* ----- Service Health (Uptime-Kuma style) ----- */
+
+export type ServiceStatus = "operational" | "degraded" | "down" | "maintenance";
+export type ServiceKind = "external" | "internal";
+
+export interface HealthService {
+  id: string;
+  name: string;
+  kind: ServiceKind;
+  category: string; // LLM | STT | TTS | Telephony | Cloud | Platform | Internal
+  provider?: string; // for external dependency mapping (openai, deepgram, twilio, aws…)
+  scopeType: "global" | "project";
+  scopeId: string | null; // project id for internal services
+  status: ServiceStatus;
+  uptimePct: number; // last 30d
+  responseMs: number;
+  lastCheck: string; // ISO
+  heartbeats: ServiceStatus[]; // recent checks (oldest → newest) for the heartbeat bar
+}
+
+export interface HealthIncident {
+  id: string;
+  serviceId: string;
+  serviceName: string;
+  status: "degraded" | "down";
+  startedAt: string;
+  resolvedAt: string | null;
+  affectedProjects: string[]; // project names impacted by this outage
+}
+
+/** Per-project default notification recipients. */
+export interface NotifyRecipients {
+  scopeId: string; // project id
+  emails: string[];
+}
+
+/** Per-service recipient override (for critical services). */
+export interface ServiceNotifyOverride {
+  serviceId: string;
+  emails: string[];
+}
+
 /* ----- Platform assistant subagents (platform.voicing.ai) ----- */
 
 export type SubagentKey = "prompt_writer" | "architecture" | "debugging" | "planning" | "general";

@@ -120,11 +120,20 @@ allow+block lists, org→project inheritance, add/delete, IP tester; SuperAdmin-
    `PRD/04-data-sources.md`): k8s gauges/timeseries (Prometheus metrics) + ELB CloudWatch panels.
    Build reusable declarative panel components + mock timeseries generators keyed to template vars.
    Routes: `/infra/kubernetes`, `/infra/elb`.
-3. **Fallbacks STT/TTS/LLM** (PRD/08) — config UI + `fallback_config`/`fallback_event` mock state;
-   LLM = drag-and-drop ordered list with cost badges. Route: `/controls/fallbacks`.
-4. **Call Flagging** (PRD/10) — flag action (already a toast on Call Detail) → real `call_flag` state +
+3. **Call Flagging** (PRD/10) — flag action (already a toast on Call Detail) → real `call_flag` state +
    review queue. Route: `/controls/flags`.
-5. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
+4. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
+
+### DONE since: Fallbacks (PRD/08) + Service Health (PRD/18)
+- **Fallbacks** `/controls/fallbacks` (SuperAdmin): tabs STT/TTS/LLM; enable toggle, single fallback
+  (STT/TTS), LLM cost-ordered list with reorder (up/down) + cost labels + add/remove; scope override via
+  Org/Project filter; recent fallback-activity table. Engine `lib/engine/fallbacks.ts`; mutable config
+  store; `/api/fallbacks` GET/PATCH; `useFallbacks`/`useUpdateFallback`.
+- **Service Health** `/health` (both roles, Uptime-Kuma style): external deps + per-project internal
+  services with status/uptime/response/heartbeat bar; **incidents list affected projects**; per-project
+  notification recipients + per-service override; 30s refresh. `lib/engine` health gen in seed;
+  `/api/health` GET/PUT; `useHealth`/`useSetRecipients`/`useSetServiceOverride`. Nav: "Service Health"
+  (Infra, both roles). NOTE: LLM reorder uses up/down buttons (not DnD) — fine for demo.
 
 ### Supabase wiring (decision: connect from Phase 0)
 - [ ] Create a Supabase Cloud project (Supabase MCP auth OR user provides URL + anon + service-role keys).

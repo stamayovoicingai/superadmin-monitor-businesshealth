@@ -1,5 +1,21 @@
 /** MockAdapter — implements DataSource from the deterministic seed dataset. */
-import type { Call, IpDefaultPolicy, IpRule, IpScopePolicy, IpScopeType, SubagentKey, SubagentUsageRow } from "@/lib/types";
+import type {
+  Call,
+  FallbackConfig,
+  FallbackScopeType,
+  FallbackService,
+  HealthIncident,
+  HealthService,
+  IpDefaultPolicy,
+  IpRule,
+  IpScopePolicy,
+  IpScopeType,
+  NotifyRecipients,
+  ServiceNotifyOverride,
+  ServiceStatus,
+  SubagentKey,
+  SubagentUsageRow,
+} from "@/lib/types";
 import { getDataset } from "@/lib/seed";
 import { SUBAGENTS, SUBAGENT_LABEL } from "@/lib/engine/subagents";
 import {
@@ -29,6 +45,11 @@ import type {
   PerformanceResult,
   Scope,
   SetIpPolicyInput,
+  FallbacksResult,
+  UpdateFallbackInput,
+  HealthResult,
+  SetRecipientsInput,
+  SetServiceOverrideInput,
 } from "./source";
 
 /** Mutable IP-rule store (seeded copy) so add/delete persist within a server process. */
@@ -46,6 +67,23 @@ function policyStore(): IpScopePolicy[] {
 }
 function getPolicy(scopeType: IpScopeType, scopeId: string): IpDefaultPolicy {
   return policyStore().find((p) => p.scopeType === scopeType && p.scopeId === scopeId)?.defaultPolicy ?? "allow";
+}
+
+/** Mutable stores for fallbacks + health notifications. */
+let _fallbacks: FallbackConfig[] | null = null;
+function fallbackStore(): FallbackConfig[] {
+  if (!_fallbacks) _fallbacks = getDataset().fallbackConfigs.map((c) => ({ ...c }));
+  return _fallbacks;
+}
+let _notify: NotifyRecipients[] | null = null;
+function notifyStore(): NotifyRecipients[] {
+  if (!_notify) _notify = getDataset().notifyRecipients.map((n) => ({ ...n, emails: [...n.emails] }));
+  return _notify;
+}
+let _overrides: ServiceNotifyOverride[] | null = null;
+function overrideStore(): ServiceNotifyOverride[] {
+  if (!_overrides) _overrides = getDataset().serviceNotifyOverrides.map((o) => ({ ...o, emails: [...o.emails] }));
+  return _overrides;
 }
 
 /** Subagent usage rows filtered by scope (org/project) and date range. */
@@ -457,5 +495,99 @@ export class MockAdapter implements DataSource {
     const existing = store.find((p) => p.scopeType === input.scopeType && p.scopeId === input.scopeId);
     if (existing) existing.defaultPolicy = input.defaultPolicy;
     else store.push({ scopeType: input.scopeType, scopeId: input.scopeId, defaultPolicy: input.defaultPolicy });
+  }
+
+  async getFallbacks(scope: Scope): Promise<FallbacksResult> {
+    const { orgs, projects, fallbackEvents } = getDataset();
+    const store = fallbackStore();
+    const scopeType: FallbackScopeType = scope.projectId ? "project" : scope.orgId ? "org" : "global";
+    const scopeId = scope.projectId ?? scope.orgId ?? null;
+    const scopeLabel = scope.projectId
+      ? projects.find((p) => p.id === scope.projectId)?.name ?? "Project"
+      : scope.orgId
+        ? orgs.find((o) => o.id === scope.orgId)?.name ?? "Organization"
+        : "All orgs";
+
+    const services = (["stt", "tts", "llm"] as FallbackService[]).map((service) => {
+      const own = store.find((c) => c.service === service && c.scopeType === scopeType && c.scopeId === scopeId);
+      const global = store.find((c) => c.service === service && c.scopeType === "global");
+      const config = own ?? global!;
+      return { service, config, isOverride: !!own && scopeType !== "global" };
+    });
+
+    return {
+      scopeLabel,
+      services,
+      events: [...fallbackEvents].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+    };
+  }
+
+  async updateFallback(input: UpdateFallbackInput): Promise<void> {
+    const store = fallbackStore();
+    let cfg = store.find((c) => c.service === input.service && c.scopeType === input.scopeType && c.scopeId === input.scopeId);
+    if (!cfg) {
+      const global = store.find((c) => c.service === input.service && c.scopeType === "global");
+      cfg = {
+        service: input.service,
+        scopeType: input.scopeType,
+        scopeId: input.scopeId,
+        enabled: global?.enabled ?? true,
+        fallbackModel: global?.fallbackModel,
+        orderedModels: global?.orderedModels ? [...global.orderedModels] : undefined,
+        updatedBy: "you@voicing.ai",
+        updatedAt: new Date().toISOString(),
+      };
+      store.push(cfg);
+    }
+    if (input.enabled !== undefined) cfg.enabled = input.enabled;
+    if (input.fallbackModel !== undefined) cfg.fallbackModel = input.fallbackModel;
+    if (input.orderedModels !== undefined) cfg.orderedModels = input.orderedModels;
+    cfg.updatedBy = "you@voicing.ai";
+    cfg.updatedAt = new Date().toISOString();
+  }
+
+  async health(scope: Scope): Promise<HealthResult> {
+    const { healthServices, healthIncidents, projects } = getDataset();
+    const orgProjectIds = scope.orgId ? projects.filter((p) => p.orgId === scope.orgId).map((p) => p.id) : null;
+
+    const services = healthServices.filter((s) => {
+      if (s.kind === "external") return true; // dependencies always shown
+      if (scope.projectId) return s.scopeId === scope.projectId;
+      if (orgProjectIds) return s.scopeId !== null && orgProjectIds.includes(s.scopeId);
+      return true;
+    });
+
+    const ids = new Set(services.map((s) => s.id));
+    const incidents = healthIncidents
+      .filter((i) => ids.has(i.serviceId))
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+
+    const summary: Record<ServiceStatus, number> = { operational: 0, degraded: 0, down: 0, maintenance: 0 };
+    for (const s of services) summary[s.status]++;
+
+    const recipients = scope.projectId
+      ? notifyStore().find((n) => n.scopeId === scope.projectId)?.emails ?? []
+      : [];
+    const overrides = overrideStore().filter((o) => ids.has(o.serviceId));
+
+    return { services, incidents, summary, recipients, overrides };
+  }
+
+  async setRecipients(input: SetRecipientsInput): Promise<void> {
+    const store = notifyStore();
+    const existing = store.find((n) => n.scopeId === input.scopeId);
+    if (existing) existing.emails = input.emails;
+    else store.push({ scopeId: input.scopeId, emails: input.emails });
+  }
+
+  async setServiceOverride(input: SetServiceOverrideInput): Promise<void> {
+    const store = overrideStore();
+    if (input.emails.length === 0) {
+      _overrides = store.filter((o) => o.serviceId !== input.serviceId);
+      return;
+    }
+    const existing = store.find((o) => o.serviceId === input.serviceId);
+    if (existing) existing.emails = input.emails;
+    else store.push({ serviceId: input.serviceId, emails: input.emails });
   }
 }

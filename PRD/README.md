@@ -25,6 +25,7 @@
 | 15 | [Roadmap & Open Questions](./15-roadmap-open-questions.md) | ✅ v1 |
 | 16 | [Module: IP Access Control (whitelist/blacklist)](./16-ip-access-control.md) | ✅ built |
 | 17 | [Module: Assistant / Subagent Usage](./17-assistant-subagent-usage.md) | ✅ built |
+| 18 | [Module: Service Health (Uptime-Kuma style)](./18-service-health.md) | ✅ built |
 
 ## Key decisions (discovery session, Jun 2026)
 
