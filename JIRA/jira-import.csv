@@ -1,0 +1,1613 @@
+Issue Type,Summary,Epic Name,Epic Link,Priority,Story Points,Labels,External ID,Blocked By (IDs),Blocks (IDs),Description
+"Epic","Platform Foundation","Platform Foundation","","Highest","","epic plat","PLAT","","","## Goal
+Stand up the real backend foundation the whole product sits on: Supabase project + schema, call-data
+ingestion, authentication + RBAC, and the adapter/deploy wiring that lets the existing Next.js UI read
+real data instead of the mock.
+
+## Why
+Every tab's backend and most frontend tasks depend on this. Without it nothing can leave the mock.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- Contract to honor: `src/lib/data/source.ts` (`DataSource`), selector `src/lib/data/index.ts`.
+- Mock reference: `src/lib/data/mock.ts`, seed `src/lib/seed/`.
+- Auth policy: `src/lib/auth/policy.ts`. Schema spec: `PRD/12-data-model.md`. Arch: `DOCUMENTATION.md` §13/§20.
+- **Team note:** backend in **Python** (FastAPI/jobs) feeding Supabase; TS stays UI-only.
+
+## Features
+- F1 — Supabase project, schema & migrations
+- F2 — Call/conversation data ingestion
+- F3 — Authentication & RBAC (server-side)
+- F4 — Data adapter, environments & deploy/CI
+- F5 — QA / foundation harness
+
+## Tasks
+- `BE-1-supabase-schema.md` (`PLAT-BE1`)
+- `BE-2-call-data-ingestion.md` (`PLAT-BE2`)
+- `BE-3-auth-rbac.md` (`PLAT-BE3`)
+- `BE-4-supabase-adapter-deploy.md` (`PLAT-BE4`)
+- `QA-1-foundation-harness.md` (`PLAT-QA1`)"
+"Story","[BE] Platform · Schema · Supabase project, schema & migrations","","Platform Foundation","Highest","8","backend supabase database foundation plat","PLAT-BE1","","PLAT-BE2","**ID:** PLAT-BE1 · **Priority:** P0 · **Estimate:** 8
+**Blocked by:** — · **Blocks:** PLAT-BE2
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Create the Supabase (Postgres) project and the base schema with migrations: `organization`, `project`,
+`agent`, `call` (+ `call_cost`, `conversation_details`, `chat_message`, `call_error_log`), `org_contract`,
+`pricing_*`, `period_rollup`, `issue_category`, `threshold`, `issue`, `call_flag` (+ comments),
+`fallback_config`/`fallback_event`, `ip_rule`/`ip_policy`, `health_service`/`incident`/`notify_*`,
+`subagent_usage`, `app_user`. Plus a deterministic seed for staging.
+
+## Why
+This is the data backbone. The MVP mirrors these exact names from the real call DB so the swap is a
+connection change, not a remodel — schema must match so adapters and the UI stay unchanged.
+
+## How (building on the MVP)
+- Mirror the names/columns in `PRD/12` and `src/lib/types.ts` (e.g. `call.host_id`, `closed_reason`
+  incl. `PIPELINE_TTL_TRIGGERED`, `hasData`, `tool_calls`, `tool_failures`; money as integer micro-USD).
+- Migrations under `supabase/migrations/`; effective-dated `pricing_*` (`valid_from`/`valid_to`).
+- Add indexes for scope+time queries (`org_id`, `project_id`, `start_time`).
+- Provide a staging seed (reuse `src/lib/seed` logic ported to a Python/SQL seeder).
+- Enable Row Level Security scaffolding (policies detailed in `PLAT-BE3`).
+
+## Acceptance Criteria
+- [ ] All tables from `PRD/12` exist via migrations; names/types match `src/lib/types.ts`.
+- [ ] Money columns are integer micro-USD; enums match (incl. new `PIPELINE_TTL_TRIGGERED`).
+- [ ] Indexes support scope + time-range filtering; explain plans avoid full scans for common queries.
+- [ ] Staging is seeded with a realistic dataset (≈ the MVP's 3 orgs / 12 projects scale).
+- [ ] Migrations are reversible and run clean from empty."
+"Story","[BE] Platform · Ingestion · Call/conversation data pipeline","","Platform Foundation","Highest","8","backend python supabase etl foundation plat","PLAT-BE2","PLAT-BE1","COST-BE1","**ID:** PLAT-BE2 · **Priority:** P0 · **Estimate:** 8
+**Blocked by:** PLAT-BE1 · **Blocks:** COST-BE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Ingest production call/conversation data into Supabase: per-call rows with `host_id` (pod), `status`,
+`closed_reason`, `start_time`/`end_time`/`duration`, per-service usage (LLM tokens, STT minutes, TTS
+chars, telephony minutes), per-service latency, `hasData`, tool calls/failures, transcript
+(`chat_message`) and error logs (`call_error_log`). Near-real-time (≤15–30 min) + backfill.
+
+## Why
+Calls are the richest source feeding Call Logs, Performance, Live Ops, Issues, Cost (usage) and
+Business Health. Everything call-related is blocked until this exists.
+
+## How (building on the MVP)
+- Source from the real call DB (`chat_conversations`/`conversation_details`/`chat_messages`, see
+  `PRD/04` S1) and app logs (Loki, S2). Normalize into the `call` schema from `PLAT-BE1`.
+- Python ingestion job/stream; idempotent upserts keyed by `call_id`/`session_id`.
+- Capture the fields the MVP seed models (`src/lib/seed/index.ts`) so downstream logic is unchanged:
+  usage, latency breakdown, `hasData`, `tool_calls`/`tool_failures`, `closed_reason` (incl. `PIPELINE_TTL_TRIGGERED`).
+- Mark `ACTIVE` calls for Live Ops; keep `host_id` for per-pod views.
+
+## Acceptance Criteria
+- [ ] Calls land in Supabase within the refresh SLA; ACTIVE calls reflect live state.
+- [ ] All fields required by downstream tabs are populated (usage, latency, hasData, tools, reasons).
+- [ ] Ingestion is idempotent; backfill for a date range works and doesn't duplicate.
+- [ ] Transcript + error logs are linked to their call and queryable by `call_id`/`session_id`.
+- [ ] Volume/perf validated at production scale."
+"Story","[BE] Platform · Auth · Authentication & server-side RBAC","","Platform Foundation","Highest","8","backend supabase auth rbac security foundation plat","PLAT-BE3","PLAT-BE1","COST-FE2","**ID:** PLAT-BE3 · **Priority:** P0 · **Estimate:** 8
+**Blocked by:** PLAT-BE1 · **Blocks:** COST-FE2
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Real authentication (internal Voicing staff) and **server-side RBAC** with two roles: **SuperAdmin**
+(everything incl. financials) and **User** (project performance + cost-to-serve; never revenue/margin/
+business). Roles carry `org_id`/`project_ids` scoping. Replace the MVP's client-side ""View-as"" demo.
+
+## Why
+Financial data and SuperAdmin-only controls must be protected at the API/DB layer — client gating is
+not security. This is required before any real financial endpoint ships.
+
+## How (building on the MVP)
+- Use Supabase Auth (or the platform's SSO) for sessions; map users to `app_user` (`role`, `org_id`,
+  `project_ids`).
+- Encode the MVP policy (`policy.ts`: `canSeeFinancials`, `canSeeCost`, `canSeeSuperAdminOnly`) as the
+  single source of truth shared by API authorization and **Supabase RLS**.
+- Enforce on every endpoint: scope by `org_id`/`project_ids`; **omit** revenue/margin fields for `User`.
+- Keep `policy.ts` predicates in the FE for UX (hide/disable), but never rely on them for protection.
+- Provide a way to impersonate/test roles in non-prod (replacing the demo switcher).
+
+## Acceptance Criteria
+- [ ] Authenticated sessions resolve a role + scope; unauthenticated requests are rejected.
+- [ ] `User` cannot retrieve revenue/margin/business data from any endpoint (verified by tests).
+- [ ] SuperAdmin-only routes/endpoints (fallbacks, thresholds config, flag queue, infra, business,
+  IP access) are denied to `User` server-side.
+- [ ] RLS policies mirror `policy.ts`; scope leakage across orgs/projects is impossible.
+- [ ] Security tests cover role/scope matrix from `PRD/01`."
+"Story","[BE] Platform · Adapter & Deploy · SupabaseAdapter, envs & CI/CD","","Platform Foundation","Highest","5","backend supabase nextjs devops foundation plat","PLAT-BE4","PLAT-BE1; PLAT-BE3","","**ID:** PLAT-BE4 · **Priority:** P0 · **Estimate:** 5
+**Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Implement `SupabaseAdapter` (implements the `DataSource` interface), flip `DATA_SOURCE=supabase`, wire
+environments/secrets, and set up CI/CD (Vercel for the app; Python services deploy). The UI then reads
+real data with no component changes.
+
+## Why
+This is the seam that turns the prototype into a live product. The MVP was built so this is a config +
+adapter change, not a refactor.
+
+## How (building on the MVP)
+- Create `src/lib/data/supabase.ts` implementing each `DataSource` method by calling Supabase
+  (views/RPC) or the Python API; return the **same result shapes** as the mock.
+- Enable the `case ""supabase""` in `src/lib/data/index.ts`; set env: `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_SOURCE=supabase`.
+- CI: typecheck/build/lint on PR; deploy app to Vercel; deploy Python services; run migrations on deploy.
+- Keep mock adapter available for local/dev and tests.
+
+## Acceptance Criteria
+- [ ] With `DATA_SOURCE=supabase`, every screen renders real data, no component code changes.
+- [ ] Secrets are server-side only; none reach the client bundle.
+- [ ] CI blocks merges on failing typecheck/build/lint; deploys are automated; migrations run on deploy.
+- [ ] A documented switch lets devs run locally against mock or Supabase."
+"Task","[QA] Platform · Foundation · RBAC matrix + parity & e2e harness","","Platform Foundation","Highest","5","qa rbac e2e foundation plat","PLAT-QA1","PLAT-BE3; PLAT-BE4","","**ID:** PLAT-QA1 · **Priority:** P0 · **Estimate:** 5
+**Blocked by:** PLAT-BE3; PLAT-BE4 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Establish the cross-cutting test harness: an end-to-end smoke suite, the RBAC role/scope matrix, and a
+**parity harness** that asserts the SupabaseAdapter returns the same shapes/values as the mock on a
+shared dataset.
+
+## Why
+Foundation correctness underpins every tab. RBAC and adapter parity must be guaranteed before tabs go
+live on real data.
+
+## How (building on the MVP)
+- Parity: run the same queries against mock and Supabase adapters; diff results (shapes + values).
+- RBAC: drive the `PRD/01` permission matrix as automated checks (SuperAdmin vs User, per endpoint).
+- E2E: auth → navigate each tab → assert it loads with real data and gating applies.
+
+## Acceptance Criteria
+- [ ] E2E smoke passes for all tabs against a staging Supabase.
+- [ ] RBAC matrix from `PRD/01` is fully automated and green.
+- [ ] Adapter parity suite passes (mock vs Supabase) on the shared dataset.
+- [ ] Suite runs in CI and gates deploys."
+"Epic","Cost & Margin","Cost & Margin","","High","","epic cost","COST","","","## Goal
+Give the Voicing team an accurate, real-time view of **what each call/project/org costs us**, **what
+we charge**, and **the margin** — broken down by service (LLM / STT / TTS / telephony / cloud). This
+is the platform's most important capability.
+
+## Outcome
+- Per-call cost computed from real provider usage × effective-dated pricing.
+- Revenue from per-org contracts (Pure Usage and MGF, reading B1) → margin and MRR.
+- Dashboard with KPIs, cost-by-service over time, cost vs revenue, and a per-project margin table.
+- Strict financial gating: `User` sees cost-to-serve only; revenue/margin are SuperAdmin-only.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/cost/page.tsx`
+- Engine (port to Python): `src/lib/engine/cost.ts`, `src/lib/engine/pricing.ts`, `src/lib/engine/aggregate.ts`
+- Contract/API shapes: `src/lib/data/source.ts` (`CostResult`), mock: `src/lib/data/mock.ts` (`cost()`)
+- PRD: `PRD/03-cost-revenue-margin.md`
+
+## Features
+- F1 — Cost ingestion & pricing engine (BE)
+- F2 — Revenue, margin & MRR engine (BE)
+- F3 — Cost & Margin API (BE)
+- F4 — Cost & Margin dashboard (FE)
+- F5 — Financial gating / RBAC (FE+BE)
+- F6 — QA
+
+## Tasks
+- `BE-1-cost-ingestion-pipeline.md`
+- `BE-2-pricing-catalog.md`
+- `BE-3-revenue-margin-mrr-engine.md`
+- `BE-4-cost-margin-api.md`
+- `FE-1-cost-margin-dashboard.md`
+- `FE-2-financial-gating.md`
+- `QA-1-cost-margin-tests.md`"
+"Story","[BE] Cost & Margin · Cost ingestion · Provider usage→cost pipeline","","Cost & Margin","High","8","backend python supabase cost etl","COST-BE1","PLAT-BE1; PLAT-BE2; COST-BE2","COST-BE3; COST-BE4; ISSUE-BE1","**ID:** COST-BE1 · **Priority:** P1 · **Estimate:** 8
+**Blocked by:** PLAT-BE1; PLAT-BE2; COST-BE2 · **Blocks:** COST-BE3; COST-BE4; ISSUE-BE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+A pipeline that, for every call, captures per-service **usage** (LLM input/output tokens, STT
+minutes, TTS characters, telephony minutes, cloud allocation) and computes the **real cost per call**
+broken down by service, persisted to a `call_cost` table. This is the source of truth for all cost
+figures in the app.
+
+## Why
+Cost per project/service is the platform's #1 priority. Today figures are modeled from a mock seed;
+the business needs **real, auditable** cost derived from actual provider usage and pricing so margin
+decisions are trustworthy.
+
+## How (building on the MVP)
+- The MVP computes cost in `computeCallCost(usage, durationSecs, contract)` (pure TS) from a pricing
+  catalog × per-call usage. **Port this formula to Python** (it is the spec) and run it in an
+  ingestion job/service.
+- Read per-call usage from the call DB (`chat_conversations`/`conversation_details`, see
+  `PRD/04` S1) and provider usage signals; reconcile against provider billing exports where available
+  (OpenAI/Anthropic/Google/Deepgram/AssemblyAI/ElevenLabs/Cartesia/Twilio/AWS/GCP/Azure).
+- Cloud allocation = **talk-minutes** (confirmed): `cloud_cost(project,period) × call_minutes/project_minutes`.
+- Write `call_cost` rows (micro-USD integers): `llm/stt/tts/telephony/cloud` addends + `total`,
+  plus `pricing_asof`. Keep money as integer micro-USD to avoid float drift.
+- Idempotent + backfillable; run as a scheduled Python job (and/or stream) populating Supabase.
+
+## Acceptance Criteria
+- [ ] `call_cost` is produced for ≥99% of completed calls within the refresh SLA (≤15–30 min).
+- [ ] Per-service breakdown sums to `total` for every row; values are integer micro-USD.
+- [ ] Cloud cost is allocated by talk-minutes and reconciles to the period's total cloud cost (±1%).
+- [ ] Re-running the job is idempotent (no double counting); backfill for a date range works.
+- [ ] The Python cost function matches the MVP `computeCallCost` outputs on a shared fixture set.
+- [ ] Unit tests for the cost formula + an integration test that ingests a sample batch."
+"Story","[BE] Cost & Margin · Cost ingestion · Effective-dated pricing catalog","","Cost & Margin","High","5","backend python supabase cost pricing","COST-BE2","PLAT-BE1","COST-BE1","**ID:** COST-BE2 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-BE1 · **Blocks:** COST-BE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+A versioned, **effective-dated** pricing catalog for every billable provider/model: LLM ($/1M input &
+output tokens), STT ($/min), TTS ($/1k chars), telephony ($/min by direction/region), cloud (compute/
+storage/egress). Historical calls keep the price that was in effect when they happened.
+
+## Why
+Provider prices change. Cost accuracy and auditability require pricing to be data (not hardcoded) and
+time-aware, so re-computing a past month yields the same number it did then.
+
+## How (building on the MVP)
+- The MVP hardcodes illustrative rates in `pricing.ts` (`LLM_RATES`, `STT_RATES`, `TTS_RATES`,
+  `TELEPHONY_RATE_PER_MIN`, `CLOUD_RATE_PER_MIN`). Replace with Supabase tables
+  `pricing_llm/pricing_stt/pricing_tts/pricing_telephony/pricing_cloud`, each with `valid_from`/
+  `valid_to` (see `PRD/12-data-model.md` §3).
+- The ingestion job (BE-1) looks up the rate effective at the call's `start_time`.
+- Provide an admin path to update rates (seed real, confirmed rates — the MVP values are placeholders).
+- Keep amounts in micro-USD.
+
+## Acceptance Criteria
+- [ ] Pricing tables exist with effective-dating; overlapping ranges are rejected.
+- [ ] Cost computation selects the rate effective at the call timestamp (verified with a date-boundary test).
+- [ ] All MVP-catalogued providers/models are represented with real rates.
+- [ ] Updating a rate does not retroactively change already-priced historical calls."
+"Story","[BE] Cost & Margin · Revenue & margin · Contract revenue, margin & MRR engine","","Cost & Margin","High","8","backend python supabase revenue finance cost","COST-BE3","PLAT-BE1; COST-BE1","COST-BE4; BIZ-BE1","**ID:** COST-BE3 · **Priority:** P1 · **Estimate:** 8
+**Blocked by:** PLAT-BE1; COST-BE1 · **Blocks:** COST-BE4; BIZ-BE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Compute **revenue**, **margin**, and **MRR** per org/project/period from per-org contracts. Supports
+two contract types: **Pure Usage** (minutes × rate) and **MGF** (Minimum Guarantee Fee, **reading
+B1**: MGF includes a volume; overage billed only on minutes above the included volume; floored at the
+MGF). Produces `period_rollup` records for fast charts.
+
+## Why
+Margin = Revenue − Cost is the headline business metric. Revenue depends on real contracts (e.g. TP
+Latam = pure usage; others = MGF). Without this, the platform shows cost but not profitability or MRR.
+
+## How (building on the MVP)
+- Port the MVP formulas (the spec): `computeOrgMonthlyRevenue` (Pure Usage and MGF-B1), `computeMrr`
+  (MGF floor for MGF orgs; trailing run-rate for usage orgs), `marginPct`.
+- Source contracts from an `org_contract` table (`contract_type`, `rate_per_min`, `mgf_amount`,
+  `overage_rate_per_min`, `included_minutes`, `billing_cycle_day`) — see `PRD/12` §3. Seed from real
+  finance data (MVP uses illustrative values).
+- **Reconciliation rule (match the MVP):** headline revenue/margin is **contract-based** at org/global
+  scope (includes the MGF floor) and **per-call/usage-based** at single-project scope. Implement
+  identically so the dashboard's KPIs match the per-org chart.
+- Persist daily/monthly `period_rollup` (cost, revenue, margin, per-service, minutes, calls) per
+  org/project for fast reads.
+
+## Acceptance Criteria
+- [ ] Pure Usage and MGF-B1 revenue match the MVP outputs on a shared fixture (incl. under- and
+  over-included-volume cases).
+- [ ] MRR = MGF floor for MGF orgs; run-rate for usage orgs.
+- [ ] Headline margin at org/global scope equals the sum of per-org contract margins (reconciliation).
+- [ ] `period_rollup` is refreshed within SLA and powers charts without scanning raw calls.
+- [ ] Unit tests cover both contract types and the scope-based reconciliation."
+"Story","[BE] Cost & Margin · API · Cost & Margin endpoint (Supabase-backed)","","Cost & Margin","High","5","backend python supabase api rbac cost","COST-BE4","COST-BE3; PLAT-BE3; PLAT-BE4","COST-FE1; COST-FE2","**ID:** COST-BE4 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** COST-BE3; PLAT-BE3; PLAT-BE4 · **Blocks:** COST-FE1; COST-FE2
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+A production endpoint that returns the **`CostResult`** shape (totals, daily series, per-project and
+per-org rollups with cost/revenue/margin) for a given **scope** (org/project) and **time range**
+(`from`/`to`). It reads from `period_rollup`/`call_cost`, not raw scans.
+
+## Why
+The dashboard must read real numbers through the exact contract the UI already expects, so the
+frontend swap is config-only. Range + scope filtering must be honored server-side.
+
+## How (building on the MVP)
+- Honor the existing contract in `source.ts` (`CostResult`) so the UI needs no shape changes.
+- Implement as a Python (FastAPI) endpoint or Supabase RPC/view that the Next.js route handler calls;
+  flip `DATA_SOURCE=supabase` and add a `SupabaseAdapter` (`src/lib/data/supabase.ts`) implementing
+  `DataSource.cost(scope)`.
+- Parse `from`/`to` (explicit window) per the MVP `scopeFromSearch` behavior; default presets if absent.
+- **RBAC server-side:** for `User`, return cost-to-serve only — **omit revenue/margin fields** (don't
+  rely on the client to hide them).
+- Pull from `period_rollup` for series/rollups; reconciliation rule from BE-3.
+
+## Acceptance Criteria
+- [ ] `GET cost?orgId&projectId&from&to` returns the `CostResult` shape; UI renders unchanged.
+- [ ] Response time p95 < 300 ms at production data volumes (rollup-backed).
+- [ ] `User` responses contain no revenue/margin fields (verified by test).
+- [ ] Custom date ranges and org/project scoping return correct subsets.
+- [ ] Integration test asserts parity with MVP mock outputs on a shared dataset."
+"Story","[FE] Cost & Margin · Dashboard · Wire UI to real API + harden","","Cost & Margin","High","5","frontend nextjs ui-ux charts cost","COST-FE1","COST-BE4","COST-QA1","**ID:** COST-FE1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** COST-BE4 · **Blocks:** COST-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Productionize the Cost & Margin dashboard: KPI strip (Total Cost, Cost/call, Revenue, Margin %),
+cost-by-service stacked area, cost mix donut, cost-vs-revenue chart, and the per-project margin table —
+all reading from the real API, with proper loading/empty/error states, responsiveness and a11y.
+
+## Why
+The dashboard is the primary surface for the #1 priority. The MVP UI is built; it must run on real
+data, behave well on all states/devices, and be accessible and on-brand.
+
+## How (building on the MVP)
+- The page exists (`cost/page.tsx`) using `useCost()` → `/api/cost`. Keep the components
+  (`CostByServiceChart`, `CostRevenueChart`, `ServiceDonut`, KPI cards, margin table).
+- Point `useCost` at the real endpoint (BE-4); no shape change required.
+- Add real **empty** (no calls in range) and **error** (retry) states; keep skeletons.
+- Make charts/table responsive (stack on mobile); ensure table is keyboard-navigable and has proper
+  headers; chart tooltips accessible.
+- Respect the global Org/Project + date-range filters (already wired via `ViewContext`).
+- Brand tokens already applied; verify dark mode.
+
+## Acceptance Criteria
+- [ ] All cost widgets render from the real API across scopes and custom date ranges.
+- [ ] Loading, empty, and error states are implemented and visually correct.
+- [ ] Layout is responsive (≥320px) and passes basic a11y (axe: no critical issues; keyboard nav).
+- [ ] Margin % cells color by polarity; low-margin rows are visually flagged.
+- [ ] No revenue/margin widgets render for the `User` role (see FE-2)."
+"Story","[FE] Cost & Margin · RBAC · Financial gating (cost-only User variant)","","Cost & Margin","High","3","frontend nextjs rbac security cost","COST-FE2","COST-BE4; PLAT-BE3","COST-QA1","**ID:** COST-FE2 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** COST-BE4; PLAT-BE3 · **Blocks:** COST-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Ensure the `User` role sees a **cost-only** Cost & Margin page (cost KPIs, cost-by-service, cost/call,
+cost outliers) and **never** revenue, margin, or MRR. SuperAdmin sees everything.
+
+## How (building on the MVP)
+- The MVP gates client-side via `useFinancials()`/`<FinancialGate>` reading the role from
+  `ViewContext`. Keep this for UX, but the **real protection is server-side** (BE-4 omits the fields
+  for `User`) — the FE must not assume the fields exist.
+- Replace the demo ""View-as"" switcher with the **real authenticated role** (from the platform auth/
+  session). See the cross-cutting auth task in `_platform/`.
+- Render the cost-only layout when `!canSeeFinancials(role)`; hide revenue/margin columns, charts, KPIs.
+
+## Why
+Financial data (revenue/margin) is restricted to SuperAdmin. Leaking it to project users is a
+confidentiality issue.
+
+## Acceptance Criteria
+- [ ] As `User`: no revenue/margin/MRR anywhere on the page; cost-to-serve is visible.
+- [ ] As `SuperAdmin`: full view.
+- [ ] FE handles responses that omit revenue/margin without errors (defensive rendering).
+- [ ] Role comes from the real session, not a client toggle, in production."
+"Task","[QA] Cost & Margin · QA · Cost/margin/MGF correctness + RBAC scenarios","","Cost & Margin","High","5","qa cost rbac regression","COST-QA1","COST-FE1; COST-FE2","","**ID:** COST-QA1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** COST-FE1; COST-FE2 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Test plan validating cost accuracy, revenue/margin/MGF logic, scope/date filtering, and RBAC for the
+Cost & Margin tab.
+
+## Why
+This is the #1 priority surface and feeds financial decisions; correctness and access control must be
+verified end-to-end.
+
+## How (building on the MVP)
+- Use the MVP engine outputs as golden references for the Python port (shared fixtures).
+- Cover both contract types and the org/global vs project reconciliation rule.
+
+## Acceptance Criteria (scenarios)
+- [ ] **Per-service cost**: addends sum to total; values in micro-USD; matches fixtures.
+- [ ] **Pure Usage org**: revenue = minutes × rate; margin = revenue − cost.
+- [ ] **MGF org, under included volume**: revenue = MGF floor; no overage.
+- [ ] **MGF org, over included volume (B1)**: revenue = MGF + overage on excess only.
+- [ ] **MRR**: MGF floor for MGF orgs; run-rate for usage orgs.
+- [ ] **Reconciliation**: headline margin (org/global) = sum of per-org margins; project scope uses usage.
+- [ ] **Date range**: 24h/7d/30d and custom windows return correct, consistent subsets.
+- [ ] **RBAC**: `User` API response and UI contain no revenue/margin; `SuperAdmin` sees all.
+- [ ] **Performance**: dashboard p95 < 300 ms on production-scale data.
+- [ ] **Regression**: parity check between Supabase adapter and MVP mock on a shared dataset."
+"Epic","Call Logs & Call Detail","Call Logs & Call Detail","","High","","epic calls","CALLS","PLAT-BE1; PLAT-BE2","","## Goal
+A filterable call history and a rich per-call detail view (transcript, recording, latency waterfall,
+per-service cost, error logs, flagging) — the drill-down hub the whole app links into.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/calls/page.tsx`, `src/app/(dashboard)/calls/[callId]/page.tsx`
+- Shapes: `src/lib/data/source.ts` (`CallPage`, `CallDetail`, `CallFilter`), mock `src/lib/data/mock.ts`
+- PRD: `PRD/05-module-observability.md` §2-3
+
+## Features
+- F1 — Call logs query API · F2 — Call detail API (transcript/recording/cost/logs)
+- F3 — Call Logs UI · F4 — Call Detail UI · F5 — QA
+
+## Tasks
+- `BE-1-call-logs-api.md` (`CALLS-BE1`)
+- `BE-2-call-detail-api.md` (`CALLS-BE2`)
+- `FE-1-call-logs-ui.md` (`CALLS-FE1`)
+- `FE-2-call-detail-ui.md` (`CALLS-FE2`)
+- `QA-1-calls-tests.md` (`CALLS-QA1`)"
+"Story","[BE] Call Logs · API · Filterable, paginated call logs endpoint","","Call Logs & Call Detail","High","5","backend python supabase api observability calls","CALLS-BE1","PLAT-BE1; PLAT-BE2","CALLS-FE1; CALLS-QA1","**ID:** CALLS-BE1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-BE1; PLAT-BE2 · **Blocks:** CALLS-FE1; CALLS-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+An endpoint returning a **paginated, filterable** call list (`CallPage`): fields call_id, agent,
+org/project, start, duration, status, end reason, disposition, latency, cost (+ revenue/margin for
+SuperAdmin), flagged. Filters: org/project/agent, date range, status, closed_reason, flagged,
+cost/latency ranges, free-text (call_id/session_id/host_id).
+
+## Why
+The call log is the operational backbone and the entry point for drill-downs across the app.
+
+## How (building on the MVP)
+- Honor the `CallPage`/`CallFilter` shapes so the UI is unchanged.
+- Implement against Supabase (indexed on org_id/project_id/start_time/status); server-side pagination
+  + sorting; explicit `from`/`to` window (match `scopeFromSearch`).
+- **RBAC:** omit revenue/margin for `User`.
+- Free-text search across `call_id`/`session_id`/`host_id`.
+
+## Acceptance Criteria
+- [ ] Returns `CallPage`; UI renders unchanged; sort/filter/paginate work server-side.
+- [ ] p95 < 300 ms at production volumes with all filters applied.
+- [ ] `User` rows contain no revenue/margin.
+- [ ] CSV export endpoint for SuperAdmin (bulk), respecting filters.
+- [ ] Parity test vs MVP mock on shared dataset."
+"Story","[BE] Call Logs · API · Call detail (transcript, recording, cost, logs)","","Call Logs & Call Detail","High","5","backend python supabase api storage calls","CALLS-BE2","PLAT-BE2; COST-BE1","CALLS-FE2; CALLS-QA1","**ID:** CALLS-BE2 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-BE2; COST-BE1 · **Blocks:** CALLS-FE2; CALLS-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+An endpoint returning a single call's full detail: transcript (`chat_message`), **recording** via a
+short-lived signed URL, per-turn/per-service latency, per-service cost breakdown (+ revenue/margin for
+SuperAdmin), and error logs scoped to the call.
+
+## Why
+Call Detail is the investigation surface for flagged/issue calls; it must show real transcript, audio,
+cost and errors.
+
+## How (building on the MVP)
+- Honor the `CallDetail` shape. The MVP generates transcript/logs client-side — replace with real
+  `chat_message`/`call_error_log` from ingestion (`PLAT-BE2`).
+- Recordings: object storage (S3/GCS) with **signed URLs** (mirror MVP `recordingUrl` pattern); never
+  expose permanent URLs.
+- Per-service cost from `call_cost` (`COST-BE1`); RBAC omits revenue/margin for `User`.
+
+## Acceptance Criteria
+- [ ] Returns real transcript, latency waterfall, per-service cost, and error logs for a call.
+- [ ] Recording plays via a signed URL that expires; no public URLs.
+- [ ] `User` sees cost-to-serve but no revenue/margin.
+- [ ] 404 for unknown call; authorized scope enforced."
+"Story","[FE] Call Logs · UI · Call Logs page (filters, pagination, RBAC)","","Call Logs & Call Detail","High","3","frontend nextjs ui-ux table observability calls","CALLS-FE1","CALLS-BE1","CALLS-QA1","**ID:** CALLS-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** CALLS-BE1 · **Blocks:** CALLS-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Productionize the Call Logs table: search + status/end-reason filters, server-side pagination, row →
+Call Detail, status/end-reason/disposition chips, cost (and margin for SuperAdmin) columns.
+
+## How (building on the MVP)
+- Page exists with `useCalls`. Wire to `CALLS-BE1`; keep debounced search + filters + pagination.
+- Real empty/error states; responsive (horizontal scroll/stacked on mobile); accessible table.
+- Hide revenue/margin columns for `User`.
+
+## Why
+Operators need fast, filterable access to call history with clean drill-down.
+
+## Acceptance Criteria
+- [ ] Filters/search/pagination work against the real API; URL-shareable scope.
+- [ ] Row click opens Call Detail; chips render correct states (incl. `PIPELINE_TTL_TRIGGERED`).
+- [ ] Empty/error/loading states present; responsive; a11y (keyboard + headers).
+- [ ] `User` sees no revenue/margin columns."
+"Story","[FE] Call Logs · UI · Call Detail page (transcript, recording, cost, flag)","","Call Logs & Call Detail","High","5","frontend nextjs ui-ux audio observability calls","CALLS-FE2","CALLS-BE2","CALLS-QA1","**ID:** CALLS-FE2 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** CALLS-BE2 · **Blocks:** CALLS-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Productionize Call Detail: header (ids/agent/status/end-reason), transcript, recording player, latency
+waterfall, per-service cost breakdown (+ margin for SuperAdmin), error logs, and the **flag** action
+(create a manual flag with a note → Flag Queue).
+
+## How (building on the MVP)
+- Page exists; wire `useCall` to `CALLS-BE2`. Render real transcript (turns) + audio via signed URL.
+- Keep the flag popover (`useCreateFlag`) — it already creates a real `CallFlag`; ensure it targets the
+  production flags API (`FLAG` epic).
+- RBAC: hide revenue/margin for `User`. Loading/empty/error states; responsive.
+
+## Why
+This is where flagged/issue calls are investigated end-to-end.
+
+## Acceptance Criteria
+- [ ] Transcript, recording, waterfall, per-service cost, and error logs render from the real API.
+- [ ] Flagging creates a manual flag that appears in the Flag Queue.
+- [ ] `User` sees cost but not revenue/margin; SuperAdmin sees all.
+- [ ] Audio uses an expiring signed URL; graceful state when no recording."
+"Task","[QA] Call Logs · QA · Call logs & detail test scenarios","","Call Logs & Call Detail","High","3","qa observability rbac calls","CALLS-QA1","CALLS-FE1; CALLS-FE2","","**ID:** CALLS-QA1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** CALLS-FE1; CALLS-FE2 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05
+
+## What / Why
+Validate filtering, pagination, drill-down, detail rendering, recordings, and RBAC for the call surfaces.
+
+## Acceptance Criteria (scenarios)
+- [ ] Each filter (status, end_reason incl. `PIPELINE_TTL_TRIGGERED`, flagged, date range, search) returns correct subsets.
+- [ ] Pagination + sorting are correct and stable; deep-linked scope works.
+- [ ] Row → Call Detail loads the right call; transcript/recording/cost/logs correct.
+- [ ] Recording signed URL expires; expired URL handled gracefully.
+- [ ] RBAC: `User` never sees revenue/margin in list or detail.
+- [ ] Flagging from detail creates a queue item; performance p95 < 300 ms."
+"Epic","Performance","Performance","","High","","epic perf","PERF","PLAT-BE2","","## Goal
+Latency and reliability per project/service: overall + per-service latency (LLM/STT/TTS/tool/telephony),
+p50/p90/p99, error rate, with trends.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/performance/page.tsx` · shape: `source.ts` (`PerformanceResult`) · `PRD/05` §1
+
+## Features
+- F1 — Performance metrics API · F2 — Performance UI · F3 — QA
+
+## Tasks
+- `BE-1-performance-api.md` (`PERF-BE1`)
+- `FE-1-performance-ui.md` (`PERF-FE1`)
+- `QA-1-performance-tests.md` (`PERF-QA1`)"
+"Story","[BE] Performance · API · Latency & error metrics endpoint","","Performance","High","5","backend python supabase api observability perf","PERF-BE1","PLAT-BE2","PERF-FE1; PERF-QA1","**ID:** PERF-BE1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-BE2 · **Blocks:** PERF-FE1; PERF-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Endpoint returning `PerformanceResult`: avg latency/call, error rate, per-service latency
+(LLM/STT/TTS/tool/telephony), daily latency series, and distribution percentiles (p50/p90/p99).
+
+## Why
+Catching latency/error regressions before customers do is core observability.
+
+## How (building on the MVP)
+- Honor `PerformanceResult`. Compute from per-call latency fields (`PLAT-BE2`) via aggregates/rollups.
+- Add p50/p90/p99 (the MVP shows avg + per-service; extend with percentiles).
+- Respect org/project scope + `from`/`to`; rollup-backed for speed.
+
+## Acceptance Criteria
+- [ ] Returns `PerformanceResult` (+ percentiles); UI renders.
+- [ ] Per-service averages and error rate match fixtures; percentiles correct.
+- [ ] Scope + date range honored; p95 < 300 ms on production volumes."
+"Story","[FE] Performance · UI · Performance dashboard wire + harden","","Performance","High","3","frontend nextjs ui-ux charts perf","PERF-FE1","PERF-BE1","PERF-QA1","**ID:** PERF-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PERF-BE1 · **Blocks:** PERF-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Performance page (latency KPIs, per-service bars, latency trend, error rate) to the real API;
+add a p50/p90/p99 distribution view; harden states/responsive/a11y.
+
+## How (building on the MVP)
+- Page exists with `usePerformance`. Point at `PERF-BE1`; add a percentiles chart.
+- Real empty/error states; responsive; accessible charts/tooltips.
+
+## Why
+Operators need a quick read on whether the platform is fast and reliable per service.
+
+## Acceptance Criteria
+- [ ] KPIs, per-service latency, trend, error rate, and percentiles render from the real API.
+- [ ] Scope + date range honored; loading/empty/error states; responsive; a11y clean."
+"Task","[QA] Performance · QA · Latency & error metric scenarios","","Performance","High","2","qa observability perf","PERF-QA1","PERF-FE1","","**ID:** PERF-QA1 · **Priority:** P1 · **Estimate:** 2
+**Blocked by:** PERF-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §1
+
+## What / Why
+Validate latency/error metrics correctness, percentiles, scoping and performance.
+
+## Acceptance Criteria (scenarios)
+- [ ] Avg + per-service latency and error rate match fixtures across scopes.
+- [ ] p50/p90/p99 are computed correctly (verified against a known dataset).
+- [ ] Date range/scope changes update all widgets consistently.
+- [ ] Empty/error states correct; dashboard p95 < 300 ms."
+"Epic","Live Operations","Live Operations","","High","","epic live","LIVE","PLAT-BE2","","## Goal
+The only live-updating surface: active calls per pod, concurrency, calls status and call end-reason
+breakdowns, active calls table, error log tail.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/live/page.tsx` · shape: `source.ts` (`LiveOpsResult`) · `PRD/07`
+- Mirrors the real ""Sampras-Telmex"" Grafana dashboard (see `PRD/04` S1).
+
+## Features
+- F1 — Live ops API + realtime source · F2 — Live Ops UI · F3 — QA
+
+## Tasks
+- `BE-1-live-ops-api.md` (`LIVE-BE1`)
+- `FE-1-live-ops-ui.md` (`LIVE-FE1`)
+- `QA-1-live-ops-tests.md` (`LIVE-QA1`)"
+"Story","[BE] Live Operations · API · Live ops endpoint + realtime source","","Live Operations","High","5","backend python supabase api realtime live","LIVE-BE1","PLAT-BE2","LIVE-FE1; LIVE-QA1","**ID:** LIVE-BE1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-BE2 · **Blocks:** LIVE-FE1; LIVE-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Endpoint returning `LiveOpsResult`: current concurrency, active pods, active-calls-per-pod table,
+calls status counts, call end-reason counts, active calls list, and recent error count — reflecting
+**live** state. Provide a low-latency refresh (polling and/or streaming).
+
+## Why
+Real-time visibility into what's happening on calls right now (load per pod, why calls end) is the ops
+heartbeat.
+
+## How (building on the MVP)
+- Honor `LiveOpsResult`. Query live `chat_conversations` (`status='ACTIVE'`, `host_id`,
+  `closed_reason`) per `PRD/04` S1 SQL.
+- The MVP polls every 20s; in production support **Supabase Realtime / SSE** for active-calls + status,
+  falling back to short polling. Keep a stable `LiveSource` seam.
+- Scope by org/project; near-real-time freshness (≤30s).
+
+## Acceptance Criteria
+- [ ] Returns `LiveOpsResult`; active-calls/pods/status/end-reason reflect live DB state within ≤30s.
+- [ ] Streaming (or efficient polling) updates the active set without full reloads.
+- [ ] Scope honored; handles 0-active gracefully.
+- [ ] Load-tested at expected concurrency."
+"Story","[FE] Live Operations · UI · Live Ops page wire + realtime","","Live Operations","High","3","frontend nextjs ui-ux realtime live","LIVE-FE1","LIVE-BE1","LIVE-QA1","**ID:** LIVE-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** LIVE-BE1 · **Blocks:** LIVE-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Live Ops page (concurrency/pods KPIs, pods table, status & end-reason donuts, active calls
+table, live indicator + tick) to the real live source, upgrading from polling to streaming where available.
+
+## How (building on the MVP)
+- Page exists with `useLiveOps` (20s refetch). Point at `LIVE-BE1`; subscribe to streaming if present,
+  else keep interval. Show ""● Live"" + last-tick.
+- Empty state (no active calls); responsive; accessible.
+
+## Why
+Operators watch live load and outcomes; the surface must feel live and reliable.
+
+## Acceptance Criteria
+- [ ] Active calls/pods/status/end-reason update live (stream or ≤30s poll) without flicker.
+- [ ] Live indicator + last-updated shown; empty state handled; responsive; a11y clean.
+- [ ] Scoped by org/project; pod links cross-reference Kubernetes view where relevant."
+"Task","[QA] Live Operations · QA · Live ops scenarios","","Live Operations","High","2","qa realtime observability live","LIVE-QA1","LIVE-FE1","","**ID:** LIVE-QA1 · **Priority:** P1 · **Estimate:** 2
+**Blocked by:** LIVE-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/07
+
+## What / Why
+Validate live freshness, correctness of counts, scoping and resilience.
+
+## Acceptance Criteria (scenarios)
+- [ ] Active-calls-per-pod, status and end-reason counts match the DB at a point in time.
+- [ ] Updates appear within the freshness SLA (≤30s) when calls start/end.
+- [ ] Scope (org/project) filters live data correctly; 0-active handled.
+- [ ] Stream reconnect / polling fallback works; no memory leak over long sessions."
+"Epic","Thresholds","Thresholds","","High","","epic thresh","THRESH","PLAT-BE1; PLAT-BE3","","## Goal
+Configure Critical/Warning thresholds (per metric, scope, category) that drive Issues. Includes the
+abandonment metric's **closed-reason multiselect** and issue-category management.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/controls/thresholds/page.tsx` · engine `src/lib/engine/issues.ts` (`ISSUE_METRICS`, `ABANDONMENT_REASONS`)
+- shapes: `source.ts` (`CreateThresholdInput`, `UpdateThresholdPatch`), `src/app/api/thresholds/route.ts`, `PRD/05` §5
+
+## Features
+- F1 — Thresholds & categories CRUD API · F2 — Thresholds config UI · F3 — QA
+
+## Tasks
+- `BE-1-thresholds-api.md` (`THRESH-BE1`)
+- `FE-1-thresholds-ui.md` (`THRESH-FE1`)
+- `QA-1-thresholds-tests.md` (`THRESH-QA1`)"
+"Story","[BE] Thresholds · API · Thresholds & categories CRUD","","Thresholds","High","3","backend python supabase api rbac thresh","THRESH-BE1","PLAT-BE1; PLAT-BE3","ISSUE-BE1; THRESH-FE1","**ID:** THRESH-BE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** ISSUE-BE1; THRESH-FE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+CRUD for thresholds (metric, scope, warning, critical, category, enabled, and `reasons[]` for
+abandonment) and for issue categories. SuperAdmin-only, persisted to Supabase.
+
+## Why
+Thresholds are the rules that define what counts as a problem; Issues depends entirely on this config.
+
+## How (building on the MVP)
+- Honor the MVP shapes (`CreateThresholdInput`/`UpdateThresholdPatch`) and the metric catalog in
+  `issues.ts` (7 metrics; per-call vs aggregate; comparator gt/lt).
+- Persist `threshold` + `issue_category` (see `PLAT-BE1`); `reasons[]` stored on abandonment thresholds.
+- SuperAdmin-only (server-side via `PLAT-BE3`).
+
+## Acceptance Criteria
+- [ ] Create/update/delete thresholds and create categories; persisted; SuperAdmin-only enforced server-side.
+- [ ] Abandonment threshold stores/returns the selected `closed_reason` set.
+- [ ] Validation: warning/critical consistent with comparator; unknown metric/category rejected.
+- [ ] Shapes match the MVP so `ISSUE-BE1` and the UI consume them unchanged."
+"Story","[FE] Thresholds · UI · Thresholds config page wire","","Thresholds","High","3","frontend nextjs ui-ux rbac thresh","THRESH-FE1","THRESH-BE1","THRESH-QA1","**ID:** THRESH-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** THRESH-BE1 · **Blocks:** THRESH-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the thresholds config page to the real API: editable warning/critical per row, category select,
+enable toggle, delete, add-threshold, category management, and the abandonment **reason multiselect**.
+
+## How (building on the MVP)
+- Page exists; point hooks at `THRESH-BE1`. Keep inline edit (commit on blur), switches, reason popover.
+- SuperAdmin-only route (hidden + server-enforced). Loading/error states; responsive.
+
+## Why
+SuperAdmins must tune detection rules without code changes.
+
+## Acceptance Criteria
+- [ ] All CRUD works against the real API; changes reflect in Issues on next eval.
+- [ ] Abandonment reason multiselect persists; per-metric units/comparators shown correctly.
+- [ ] SuperAdmin-only; `User` cannot reach the page or mutate; responsive; a11y clean."
+"Task","[QA] Thresholds · QA · Threshold config scenarios","","Thresholds","High","2","qa rbac thresh","THRESH-QA1","THRESH-FE1","","**ID:** THRESH-QA1 · **Priority:** P1 · **Estimate:** 2
+**Blocked by:** THRESH-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §5
+
+## What / Why
+Validate threshold CRUD, scoping, abandonment reasons, and that changes drive Issues correctly.
+
+## Acceptance Criteria (scenarios)
+- [ ] Create/edit/delete thresholds and categories persist and survive reload.
+- [ ] Changing warning/critical changes which calls/issues fire on next evaluation.
+- [ ] Abandonment reason set changes the computed rate accordingly.
+- [ ] SuperAdmin-only enforced (User blocked at API + UI)."
+"Epic","Issues","Issues","","High","","epic issue","ISSUE","THRESH-BE1; PLAT-BE2; COST-BE1","","## Goal
+Auto-detect problems by evaluating calls against thresholds: Active Issues + Issues-by-Category, with
+7 metrics (per-call: latency, cost/call, duration; aggregate: error rate, abandonment, no-data,
+tool-success). Critical breaches auto-flag affected calls (with project) into the Flag Queue.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/issues/page.tsx` · engine `src/lib/engine/issues.ts` · shape `source.ts` (`IssuesResult`)
+- `src/app/api/issues/route.ts`, `PRD/05` §4
+
+## Features
+- F1 — Issue evaluation engine & API · F2 — Issues UI · F3 — QA
+
+## Tasks
+- `BE-1-issue-engine-api.md` (`ISSUE-BE1`)
+- `FE-1-issues-ui.md` (`ISSUE-FE1`)
+- `QA-1-issues-tests.md` (`ISSUE-QA1`)"
+"Story","[BE] Issues · Engine & API · Threshold evaluation + auto-flag","","Issues","High","8","backend python supabase api observability issue","ISSUE-BE1","THRESH-BE1; PLAT-BE2; COST-BE1","ISSUE-FE1; FLAG-BE1; ISSUE-QA1","**ID:** ISSUE-BE1 · **Priority:** P1 · **Estimate:** 8
+**Blocked by:** THRESH-BE1; PLAT-BE2; COST-BE1 · **Blocks:** ISSUE-FE1; FLAG-BE1; ISSUE-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Evaluate calls in scope against enabled thresholds and return `IssuesResult` (active issues +
+by-category rollup + summary). Implement all 7 metrics — per-call (latency, cost/call, duration) and
+aggregate (error rate, abandonment with reason set, no-data, tool-success). On **Critical** breaches,
+auto-flag affected calls (recording the project) into the flag store.
+
+## Why
+This turns raw calls + thresholds into actionable problems and routes the worst to review automatically.
+
+## How (building on the MVP)
+- Port `evaluateIssues` + `ISSUE_METRICS` (the spec) to Python; same per-call vs aggregate logic,
+  comparator semantics, severity selection, and affected-call sampling.
+- Read calls (`PLAT-BE2`), thresholds (`THRESH-BE1`), and per-call cost (`COST-BE1`).
+- Auto-flag: upsert `flag-auto-*` records (idempotent) into the flags store with the affected project
+  (`FLAG` epic owns the store/API).
+- Scope by org/project + `from`/`to`. Consider precomputing on a schedule for large windows.
+
+## Acceptance Criteria
+- [ ] All 7 metrics evaluated; outputs match the MVP engine on shared fixtures.
+- [ ] Abandonment honors the threshold's `reasons[]`; tool-success uses tool calls/failures; no-data uses `hasData`.
+- [ ] Critical breaches create idempotent auto-flags carrying the project.
+- [ ] `IssuesResult` (issues + byCategory + summary incl. autoFlagged) matches the shape; scope/date honored.
+- [ ] Performance acceptable on production windows (precompute/rollup where needed)."
+"Story","[FE] Issues · UI · Issues page wire + harden","","Issues","High","3","frontend nextjs ui-ux observability issue","ISSUE-FE1","ISSUE-BE1","ISSUE-QA1","**ID:** ISSUE-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** ISSUE-BE1 · **Blocks:** ISSUE-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Issues page (KPIs: critical/warning/affected/auto-flagged; Issues-by-Category; active issues
+list with affected projects + call links + auto-flagged badge) to the real API.
+
+## How (building on the MVP)
+- Page exists with `useIssues`. Point at `ISSUE-BE1`; keep severity/category rendering and call links.
+- Empty state (""all within range""); loading/error; responsive; a11y.
+- (Optional) issue status actions (ack/resolve) if added to the API.
+
+## Why
+Operators need a single, prioritized view of what's wrong and where, with one click to the calls.
+
+## Acceptance Criteria
+- [ ] KPIs, by-category, and active issues render from the real API across scopes/date ranges.
+- [ ] Critical issues show ""auto-flagged"" and affected projects; call links open Call Detail.
+- [ ] Empty/error/loading states; responsive; a11y clean."
+"Task","[QA] Issues · QA · Detection & auto-flag scenarios","","Issues","High","3","qa observability issue","ISSUE-QA1","ISSUE-FE1","","**ID:** ISSUE-QA1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** ISSUE-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — src/lib/engine/issues.ts, PRD/05 §4
+
+## What / Why
+Validate each metric's detection, severity, by-category rollup, scoping, and auto-flag behavior.
+
+## Acceptance Criteria (scenarios)
+- [ ] Per-call metrics (latency, cost/call, duration) flag the right calls at warning vs critical.
+- [ ] Aggregate metrics (error, abandonment by reason set, no-data, tool-success) compute correct rates and severity.
+- [ ] By-category counts and summary (critical/warning/affected/auto-flagged) are correct.
+- [ ] Critical breaches produce auto-flags (idempotent) with the correct project, visible in Flag Queue.
+- [ ] Scope/date filters change results consistently; parity vs MVP engine on fixtures."
+"Epic","Call Flagging","Call Flagging","","High","","epic flag","FLAG","PLAT-BE2; ISSUE-BE1","","## Goal
+A unified review queue for **manual** flags (any user, from Call Detail) and **auto** flags (critical
+Issues), with status triage and comments. Each flag records the affected project.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/controls/flags/page.tsx`, flag action in `calls/[callId]/page.tsx`
+- shapes: `source.ts` (`CallFlag`, `CreateFlagInput`), `src/app/api/flags/route.ts`, `PRD/10`
+
+## Features
+- F1 — Flags store & API · F2 — Flag Queue UI + manual flag · F3 — QA
+
+## Tasks
+- `BE-1-flags-api.md` (`FLAG-BE1`)
+- `FE-1-flag-queue-ui.md` (`FLAG-FE1`)
+- `QA-1-flagging-tests.md` (`FLAG-QA1`)"
+"Story","[BE] Call Flagging · API · Flags store & endpoints","","Call Flagging","High","5","backend python supabase api flag","FLAG-BE1","PLAT-BE2; ISSUE-BE1","FLAG-FE1; FLAG-QA1","**ID:** FLAG-BE1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-BE2; ISSUE-BE1 · **Blocks:** FLAG-FE1; FLAG-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Persisted flags with: list (scoped), create (manual), status change, and comments. Supports both
+`source=manual` (from Call Detail) and `source=auto` (from Issues). Each flag carries org/project,
+reason, optional metric/severity, status, and a comment thread.
+
+## Why
+A real review queue is needed to triage problematic calls; auto-flags from Issues must land here too.
+
+## How (building on the MVP)
+- Honor `CallFlag`/`CreateFlagInput`. Persist `call_flag` (+ `call_flag_comment`) per `PRD/12` §5.
+- `createFlag` is idempotent per call for manual (append a comment if it exists); auto-flags upserted by
+  `ISSUE-BE1` share the same store/table.
+- Endpoints: `GET /flags?scope`, `POST /flags` (manual), `PATCH /flags` (status / add comment). RBAC:
+  queue is SuperAdmin; any authenticated user can create a manual flag on a call they can access.
+
+## Acceptance Criteria
+- [ ] List/create/status/comment persist; manual + auto flags coexist with correct `source`.
+- [ ] Each flag records the affected project; scope filtering works.
+- [ ] Idempotent manual flag per call; auto-flag dedupe by `flag-auto-<call>-<metric>`.
+- [ ] RBAC: queue read/triage is SuperAdmin; manual create allowed for accessible calls."
+"Story","[FE] Call Flagging · UI · Flag Queue + manual flag action","","Call Flagging","High","3","frontend nextjs ui-ux rbac flag","FLAG-FE1","FLAG-BE1","FLAG-QA1","**ID:** FLAG-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** FLAG-BE1 · **Blocks:** FLAG-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Flag Queue (filters by status/source, KPIs, per-row status change, comments popover, project
+shown) and the manual flag action on Call Detail to the real API.
+
+## How (building on the MVP)
+- Both surfaces exist. Point hooks at `FLAG-BE1`. Queue is SuperAdmin-only (hidden + server-enforced).
+- Manual flag popover on Call Detail creates a real flag and surfaces it in the queue.
+- Loading/empty/error; responsive; a11y.
+
+## Why
+Centralized triage of flagged calls (manual + auto) is the operational close-the-loop surface.
+
+## Acceptance Criteria
+- [ ] Queue lists manual + auto flags with source, severity, project; filters + status change work.
+- [ ] Comments add/view works; KPIs reflect counts.
+- [ ] Manual flag from Call Detail appears in the queue immediately.
+- [ ] SuperAdmin-only queue; responsive; a11y clean."
+"Task","[QA] Call Flagging · QA · Queue & flagging scenarios","","Call Flagging","High","2","qa rbac flag","FLAG-QA1","FLAG-FE1","","**ID:** FLAG-QA1 · **Priority:** P1 · **Estimate:** 2
+**Blocked by:** FLAG-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/10
+
+## What / Why
+Validate manual + auto flagging, triage, comments, scoping and RBAC.
+
+## Acceptance Criteria (scenarios)
+- [ ] Manual flag from Call Detail creates a queue item (source=manual) with project + note.
+- [ ] Critical issues create auto-flags (source=auto) in the same queue, deduped.
+- [ ] Status transitions (open→in_review→resolved/dismissed) persist; comments persist.
+- [ ] Filters (status/source) and scope work; KPIs correct.
+- [ ] Queue is SuperAdmin-only; manual create allowed only for accessible calls."
+"Epic","Service Health","Service Health","","Medium","","epic health","HEALTH","PLAT-BE1","","## Goal
+Uptime-Kuma-style health of external dependencies (providers) + internal per-project services: status,
+uptime %, response time, heartbeats, incidents that list **affected projects**, and email notifications
+on degraded/down/recovery (per-project recipients + per-service overrides).
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/health/page.tsx` · shapes `source.ts` (`HealthResult`, `SetRecipientsInput`, `SetServiceOverrideInput`)
+- `src/app/api/health/route.ts`, `PRD/18`
+
+## Features
+- F1 — Health checks & incidents API · F2 — Notifications (recipients/overrides + alerting) · F3 — Health UI · F4 — QA
+
+## Tasks
+- `BE-1-health-api.md` (`HEALTH-BE1`)
+- `BE-2-notifications.md` (`HEALTH-BE2`)
+- `FE-1-health-ui.md` (`HEALTH-FE1`)
+- `QA-1-health-tests.md` (`HEALTH-QA1`)"
+"Story","[BE] Service Health · API · Health checks, status & incidents","","Service Health","Medium","8","backend python supabase api observability health","HEALTH-BE1","PLAT-BE1","HEALTH-BE2; HEALTH-FE1; HEALTH-QA1","**ID:** HEALTH-BE1 · **Priority:** P2 · **Estimate:** 8
+**Blocked by:** PLAT-BE1 · **Blocks:** HEALTH-BE2; HEALTH-FE1; HEALTH-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Compute and serve real health for external dependencies (OpenAI/Anthropic/Google/Deepgram/AssemblyAI/
+ElevenLabs/Cartesia/Twilio/AWS/GCP) and internal per-project services (orchestrator, STT/TTS pipeline,
+LLM router, webhooks, recordings storage): status, 30d uptime %, response time, heartbeats, and active
+**incidents** with the list of **affected projects**.
+
+## Why
+Track platform health and know exactly which projects an outage impacts so the right teams act.
+
+## How (building on the MVP)
+- Honor `HealthResult`. Replace mock series with real checks: synthetic probes / provider status pages /
+  Prometheus blackbox; store heartbeats + compute uptime.
+- **Affected projects**: for an external provider, derive the projects that use it from each project's
+  model mix (mirror the MVP's `projectsUsingProvider`); internal services map to their project.
+- Scope: project → its internals + externals; org → its projects' internals + externals.
+
+## Acceptance Criteria
+- [ ] Real status/uptime/response/heartbeats per service; incidents created when non-operational.
+- [ ] Incidents list correct affected projects (provider→projects mapping verified).
+- [ ] Scope filtering matches the MVP behavior; refresh ≤ the dashboard cadence.
+- [ ] History retained for uptime % and heartbeat bars."
+"Story","[BE] Service Health · Notifications · Recipients, overrides & alerting","","Service Health","Medium","5","backend python supabase notifications email health","HEALTH-BE2","HEALTH-BE1","HEALTH-QA1","**ID:** HEALTH-BE2 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** HEALTH-BE1 · **Blocks:** HEALTH-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Per-project notification recipient lists + per-service recipient overrides, and the **alerting engine**
+that emails on status transitions (**degraded / down / recovery**), including which projects were
+affected.
+
+## Why
+Teams must be alerted automatically when a dependency/service degrades, scoped to the impacted projects.
+
+## How (building on the MVP)
+- Persist recipients/overrides (the MVP stores them in-memory via `setRecipients`/`setServiceOverride`).
+- On a status transition from `HEALTH-BE1`, resolve recipients (per-service override → else project list),
+  and send via the email provider; include affected projects + service + status + timestamp.
+- Debounce/flap-protection; recovery notifications; idempotent per transition.
+
+## Acceptance Criteria
+- [ ] Recipients + per-service overrides persist and are editable.
+- [ ] Email fires on degraded, down, and recovery; includes affected projects.
+- [ ] Flapping doesn't spam (debounce); each transition notifies once.
+- [ ] Per-service override takes precedence over the project list."
+"Story","[FE] Service Health · UI · Health page wire + harden","","Service Health","Medium","3","frontend nextjs ui-ux observability health","HEALTH-FE1","HEALTH-BE1; HEALTH-BE2","HEALTH-QA1","**ID:** HEALTH-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** HEALTH-BE1; HEALTH-BE2 · **Blocks:** HEALTH-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Service Health page (status summary KPIs, incidents with affected projects, external + internal
+service rows with heartbeat bars/uptime/response, per-service notify override, per-project recipients
+editor) to the real API.
+
+## How (building on the MVP)
+- Page exists; point hooks at `HEALTH-BE1/BE2`. Keep heartbeat bars, incident cards (affected projects),
+  recipients editor, and per-service override popover. 30s refresh.
+- Empty/error states; responsive; a11y.
+
+## Why
+The single pane to watch platform health and manage who gets alerted.
+
+## Acceptance Criteria
+- [ ] Services, status, uptime, heartbeats, and incidents render from the real API.
+- [ ] Recipients + per-service overrides editable and persisted.
+- [ ] Scope (project/org) filters internal services; externals always shown; responsive; a11y clean."
+"Task","[QA] Service Health · QA · Health & alerting scenarios","","Service Health","Medium","3","qa observability notifications health","HEALTH-QA1","HEALTH-FE1; HEALTH-BE2","","**ID:** HEALTH-QA1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** HEALTH-FE1; HEALTH-BE2 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/18
+
+## What / Why
+Validate health computation, incident affected-projects, scoping, and alerting.
+
+## Acceptance Criteria (scenarios)
+- [ ] Status/uptime/heartbeats reflect real checks; incidents created on non-operational.
+- [ ] Incident affected-projects correct for provider outages (mapping) and internal services.
+- [ ] Email fires on degraded/down/recovery with affected projects; debounce prevents spam.
+- [ ] Per-service override beats project recipients; recipients persist.
+- [ ] Scope filters internal services; externals always present."
+"Epic","Infra: Kubernetes","Infra: Kubernetes","","Medium","","epic k8s","K8S","PLAT-BE1","","## Goal
+Replicate the real Grafana ""Kubernetes Cluster Monitoring"" dashboard: cluster CPU/Mem/Storage gauges +
+used/total + replicas, overall usage, pods & containers CPU/Mem, requests & limits, restarts, and
+deployment logs — with a per-tab date range and **fuzzy log search**.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/infra/kubernetes/page.tsx` · shapes `source.ts` (`K8sResult`)
+- Real metrics mapped in `PRD/04-data-sources.md` §4 (PromQL) + `PRD/06`
+
+## Features
+- F1 — Prometheus/Loki integration & metrics API · F2 — Kubernetes UI · F3 — QA
+
+## Tasks
+- `BE-1-k8s-metrics-api.md` (`K8S-BE1`)
+- `FE-1-k8s-ui.md` (`K8S-FE1`)
+- `QA-1-k8s-tests.md` (`K8S-QA1`)"
+"Story","[BE] Infra Kubernetes · API · Prometheus/Loki metrics & logs","","Infra: Kubernetes","Medium","8","backend python prometheus loki infra api k8s","K8S-BE1","PLAT-BE1","K8S-FE1; K8S-QA1","**ID:** K8S-BE1 · **Priority:** P2 · **Estimate:** 8
+**Blocked by:** PLAT-BE1 · **Blocks:** K8S-FE1; K8S-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Back the Kubernetes view with real Prometheus (and Loki for logs) data, returning `K8sResult`: cluster
+CPU/Mem/Storage + used/total + replicas, overall usage series, pods & containers CPU/Mem, requests &
+limits, restarts, and deployment logs — filterable by namespace/node and time window.
+
+## Why
+Real infra monitoring inside the SuperAdmin pane, correlated with call activity and cost allocation.
+
+## How (building on the MVP)
+- Honor `K8sResult`. Implement the PromQL queries documented in `PRD/04` §4 (the MVP mocks these series);
+  proxy Prometheus via a Python service. Logs via Loki by namespace/deployment.
+- Honor the time window (`from`/`to`) and template vars (namespace from project, node).
+- Return enough log volume to support the FE fuzzy search within the window.
+
+## Acceptance Criteria
+- [ ] All panels return real Prometheus data; values match Grafana for the same query/window.
+- [ ] Namespace (project) + node + time-window filtering works; logs scoped via Loki.
+- [ ] Response sizes/latency acceptable; caching where sensible.
+- [ ] Shape matches `K8sResult` so the UI renders unchanged."
+"Story","[FE] Infra Kubernetes · UI · Dashboard wire + date range + log search","","Infra: Kubernetes","Medium","3","frontend nextjs ui-ux charts infra k8s","K8S-FE1","K8S-BE1","K8S-QA1","**ID:** K8S-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** K8S-BE1 · **Blocks:** K8S-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Kubernetes page (gauges, used/total stats, overall usage, pods/containers CPU&Mem, requests &
+limits, restarts, deployment logs) to the real API, keeping the **per-tab date range** and **fuzzy log
+search**.
+
+## How (building on the MVP)
+- Page exists with `useInfraK8s(range)` + `DateRangeControl` + fuzzy log filter. Point at `K8S-BE1`.
+- Keep the memoized range query (avoid the infinite-refetch pitfall noted in the repo). Namespace from
+  the project filter. Empty/error states; responsive.
+
+## Why
+Engineers need the familiar Grafana panels inside the platform with quick time scoping and log search.
+
+## Acceptance Criteria
+- [ ] All panels render real data; namespace + date range scope correctly.
+- [ ] Fuzzy log search filters within the selected window; logs paginate/scroll.
+- [ ] No refetch loop; loading/empty/error states; responsive."
+"Task","[QA] Infra Kubernetes · QA · Metrics & logs scenarios","","Infra: Kubernetes","Medium","2","qa infra k8s","K8S-QA1","K8S-FE1","","**ID:** K8S-QA1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** K8S-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/04 §4, PRD/06
+
+## What / Why
+Validate parity with Grafana, scoping (namespace/node/time), and log search.
+
+## Acceptance Criteria (scenarios)
+- [ ] Panel values match Grafana for the same query/window (spot-checked per panel).
+- [ ] Namespace (project)/node/date-range filters change data correctly.
+- [ ] Fuzzy log search returns expected lines within the window; no refetch loop.
+- [ ] SuperAdmin-only; loading/empty/error states correct."
+"Epic","Infra: AWS ELB","Infra: AWS ELB","","Medium","","epic elb","ELB","PLAT-BE1","","## Goal
+Replicate the real Grafana ""AWS ELB Application Load Balancer"" dashboard (CloudWatch
+`AWS/ApplicationELB`): RequestCount/TargetResponseTime, HTTPCode_Target, HTTPCode_ELB, ConnectionCount,
+ConsumedLCUs/ProcessedBytes, TLS errors, IPv6, RuleEvaluations, Auth — with a per-tab date range.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/infra/elb/page.tsx` · shapes `source.ts` (`ElbResult`)
+- Metrics mapped in `PRD/04-data-sources.md` §5 (CloudWatch) + `PRD/06`
+
+## Features
+- F1 — CloudWatch integration & metrics API · F2 — ELB UI · F3 — QA
+
+## Tasks
+- `BE-1-elb-metrics-api.md` (`ELB-BE1`)
+- `FE-1-elb-ui.md` (`ELB-FE1`)
+- `QA-1-elb-tests.md` (`ELB-QA1`)"
+"Story","[BE] Infra AWS ELB · API · CloudWatch metrics endpoint","","Infra: AWS ELB","Medium","5","backend python aws cloudwatch infra api elb","ELB-BE1","PLAT-BE1","ELB-FE1; ELB-QA1","**ID:** ELB-BE1 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** PLAT-BE1 · **Blocks:** ELB-FE1; ELB-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Back the ELB view with real CloudWatch (`AWS/ApplicationELB`) data, returning `ElbResult` for all
+panels: RequestCount/TargetResponseTime, HTTPCode_Target (2/3/4/5xx), HTTPCode_ELB, ConnectionCount
+(active/new/rejected/target-error), ConsumedLCUs/ProcessedBytes, TLS errors, IPv6, RuleEvaluations, Auth.
+
+## Why
+Load-balancer health is key infra signal; surfacing it in-platform avoids context switching to Grafana.
+
+## How (building on the MVP)
+- Honor `ElbResult`. Query CloudWatch via a Python service for the metrics/statistics mapped in
+  `PRD/04` §5 (the MVP mocks these). Region + loadbalancer selectors; time window from `from`/`to`.
+- Cache/throttle to respect CloudWatch API limits.
+
+## Acceptance Criteria
+- [ ] All panels return real CloudWatch data; values/statistics match Grafana for the same window.
+- [ ] Region + load balancer + time-window selection works.
+- [ ] CloudWatch rate limits respected (caching/batching); shape matches `ElbResult`."
+"Story","[FE] Infra AWS ELB · UI · Dashboard wire + date range","","Infra: AWS ELB","Medium","2","frontend nextjs ui-ux charts infra elb","ELB-FE1","ELB-BE1","ELB-QA1","**ID:** ELB-FE1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** ELB-BE1 · **Blocks:** ELB-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the ELB page (all CloudWatch panels) to the real API, keeping the **per-tab date range** and
+region/load-balancer badges.
+
+## How (building on the MVP)
+- Page exists with `useInfraElb(range)` + `DateRangeControl`. Point at `ELB-BE1`; keep memoized range
+  (no refetch loop). Empty/error states; responsive.
+
+## Why
+ELB health in-platform with quick time scoping.
+
+## Acceptance Criteria
+- [ ] All panels render real data; date range scopes correctly; no refetch loop.
+- [ ] Region/LB shown; loading/empty/error states; responsive."
+"Task","[QA] Infra AWS ELB · QA · CloudWatch panel scenarios","","Infra: AWS ELB","Medium","2","qa infra elb","ELB-QA1","ELB-FE1","","**ID:** ELB-QA1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** ELB-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/04 §5, PRD/06
+
+## What / Why
+Validate parity with Grafana/CloudWatch, region/LB and time scoping.
+
+## Acceptance Criteria (scenarios)
+- [ ] Each panel matches CloudWatch/Grafana for the same metric/statistic/window.
+- [ ] Region + load balancer + date-range selection changes data correctly.
+- [ ] SuperAdmin-only; loading/empty/error states; no refetch loop."
+"Epic","Business Health","Business Health","","Medium","","epic biz","BIZ","COST-BE3; PLAT-BE2","","## Goal
+Voicing business + platform-usage metrics: MRR composition (committed/usage/expansion), churn, org
+growth, new vs returning callers, minutes/calls, active agents/orgs — SuperAdmin only.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/business/page.tsx` · shape `source.ts` (`BusinessHealthResult`)
+- `src/app/api/business/route.ts`, `PRD/09`
+
+## Features
+- F1 — Business metrics API · F2 — Business Health UI · F3 — QA
+
+## Tasks
+- `BE-1-business-api.md` (`BIZ-BE1`)
+- `FE-1-business-ui.md` (`BIZ-FE1`)
+- `QA-1-business-tests.md` (`BIZ-QA1`)"
+"Story","[BE] Business Health · API · MRR/churn/growth + usage metrics","","Business Health","Medium","8","backend python supabase api finance rbac biz","BIZ-BE1","COST-BE3; PLAT-BE2","BIZ-FE1; BIZ-QA1","**ID:** BIZ-BE1 · **Priority:** P2 · **Estimate:** 8
+**Blocked by:** COST-BE3; PLAT-BE2 · **Blocks:** BIZ-FE1; BIZ-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Endpoint returning `BusinessHealthResult`: MRR + MoM delta + composition (committed MGF / usage /
+expansion), churn rate, org growth series, new vs returning callers, total minutes/calls, active
+agents, active/new orgs, and an org leaderboard (MRR/margin/minutes). SuperAdmin only.
+
+## Why
+Leadership needs recurring-revenue and platform-usage health in one place to steer the business.
+
+## How (building on the MVP)
+- Honor `BusinessHealthResult`. MRR/contracts from `COST-BE3`; usage (minutes/calls/callers/agents)
+  from calls (`PLAT-BE2`).
+- **New vs returning callers** via a bounded caller identity (hashed MSISDN) and first-seen logic
+  (mirror the MVP's `callerSeries`).
+- MRR composition: committed = MGF floors, usage = pay-as-you-go run-rate, expansion = MGF overage.
+- Churn from contract status / inactivity window (confirm definition with finance).
+- Real history for trend series (MVP synthesizes 12-month MRR; production uses actuals).
+- SuperAdmin-only server-side.
+
+## Acceptance Criteria
+- [ ] Returns `BusinessHealthResult`; MRR composition and totals match `COST-BE3` + usage.
+- [ ] New/returning callers correct; org growth from onboarding/active history.
+- [ ] Churn computed per the agreed definition; documented.
+- [ ] SuperAdmin-only enforced (User blocked at API)."
+"Story","[FE] Business Health · UI · Dashboard wire + gating","","Business Health","Medium","3","frontend nextjs ui-ux charts rbac biz","BIZ-FE1","BIZ-BE1; PLAT-BE3","BIZ-QA1","**ID:** BIZ-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** BIZ-BE1; PLAT-BE3 · **Blocks:** BIZ-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Business Health page (MRR composition, org growth, new/returning callers, usage KPIs, org
+leaderboard) to the real API; enforce SuperAdmin-only (access-denied for User).
+
+## How (building on the MVP)
+- Page exists with `useBusiness` + SuperAdmin guard. Point at `BIZ-BE1`. Keep MRR/callers/growth charts.
+- Server-enforced gating (don't rely on client). Loading/empty/error; responsive.
+
+## Why
+The exec view of recurring revenue and platform usage.
+
+## Acceptance Criteria
+- [ ] All widgets render from the real API; date range/scope honored.
+- [ ] `User` is denied (server + UI); `SuperAdmin` sees all.
+- [ ] Loading/empty/error states; responsive; a11y clean."
+"Task","[QA] Business Health · QA · Business metrics scenarios","","Business Health","Medium","2","qa finance rbac biz","BIZ-QA1","BIZ-FE1","","**ID:** BIZ-QA1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** BIZ-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/09
+
+## What / Why
+Validate MRR/composition/churn/growth/usage correctness and SuperAdmin-only access.
+
+## Acceptance Criteria (scenarios)
+- [ ] MRR + composition reconcile with contracts/cost engine; MoM delta correct.
+- [ ] New vs returning callers and org growth correct against a known dataset.
+- [ ] Churn matches the agreed definition.
+- [ ] `User` cannot access (API + UI); SuperAdmin sees all; date range honored."
+"Epic","Assistant Usage (subagents)","Assistant Usage (subagents)","","Medium","","epic asst","ASST","PLAT-BE1","","## Goal
+Track usage & cost of the platform.voicing.ai assistant **per project and per subagent** (Prompt
+Writer, Architecture, Debugging, Planning, General — each on its own LLM model). Tracked separately
+from call COGS but surfaced as a KPI in Overview.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/assistant/page.tsx` · engine `src/lib/engine/subagents.ts` · shape `source.ts` (`AssistantUsageResult`)
+- `src/app/api/assistant/route.ts`, `PRD/17`
+
+## Features
+- F1 — Subagent usage ingestion & API · F2 — Assistant Usage UI · F3 — QA
+
+## Tasks
+- `BE-1-assistant-usage-api.md` (`ASST-BE1`)
+- `FE-1-assistant-ui.md` (`ASST-FE1`)
+- `QA-1-assistant-tests.md` (`ASST-QA1`)"
+"Story","[BE] Assistant Usage · API · Subagent usage ingestion & endpoint","","Assistant Usage (subagents)","Medium","5","backend python supabase api cost asst","ASST-BE1","PLAT-BE1; COST-BE2","ASST-FE1; ASST-QA1; OVW-BE1","**ID:** ASST-BE1 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** PLAT-BE1; COST-BE2 · **Blocks:** ASST-FE1; ASST-QA1; OVW-BE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Ingest platform-assistant subagent usage (invocations + input/output tokens per project, per subagent,
+per day) and serve `AssistantUsageResult`: totals, by-subagent (with model), by-project, and a daily
+cost series. Cost via the LLM pricing catalog.
+
+## Why
+Track assistant cost/usage per project and per subagent; surface platform-assistant spend (separate
+from call COGS) including in Overview.
+
+## How (building on the MVP)
+- Honor `AssistantUsageResult`. Source real subagent usage from the platform LLM gateway/logs; map each
+  subagent to its model (`subagents.ts`).
+- Cost = tokens × LLM rates (reuse `COST-BE2` pricing / the shared `llmCostMicros` logic ported to Python).
+- Persist `subagent_usage` (`PRD/12`); aggregate by scope + date.
+
+## Acceptance Criteria
+- [ ] Real per-project, per-subagent usage + cost; shape matches `AssistantUsageResult`.
+- [ ] Cost uses effective LLM pricing; by-subagent shows model.
+- [ ] Scope + date range honored; totals reconcile with by-subagent and by-project.
+- [ ] Provides the assistant-cost figure consumed by `OVW-BE1`."
+"Story","[FE] Assistant Usage · UI · Page wire + harden","","Assistant Usage (subagents)","Medium","2","frontend nextjs ui-ux charts asst","ASST-FE1","ASST-BE1","ASST-QA1","**ID:** ASST-FE1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** ASST-BE1 · **Blocks:** ASST-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Assistant Usage page (KPIs, daily cost trend, cost-by-subagent table with model, cost-by-project
+bar) to the real API.
+
+## How (building on the MVP)
+- Page exists with `useAssistant`. Point at `ASST-BE1`. Empty/error states; responsive; a11y.
+
+## Why
+Visibility into platform-assistant spend per project/subagent.
+
+## Acceptance Criteria
+- [ ] KPIs, trend, by-subagent, by-project render from the real API; scope/date honored.
+- [ ] Loading/empty/error states; responsive; a11y clean."
+"Task","[QA] Assistant Usage · QA · Subagent usage/cost scenarios","","Assistant Usage (subagents)","Medium","2","qa cost asst","ASST-QA1","ASST-FE1","","**ID:** ASST-QA1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** ASST-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/17
+
+## What / Why
+Validate per-project/per-subagent usage and cost correctness, and the Overview KPI.
+
+## Acceptance Criteria (scenarios)
+- [ ] By-subagent and by-project totals reconcile with the grand total.
+- [ ] Cost uses correct LLM pricing per subagent model.
+- [ ] Scope/date filters change results; Overview ""Assistant Cost"" matches this tab for the same scope."
+"Epic","Overview","Overview","","Medium","","epic ovw","OVW","","","## Goal
+Role-aware landing page that answers the most important question first: KPI strip (cost, revenue,
+margin %, assistant cost, latency, active calls), cost-by-service, margin/cost by org, projects table,
+active issues + live snippet. `User` sees a performance/cost-first variant without financials.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/overview/page.tsx` · shape `source.ts` (`OverviewResult`) · `src/app/api/overview/route.ts` · `PRD/02` §3
+
+## Features
+- F1 — Overview aggregation API · F2 — Overview UI (role-aware) · F3 — QA
+
+## Tasks
+- `BE-1-overview-api.md` (`OVW-BE1`)
+- `FE-1-overview-ui.md` (`OVW-FE1`)
+- `QA-1-overview-tests.md` (`OVW-QA1`)"
+"Story","[BE] Overview · API · Aggregated landing metrics","","Overview","Medium","5","backend python supabase api rbac ovw","OVW-BE1","COST-BE4; ASST-BE1; PLAT-BE2","OVW-FE1; OVW-QA1","**ID:** OVW-BE1 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** COST-BE4; ASST-BE1; PLAT-BE2 · **Blocks:** OVW-FE1; OVW-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Endpoint returning `OverviewResult`: totals (cost, revenue, margin, avg latency, error rate),
+active concurrency, **assistant cost**, per-project and per-org rollups, and a cost-by-service series —
+honoring the same scope reconciliation as Cost & Margin.
+
+## Why
+The landing page must summarize the whole platform at a glance for the active scope/role.
+
+## How (building on the MVP)
+- Honor `OverviewResult`. Aggregate from `period_rollup`/`call_cost` (cost/margin), calls (latency/
+  active), and assistant usage (`ASST-BE1`).
+- Reuse the org/global vs project reconciliation rule from `COST-BE3`.
+- **RBAC:** omit revenue/margin for `User`.
+
+## Acceptance Criteria
+- [ ] Returns `OverviewResult`; numbers match the source tabs for the same scope (no drift).
+- [ ] Assistant cost KPI matches the Assistant tab; margin reconciles with Cost & Margin.
+- [ ] `User` response omits revenue/margin; scope/date honored; p95 < 300 ms (rollup-backed)."
+"Story","[FE] Overview · UI · Role-aware landing wire","","Overview","Medium","3","frontend nextjs ui-ux charts rbac ovw","OVW-FE1","OVW-BE1; PLAT-BE3","OVW-QA1","**ID:** OVW-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** OVW-BE1; PLAT-BE3 · **Blocks:** OVW-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the role-aware Overview (KPI strip incl. assistant cost, cost-by-service, margin/cost-by-org,
+projects table, live snippet) to the real API. SuperAdmin sees financials; User sees performance/cost.
+
+## How (building on the MVP)
+- Page exists with `useOverview` + financial gating. Point at `OVW-BE1`. Keep role-aware KPI strip and
+  charts. Empty/error states; responsive.
+
+## Why
+First screen users land on; must be fast, accurate, and role-appropriate.
+
+## Acceptance Criteria
+- [ ] All widgets render from the real API; SuperAdmin vs User variants correct.
+- [ ] Assistant cost + margin KPIs match their source tabs; scope/date honored.
+- [ ] Loading/empty/error states; responsive; a11y clean."
+"Task","[QA] Overview · QA · Landing aggregation & RBAC scenarios","","Overview","Medium","2","qa rbac ovw","OVW-QA1","OVW-FE1","","**ID:** OVW-QA1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** OVW-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/02 §3
+
+## What / Why
+Validate that Overview aggregates match source tabs and respects role.
+
+## Acceptance Criteria (scenarios)
+- [ ] KPIs (cost, revenue, margin, assistant cost, latency, active calls) match source tabs for the same scope.
+- [ ] SuperAdmin sees financials; User sees performance/cost-only variant (no revenue/margin).
+- [ ] Scope/date changes propagate consistently; loading/empty/error states correct."
+"Epic","Fallback Controls","Fallback Controls","","Low","","epic fallb","FALLB","PLAT-BE1; PLAT-BE3","","## Goal
+SuperAdmin controls for provider fallback: STT/TTS single fallback model and **LLM cost-ordered list**
+(tried in order on failure), scoped globally or per org/project, with a fallback-activity log. **These
+configs must actually drive routing in the call pipeline** (the MVP only stores config/state).
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/controls/fallbacks/page.tsx` · engine `src/lib/engine/fallbacks.ts` · shapes `source.ts` (`FallbacksResult`, `UpdateFallbackInput`)
+- `src/app/api/fallbacks/route.ts`, `PRD/08`
+
+## Features
+- F1 — Fallback config API · F2 — Pipeline integration (enforcement) · F3 — Fallback UI · F4 — QA
+
+## Tasks
+- `BE-1-fallback-config-api.md` (`FALLB-BE1`)
+- `BE-2-pipeline-integration.md` (`FALLB-BE2`)
+- `FE-1-fallback-ui.md` (`FALLB-FE1`)
+- `QA-1-fallback-tests.md` (`FALLB-QA1`)"
+"Story","[BE] Fallbacks · API · Fallback config store & endpoint","","Fallback Controls","Low","3","backend python supabase api rbac fallb","FALLB-BE1","PLAT-BE1; PLAT-BE3","FALLB-BE2; FALLB-FE1","**ID:** FALLB-BE1 · **Priority:** P3 · **Estimate:** 3
+**Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** FALLB-BE2; FALLB-FE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Persist and serve fallback configs per service (STT/TTS single fallback; LLM ordered list) and scope
+(global/org/project), plus the fallback-activity log. SuperAdmin-only.
+
+## How (building on the MVP)
+- Honor `FallbacksResult`/`UpdateFallbackInput`. Persist `fallback_config` + `fallback_event` (`PRD/12`).
+- Scope override resolution (project/org over global) like the MVP `getFallbacks`.
+- SuperAdmin-only (server-side).
+
+## Why
+Centralized, scoped fallback configuration is the source of truth the pipeline reads.
+
+## Acceptance Criteria
+- [ ] Get/update configs per service+scope; LLM ordered list reorder/add/remove persists.
+- [ ] Scope override resolution matches the MVP; activity log queryable.
+- [ ] SuperAdmin-only enforced; shapes match the UI."
+"Story","[BE] Fallbacks · Enforcement · Wire configs into the call pipeline","","Fallback Controls","Low","8","backend python voice-pipeline reliability fallb","FALLB-BE2","FALLB-BE1","FALLB-QA1","**ID:** FALLB-BE2 · **Priority:** P3 · **Estimate:** 8
+**Blocked by:** FALLB-BE1 · **Blocks:** FALLB-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/08
+
+## What
+Make the voice pipeline **actually use** the fallback configs: on per-call provider error/timeout, and
+on platform-wide provider outage, switch STT/TTS to the configured fallback and LLM to the next model
+in the ordered list — emitting `fallback_event` records.
+
+## Why
+The MVP only stores config; the value is realized only when the runtime honors it (resilience to
+provider failures). LLM scope for MVP = bot-conversation LLM.
+
+## How (building on the MVP)
+- Read the effective config (scope resolution) from `FALLB-BE1` at call time.
+- Per-call trigger: retry on the fallback when the primary errors/times out. Platform-wide: detect
+  provider outage (status API/error-rate) and switch in-scope traffic until cleared.
+- LLM: try models in the defined order (respect order, not live-cheapest). Emit `fallback_event`
+  (when, scope, call, from→to, reason) — surfaced in the UI activity log.
+- Scope to bot-conversation LLM for MVP (extensible later).
+
+## Acceptance Criteria
+- [ ] Per-call STT/TTS/LLM failures fall back per config; calls recover instead of failing.
+- [ ] Platform-wide outage switches in-scope traffic and reverts on recovery.
+- [ ] LLM order is respected; `fallback_event`s are emitted and visible in the activity log.
+- [ ] Scope override (project/org/global) is honored at runtime."
+"Story","[FE] Fallbacks · UI · Config page wire","","Fallback Controls","Low","3","frontend nextjs ui-ux rbac fallb","FALLB-FE1","FALLB-BE1","FALLB-QA1","**ID:** FALLB-FE1 · **Priority:** P3 · **Estimate:** 3
+**Blocked by:** FALLB-BE1 · **Blocks:** FALLB-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the Fallbacks page (STT/TTS tabs with enable + fallback select; LLM ordered list with reorder/add/
+remove + cost labels; scope via Org/Project filter; activity log) to the real API.
+
+## How (building on the MVP)
+- Page exists; point hooks at `FALLB-BE1`. Keep reorder (consider real drag-and-drop vs the MVP's
+  up/down buttons). SuperAdmin-only. Loading/error states; responsive.
+
+## Why
+SuperAdmins configure resilience without code.
+
+## Acceptance Criteria
+- [ ] Config CRUD persists; LLM ordering editable; scope override clear.
+- [ ] Activity log shows real fallback events.
+- [ ] SuperAdmin-only; responsive; a11y clean."
+"Task","[QA] Fallbacks · QA · Config + enforcement scenarios","","Fallback Controls","Low","3","qa reliability rbac fallb","FALLB-QA1","FALLB-BE2; FALLB-FE1","","**ID:** FALLB-QA1 · **Priority:** P3 · **Estimate:** 3
+**Blocked by:** FALLB-BE2; FALLB-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/08
+
+## What / Why
+Validate config CRUD/scoping and, crucially, real fallback enforcement in the pipeline.
+
+## Acceptance Criteria (scenarios)
+- [ ] STT/TTS primary failure → configured fallback used; call recovers.
+- [ ] LLM failure → next model in the ordered list (order respected, not cheapest-live).
+- [ ] Platform-wide outage switches in-scope traffic; reverts on recovery.
+- [ ] Scope override (project/org/global) honored; `fallback_event`s recorded and shown.
+- [ ] SuperAdmin-only config; `User` blocked."
+"Epic","IP Access Control","IP Access Control","","Low","","epic ipacc","IPACC","PLAT-BE1; PLAT-BE3","","## Goal
+Whitelist/blacklist IPs for platform.voicing.ai, per org or project: two lists (allow/block) + an
+explicit **default policy** (allow=blacklist mode / block=whitelist mode), IPv4 + CIDR, org→project
+inheritance, and an IP tester. **Rules must be enforced at the real ingress** (the MVP only stores +
+simulates evaluation).
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- UI: `src/app/(dashboard)/controls/access/page.tsx` · engine `src/lib/engine/ip.ts` (`evaluateIp`, CIDR)
+- shapes `source.ts` (`IpRulesResult`, `AddIpRuleInput`, `SetIpPolicyInput`), `src/app/api/access/route.ts`, `PRD/16`
+
+## Features
+- F1 — IP rules & policy API · F2 — Ingress enforcement · F3 — IP Access UI · F4 — QA
+
+## Tasks
+- `BE-1-ip-rules-api.md` (`IPACC-BE1`)
+- `BE-2-ingress-enforcement.md` (`IPACC-BE2`)
+- `FE-1-ip-access-ui.md` (`IPACC-FE1`)
+- `QA-1-ip-access-tests.md` (`IPACC-QA1`)"
+"Story","[BE] IP Access · API · Rules, default policy & evaluation","","IP Access Control","Low","5","backend python supabase api security rbac ipacc","IPACC-BE1","PLAT-BE1; PLAT-BE3","IPACC-BE2; IPACC-FE1","**ID:** IPACC-BE1 · **Priority:** P3 · **Estimate:** 5
+**Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** IPACC-BE2; IPACC-FE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+CRUD for IP rules (allow/block, IPv4 or CIDR, per org/project), a per-scope **default policy**
+(allow/block), org→project inheritance, and a server-side IP **evaluation** API. SuperAdmin-only.
+
+## Why
+Clients (e.g. TP) request blocking/allowlisting; the platform needs a managed, scoped engine — and a
+correct evaluator shared by config (tester) and enforcement.
+
+## How (building on the MVP)
+- Port `evaluateIp` (block → allow → default policy; IPv4+CIDR) to the shared backend (the spec).
+- Persist `ip_rule` + `ip_policy` (`PRD/12`); resolve a project's effective set = own + inherited org
+  rules; default policy per scope.
+- Endpoints: list (own+inherited+policy), add/delete rule, set policy, and evaluate(ip, scope).
+- SuperAdmin-only.
+
+## Acceptance Criteria
+- [ ] CRUD + policy persist; inheritance (org→project) correct; CIDR matching correct.
+- [ ] Evaluation matches `evaluateIp` semantics (block wins; allowlist gate; default policy).
+- [ ] Shapes match the UI; SuperAdmin-only enforced."
+"Story","[BE] IP Access · Enforcement · Apply rules at platform ingress","","IP Access Control","Low","5","backend security infra edge ipacc","IPACC-BE2","IPACC-BE1","IPACC-QA1","**ID:** IPACC-BE2 · **Priority:** P3 · **Estimate:** 5
+**Blocked by:** IPACC-BE1 · **Blocks:** IPACC-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/16 §5
+
+## What
+Enforce the IP rules/default policy at the real ingress for platform.voicing.ai (edge/WAF/gateway or
+app middleware), so disallowed IPs are actually blocked and allowlist mode restricts access.
+
+## Why
+The MVP stores rules and simulates evaluation; protection is only real when traffic is actually
+filtered at ingress.
+
+## How (building on the MVP)
+- Resolve the effective ruleset/policy per request scope (org/project) using `IPACC-BE1`.
+- Apply at the chosen enforcement point (AWS WAF/ALB rules, gateway, or middleware); cache rules with
+  fast invalidation on change.
+- Log decisions for audit; fail safe (define behavior on rule-store unavailability).
+
+## Acceptance Criteria
+- [ ] Blocked IPs/CIDRs are denied at ingress; allowlist mode denies non-listed IPs.
+- [ ] Rule changes take effect within a bounded propagation time.
+- [ ] Decisions are logged/auditable; defined fail-safe behavior.
+- [ ] Inheritance + default policy applied correctly at runtime."
+"Story","[FE] IP Access · UI · Access control page wire","","IP Access Control","Low","3","frontend nextjs ui-ux security rbac ipacc","IPACC-FE1","IPACC-BE1","IPACC-QA1","**ID:** IPACC-FE1 · **Priority:** P3 · **Estimate:** 3
+**Blocked by:** IPACC-BE1 · **Blocks:** IPACC-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Wire the IP Access page (Allow/Block lists, default-policy toggle, add/delete with IPv4/CIDR validation,
+inherited org rules read-only, IP tester) to the real API.
+
+## How (building on the MVP)
+- Page exists; point hooks at `IPACC-BE1`. Keep default-policy cards, validation, inherited section,
+  and tester (tester should call the server evaluate for parity). SuperAdmin-only.
+
+## Why
+SuperAdmins manage access per scope with immediate feedback.
+
+## Acceptance Criteria
+- [ ] CRUD + default policy persist; inheritance shown; CIDR/IP validation enforced.
+- [ ] IP tester returns the same verdict as the server evaluator.
+- [ ] SuperAdmin-only; responsive; a11y clean."
+"Task","[QA] IP Access · QA · Rules, policy & enforcement scenarios","","IP Access Control","Low","3","qa security ipacc","IPACC-QA1","IPACC-BE2; IPACC-FE1","","**ID:** IPACC-QA1 · **Priority:** P3 · **Estimate:** 3
+**Blocked by:** IPACC-BE2; IPACC-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/16
+
+## What / Why
+Validate evaluation correctness, inheritance, default policy, and real ingress enforcement.
+
+## Acceptance Criteria (scenarios)
+- [ ] Block wins over allow; allowlist mode denies non-listed; blacklist mode allows by default.
+- [ ] CIDR ranges match correctly; single IPs match; invalid input rejected.
+- [ ] Project inherits org rules; per-scope default policy applied.
+- [ ] Ingress actually blocks/allows real traffic; changes propagate within SLA; decisions audited.
+- [ ] SuperAdmin-only management."
+"Epic","QA Bench / Evals","QA Bench / Evals","","Lowest","","epic qabench","QABENCH","","","## Goal
+Scheduled evaluation of **real recorded calls**: evaluators (completion, sentiment, compliance,
+tool-success, etc.), per-project thresholds (Critical/Warning), auto-flag + notify + optional agent
+pause on breach, and an eval builder. **Design-only in the MVP** (route is a stub) — this epic builds it.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- Stub: `src/app/(dashboard)/qa-bench/page.tsx` · spec: `PRD/11-module-qa-bench-evals.md`
+- Reuse patterns: auto-flag (`ISSUE`/`FLAG`), thresholds (`THRESH`).
+
+## Features
+- F1 — Evaluators, schedules & runs (engine + API) · F2 — Eval builder & results UI · F3 — QA
+
+## Tasks
+- `BE-1-evals-engine-api.md` (`QABENCH-BE1`)
+- `FE-1-eval-builder-ui.md` (`QABENCH-FE1`)
+- `QA-1-evals-tests.md` (`QABENCH-QA1`)
+
+## Open product decisions (from PRD/11)
+- Which ~2 external eval libraries; Evals revenue model (credits vs included); who may trigger agent pause."
+"Story","[BE] QA Bench · Engine & API · Evaluators, schedules, runs & actions","","QA Bench / Evals","Lowest","13","backend python supabase evals api qabench","QABENCH-BE1","CALLS-BE2; THRESH-BE1; FLAG-BE1","QABENCH-FE1; QABENCH-QA1","**ID:** QABENCH-BE1 · **Priority:** P4 · **Estimate:** 13
+**Blocked by:** CALLS-BE2; THRESH-BE1; FLAG-BE1 · **Blocks:** QABENCH-FE1; QABENCH-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/11
+
+## What
+An evaluation system that runs **evaluators** over real recorded calls on a **schedule** (per project,
+min daily), compares results to **per-project thresholds** (Critical/Warning), and on breach: auto-flags
+the call (→ Flag Queue), notifies, and optionally pauses the agent (config-gated). Includes evaluator
+definitions, schedules, runs, and results storage.
+
+## Why
+Continuous, automated quality monitoring of conversations without manual review — Phase 2 capability.
+
+## How (building on the MVP)
+- New build (design-only in MVP). Model `evaluator`, `eval_schedule`, `eval_run`, `eval_result`,
+  `eval_threshold` (`PRD/11` §6).
+- Evaluators: templated metrics (completion/containment/sentiment/compliance/tool-success/latency),
+  LLM-judge (prompt+rubric), and rule-based; run only over **already-recorded** calls.
+- Reuse: auto-flag into `FLAG-BE1`; threshold semantics from `THRESH`.
+- Integrate the chosen ~2 external eval libraries; cron scheduling; idempotent runs.
+
+## Acceptance Criteria
+- [ ] Define/version evaluators; schedule per project (≥ daily); runs execute over the call window.
+- [ ] Per-evaluator thresholds produce Critical/Warning; breach → auto-flag (+ notify, optional pause).
+- [ ] Results stored with scores + breaches + linked calls; reproducible.
+- [ ] Runs only on recorded calls; no synthetic call generation."
+"Story","[FE] QA Bench · UI · Eval builder, schedules & results","","QA Bench / Evals","Lowest","8","frontend nextjs ui-ux evals qabench","QABENCH-FE1","QABENCH-BE1","QABENCH-QA1","**ID:** QABENCH-FE1 · **Priority:** P4 · **Estimate:** 8
+**Blocked by:** QABENCH-BE1 · **Blocks:** QABENCH-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Build the QA Bench UI: evaluator builder (templated / LLM-judge / rule), schedules list (cron, window,
+last/next run), run history + results (scores vs thresholds, breaches, linked calls), per-project
+threshold editor, and pause-on-critical toggle.
+
+## Why
+Replaces the stub with the real Phase-2 surface for authoring and reviewing evals.
+
+## How (building on the MVP)
+- Net-new screens consuming `QABENCH-BE1`. Reuse design system (cards/tables/charts), date range, and
+  the threshold/flag UX patterns from `THRESH`/`FLAG`.
+- Test an evaluator against a sample of past calls before scheduling.
+
+## Acceptance Criteria
+- [ ] Create/version evaluators; configure schedules + per-evaluator thresholds.
+- [ ] Run history + results render with scores/breaches and links to affected calls.
+- [ ] Pause-on-critical toggle (config-gated by role); empty/error states; responsive; a11y."
+"Task","[QA] QA Bench · QA · Evaluation, scheduling & action scenarios","","QA Bench / Evals","Lowest","5","qa evals qabench","QABENCH-QA1","QABENCH-FE1","","**ID:** QABENCH-QA1 · **Priority:** P4 · **Estimate:** 5
+**Blocked by:** QABENCH-FE1 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/11
+
+## What / Why
+Validate evaluators, scheduling, threshold breaches and breach actions (flag/notify/pause).
+
+## Acceptance Criteria (scenarios)
+- [ ] Evaluators score recorded calls correctly (templated / LLM-judge / rule).
+- [ ] Schedules run on cadence over the configured window; runs are idempotent/reproducible.
+- [ ] Breach → auto-flag appears in Flag Queue; notification sent; optional agent pause works and is role-gated.
+- [ ] Per-project thresholds drive Critical/Warning correctly; results link to calls.
+- [ ] No synthetic calls generated — only recorded calls evaluated."

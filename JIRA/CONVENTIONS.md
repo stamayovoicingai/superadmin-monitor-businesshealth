@@ -10,8 +10,12 @@ fields every task carries so the board is consistent and devs have enough to bui
   behind a typed `DataSource` interface. Every screen works on mock data today.
 - **Team language note:** Voicing AI codes in **Python**. TypeScript in the repo is **UI-only**
   (the Next.js app + thin API route handlers + the mock adapter). **Production backend work belongs
-  in Python** (FastAPI services / jobs) feeding **Supabase/Postgres**; the Next.js app calls those.
+  in Python** (FastAPI services / jobs) feeding the database; the Next.js app calls those.
   See the repo's `DOCUMENTATION.md` §5 and §20.
+- **Database note:** the production datastore is **Postgres**. Tasks/labels say "Supabase" because the
+  MVP used Supabase (a hosted Postgres) — but this is **not a team mandate**. Read every "Supabase"
+  reference as **"Postgres (Supabase or any equivalent)"**; choose the hosting/ORM that fits. The
+  schema, SQL, and adapter shapes are what matter, not the vendor.
 - Key MVP seams every task should know:
   - `src/lib/data/source.ts` — the `DataSource` interface + result shapes (the API contract to honor).
   - `src/lib/data/mock.ts` — the mock implementation (reference behavior).

@@ -40,13 +40,24 @@ Each task title follows: **`<Epic> · <Feature> · <Task>`** with a discipline p
 
 ## How to import to Jira
 
-Each task file is a self-contained issue. To load a new board:
-1. Create the **Epics** (one per folder, from `EPIC.md`).
-2. Create each task as a **Story/Task**, linked to its Epic. Copy the file's Description block
-   (What / Why / How / Acceptance Criteria) into the Jira description.
-3. Apply the **Type**, **Components/Labels**, and **Estimate** from the task header.
-4. (Optional) Use the Jira CSV/Forge import — a CSV can be generated from these files later; the
-   structure (Epic, Summary, Description, Labels, Story Points) maps 1:1.
+**Fastest: use the generated CSV — [`jira-import.csv`](./jira-import.csv)** (79 rows: 17 epics + 62 tasks).
+Regenerate anytime with `node JIRA/generate-csv.mjs`.
+
+Columns: `Issue Type, Summary, Epic Name, Epic Link, Priority, Story Points, Labels, External ID,
+Blocked By (IDs), Blocks (IDs), Description`.
+
+In Jira → **System / Project settings → Import → CSV**:
+1. Map `Issue Type`, `Summary`, `Description`, `Priority`, `Story Points`, `Labels`.
+2. Map `Epic Name` (on Epic rows) and `Epic Link` (on task rows) — they match by name, so tasks attach
+   to their epic automatically.
+3. Map `External ID` to **External issue ID** (lets you re-import idempotently and wire links by ID).
+4. **Dependencies:** `Blocked By (IDs)` / `Blocks (IDs)` reference other rows' `External ID`. Jira's CSV
+   importer can create "is blocked by" links from an issue-link column mapped to External ID; if your
+   instance doesn't, the IDs are also in each Description so links can be added in a quick pass.
+5. Priority maps `P0→Highest … P4→Lowest`.
+
+Prefer manual? Each task file is a self-contained issue — copy its What/Why/How/Acceptance Criteria
+into the Jira description and set Type/Labels/Estimate/Priority from the header.
 
 ## Status of the MVP
 
