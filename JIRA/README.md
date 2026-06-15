@@ -10,8 +10,9 @@ per **tab/module** (= one **Epic**). Each Epic folder contains an `EPIC.md` and 
 Read **[`CONVENTIONS.md`](./CONVENTIONS.md)** first (issue template, types, labels, estimation, IDs,
 priority scale, and the MVP→production framing) and **[`ROADMAP.md`](./ROADMAP.md)** for the global
 **priority tiers, dependency graph, and delivery waves** (what to build first, what blocks what).
-For sprint sizing/sequencing see **[`SPRINT-PLAN.md`](./SPRINT-PLAN.md)** (~278 SP total; ~10 two-week
-sprints with one squad, or ~7–10 weeks with 2–3 parallel squads).
+For sprint sizing/sequencing see **[`SPRINT-PLAN.md`](./SPRINT-PLAN.md)** — calibrated to the squad
+(3 BE · 2 FE · 1 QA): **~252 SP (QA Bench deferred) ≈ 6–7 two-week sprints (~12–14 weeks)**, or
+~6 weeks with 2 squads. **QA Bench (`QABENCH`) is out of scope for now** (tickets kept for later).
 
 ## Epics (one per tab)
 
@@ -32,7 +33,7 @@ sprints with one squad, or ~7–10 weeks with 2–3 parallel squads).
 | E13 | Infra — AWS ELB | [`infra-elb/`](./infra-elb/) | `/infra/elb` |
 | E14 | Assistant Usage (subagents) | [`assistant-usage/`](./assistant-usage/) | `/assistant` |
 | E15 | Business Health | [`business-health/`](./business-health/) | `/business` |
-| E16 | QA Bench / Evals (Phase 2) | [`qa-bench/`](./qa-bench/) | `/qa-bench` |
+| E16 | QA Bench / Evals (Phase 2 — **deferred, out of scope for now**) | [`qa-bench/`](./qa-bench/) | `/qa-bench` |
 | — | Platform foundation (auth, data layer, deploy) | [`_platform/`](./_platform/) | cross-cutting |
 
 ## Issue naming

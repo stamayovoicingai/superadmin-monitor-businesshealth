@@ -47,7 +47,8 @@ COST engine (cost_per_call) ─> ISSUE (cost_per_call metric)
 
 **Wave 3 — Controls (P3):** `FALLB` (Fallbacks), `IPACC` (IP Access). (Config surfaces; lower urgency.)
 
-**Wave 4 — Phase 2 (P4):** `QABENCH` (QA Bench / Evals).
+**Wave 4 — Phase 2 (P4) — DEFERRED (out of scope for now):** `QABENCH` (QA Bench / Evals). Tickets
+remain in `qa-bench/` (designed) for a later, separate effort; excluded from the current `SPRINT-PLAN.md`.
 
 ## Epic priority & key blockers
 
