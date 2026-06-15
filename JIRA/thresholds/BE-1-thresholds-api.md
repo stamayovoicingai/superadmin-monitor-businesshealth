@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE1`, `PLAT-BE3`
 - **Blocks:** `ISSUE-BE1`, `THRESH-FE1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `rbac`
+- **Components/Labels:** `backend` `python` `postgres` `api` `rbac`
 - **Estimate:** 3
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/app/api/thresholds/route.ts`, `src/lib/data/source.ts` (`CreateThresholdInput`, `UpdateThresholdPatch`),

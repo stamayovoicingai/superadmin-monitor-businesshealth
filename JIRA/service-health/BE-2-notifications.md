@@ -7,7 +7,7 @@
 - **Priority:** P2
 - **Blocked by:** `HEALTH-BE1`
 - **Blocks:** `HEALTH-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `notifications` `email`
+- **Components/Labels:** `backend` `python` `postgres` `notifications` `email`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `source.ts` (`SetRecipientsInput`, `SetServiceOverrideInput`), `src/app/api/health/route.ts` (PUT), `PRD/18` §3

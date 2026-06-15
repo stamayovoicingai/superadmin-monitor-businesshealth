@@ -7,7 +7,7 @@
 - **Priority:** P2
 - **Blocked by:** `PLAT-BE1`, `COST-BE2` (LLM pricing)
 - **Blocks:** `ASST-FE1`, `ASST-QA1`, `OVW-BE1` (assistant cost KPI)
-- **Components/Labels:** `backend` `python` `supabase` `api` `cost`
+- **Components/Labels:** `backend` `python` `postgres` `api` `cost`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/engine/subagents.ts`, `source.ts` (`AssistantUsageResult`), `src/lib/data/mock.ts` (`assistantUsage`), `PRD/17`

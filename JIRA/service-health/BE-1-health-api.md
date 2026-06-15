@@ -7,7 +7,7 @@
 - **Priority:** P2
 - **Blocked by:** `PLAT-BE1`
 - **Blocks:** `HEALTH-BE2`, `HEALTH-FE1`, `HEALTH-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `observability`
+- **Components/Labels:** `backend` `python` `postgres` `api` `observability`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/data/source.ts` (`HealthResult`), `src/lib/data/mock.ts` (`health`), `PRD/18`

@@ -7,7 +7,7 @@
 - **Priority:** P0
 - **Blocked by:** `PLAT-BE1`
 - **Blocks:** `CALLS-*`, `PERF-*`, `LIVE-*`, `ISSUE-*`, `COST-BE1`, `BIZ-*`, `FLAG-*`
-- **Components/Labels:** `backend` `python` `supabase` `etl` `foundation`
+- **Components/Labels:** `backend` `python` `postgres` `etl` `foundation`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `PRD/04-data-sources.md` (S1/S2), `src/lib/types.ts` (`Call`), `src/lib/seed/index.ts`

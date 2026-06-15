@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `COST-BE3`, `PLAT-BE3`, `PLAT-BE4`
 - **Blocks:** `COST-FE1`, `COST-FE2`
-- **Components/Labels:** `backend` `python` `supabase` `api` `rbac`
+- **Components/Labels:** `backend` `python` `postgres` `api` `rbac`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/data/source.ts` (`CostResult`, `Scope`), `src/app/api/cost/route.ts`, `src/lib/data/mock.ts` (`cost()`)

@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE2`, `ISSUE-BE1`
 - **Blocks:** `FLAG-FE1`, `FLAG-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `api`
+- **Components/Labels:** `backend` `python` `postgres` `api`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/data/source.ts` (`CallFlag`, `CreateFlagInput`), `src/app/api/flags/route.ts`, `PRD/10`, `PRD/12` §5

@@ -7,7 +7,7 @@
 - **Priority:** P3
 - **Blocked by:** `PLAT-BE1`, `PLAT-BE3`
 - **Blocks:** `FALLB-BE2`, `FALLB-FE1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `rbac`
+- **Components/Labels:** `backend` `python` `postgres` `api` `rbac`
 - **Estimate:** 3
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `source.ts` (`FallbacksResult`, `UpdateFallbackInput`, `ServiceFallback`), `src/app/api/fallbacks/route.ts`, `PRD/08`

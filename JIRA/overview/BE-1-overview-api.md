@@ -7,7 +7,7 @@
 - **Priority:** P2
 - **Blocked by:** `COST-BE4`, `ASST-BE1`, `PLAT-BE2`
 - **Blocks:** `OVW-FE1`, `OVW-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `rbac`
+- **Components/Labels:** `backend` `python` `postgres` `api` `rbac`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `source.ts` (`OverviewResult`), `src/lib/data/mock.ts` (`overview`), `PRD/02` §3

@@ -7,7 +7,7 @@
 - **Priority:** P0
 - **Blocked by:** `PLAT-BE1`
 - **Blocks:** all secured endpoints + all FE gating (esp. `COST-FE2`, `BIZ-*`, every SuperAdmin-only tab)
-- **Components/Labels:** `backend` `supabase` `auth` `rbac` `security` `foundation`
+- **Components/Labels:** `backend` `postgres` `auth` `rbac` `security` `foundation`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/auth/policy.ts`, `src/components/financial-gate.tsx`, `PRD/01-roles-permissions.md`

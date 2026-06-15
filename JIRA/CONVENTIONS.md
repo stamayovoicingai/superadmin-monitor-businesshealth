@@ -61,7 +61,7 @@ Python/Supabase, endpoints, data model, libraries. Call out the delta from the m
 - **Priority:** `P0`…`P4` (see scale below).
 - **Blocked by:** task IDs that must ship first (cross-epic allowed). `—` if none.
 - **Blocks:** task IDs this unblocks. `—` if none.
-- **Components/Labels:** e.g. `backend`, `python`, `supabase`, `frontend`, `nextjs`, `rbac`,
+- **Components/Labels:** e.g. `backend`, `python`, `postgres`, `frontend`, `nextjs`, `rbac`,
   `observability`, `infra`, `qa`. Add the epic key as a label too.
 - **Estimate:** story points (Fibonacci 1/2/3/5/8/13).
 - **MVP reference (repo):** link + the exact files to study.

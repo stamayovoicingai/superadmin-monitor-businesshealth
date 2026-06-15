@@ -10,6 +10,8 @@ per **tab/module** (= one **Epic**). Each Epic folder contains an `EPIC.md` and 
 Read **[`CONVENTIONS.md`](./CONVENTIONS.md)** first (issue template, types, labels, estimation, IDs,
 priority scale, and the MVP→production framing) and **[`ROADMAP.md`](./ROADMAP.md)** for the global
 **priority tiers, dependency graph, and delivery waves** (what to build first, what blocks what).
+For sprint sizing/sequencing see **[`SPRINT-PLAN.md`](./SPRINT-PLAN.md)** (~278 SP total; ~10 two-week
+sprints with one squad, or ~7–10 weeks with 2–3 parallel squads).
 
 ## Epics (one per tab)
 

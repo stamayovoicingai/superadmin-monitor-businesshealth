@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `THRESH-BE1`, `PLAT-BE2`, `COST-BE1`
 - **Blocks:** `ISSUE-FE1`, `FLAG-BE1` (auto-flags), `ISSUE-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `observability`
+- **Components/Labels:** `backend` `python` `postgres` `api` `observability`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/engine/issues.ts` (`evaluateIssues`, `ISSUE_METRICS`), `source.ts` (`IssuesResult`), `src/app/api/issues/route.ts`, `PRD/05` §4

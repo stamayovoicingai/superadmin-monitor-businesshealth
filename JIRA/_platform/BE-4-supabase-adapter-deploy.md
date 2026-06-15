@@ -7,7 +7,7 @@
 - **Priority:** P0
 - **Blocked by:** `PLAT-BE1`, `PLAT-BE3`
 - **Blocks:** every FE "wire to real API" task
-- **Components/Labels:** `backend` `supabase` `nextjs` `devops` `foundation`
+- **Components/Labels:** `backend` `postgres` `nextjs` `devops` `foundation`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/data/index.ts` (`getDataSource`, `DATA_SOURCE`), `src/lib/data/source.ts`, `DOCUMENTATION.md` §20

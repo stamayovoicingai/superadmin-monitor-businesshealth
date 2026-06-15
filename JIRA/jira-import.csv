@@ -27,7 +27,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-3-auth-rbac.md` (`PLAT-BE3`)
 - `BE-4-supabase-adapter-deploy.md` (`PLAT-BE4`)
 - `QA-1-foundation-harness.md` (`PLAT-QA1`)"
-"Story","[BE] Platform · Schema · Supabase project, schema & migrations","","Platform Foundation","Highest","8","backend supabase database foundation plat","PLAT-BE1","","PLAT-BE2","**ID:** PLAT-BE1 · **Priority:** P0 · **Estimate:** 8
+"Story","[BE] Platform · Schema · Supabase project, schema & migrations","","Platform Foundation","Highest","8","backend postgres database foundation plat","PLAT-BE1","","PLAT-BE2","**ID:** PLAT-BE1 · **Priority:** P0 · **Estimate:** 8
 **Blocked by:** — · **Blocks:** PLAT-BE2
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -56,7 +56,7 @@ connection change, not a remodel — schema must match so adapters and the UI st
 - [ ] Indexes support scope + time-range filtering; explain plans avoid full scans for common queries.
 - [ ] Staging is seeded with a realistic dataset (≈ the MVP's 3 orgs / 12 projects scale).
 - [ ] Migrations are reversible and run clean from empty."
-"Story","[BE] Platform · Ingestion · Call/conversation data pipeline","","Platform Foundation","Highest","8","backend python supabase etl foundation plat","PLAT-BE2","PLAT-BE1","COST-BE1","**ID:** PLAT-BE2 · **Priority:** P0 · **Estimate:** 8
+"Story","[BE] Platform · Ingestion · Call/conversation data pipeline","","Platform Foundation","Highest","8","backend python postgres etl foundation plat","PLAT-BE2","PLAT-BE1","COST-BE1","**ID:** PLAT-BE2 · **Priority:** P0 · **Estimate:** 8
 **Blocked by:** PLAT-BE1 · **Blocks:** COST-BE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -84,7 +84,7 @@ Business Health. Everything call-related is blocked until this exists.
 - [ ] Ingestion is idempotent; backfill for a date range works and doesn't duplicate.
 - [ ] Transcript + error logs are linked to their call and queryable by `call_id`/`session_id`.
 - [ ] Volume/perf validated at production scale."
-"Story","[BE] Platform · Auth · Authentication & server-side RBAC","","Platform Foundation","Highest","8","backend supabase auth rbac security foundation plat","PLAT-BE3","PLAT-BE1","COST-FE2","**ID:** PLAT-BE3 · **Priority:** P0 · **Estimate:** 8
+"Story","[BE] Platform · Auth · Authentication & server-side RBAC","","Platform Foundation","Highest","8","backend postgres auth rbac security foundation plat","PLAT-BE3","PLAT-BE1","COST-FE2","**ID:** PLAT-BE3 · **Priority:** P0 · **Estimate:** 8
 **Blocked by:** PLAT-BE1 · **Blocks:** COST-FE2
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -113,7 +113,7 @@ not security. This is required before any real financial endpoint ships.
   IP access) are denied to `User` server-side.
 - [ ] RLS policies mirror `policy.ts`; scope leakage across orgs/projects is impossible.
 - [ ] Security tests cover role/scope matrix from `PRD/01`."
-"Story","[BE] Platform · Adapter & Deploy · SupabaseAdapter, envs & CI/CD","","Platform Foundation","Highest","5","backend supabase nextjs devops foundation plat","PLAT-BE4","PLAT-BE1; PLAT-BE3","","**ID:** PLAT-BE4 · **Priority:** P0 · **Estimate:** 5
+"Story","[BE] Platform · Adapter & Deploy · SupabaseAdapter, envs & CI/CD","","Platform Foundation","Highest","5","backend postgres nextjs devops foundation plat","PLAT-BE4","PLAT-BE1; PLAT-BE3","","**ID:** PLAT-BE4 · **Priority:** P0 · **Estimate:** 5
 **Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** —
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -196,7 +196,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `FE-1-cost-margin-dashboard.md`
 - `FE-2-financial-gating.md`
 - `QA-1-cost-margin-tests.md`"
-"Story","[BE] Cost & Margin · Cost ingestion · Provider usage→cost pipeline","","Cost & Margin","High","8","backend python supabase cost etl","COST-BE1","PLAT-BE1; PLAT-BE2; COST-BE2","COST-BE3; COST-BE4; ISSUE-BE1","**ID:** COST-BE1 · **Priority:** P1 · **Estimate:** 8
+"Story","[BE] Cost & Margin · Cost ingestion · Provider usage→cost pipeline","","Cost & Margin","High","8","backend python postgres cost etl","COST-BE1","PLAT-BE1; PLAT-BE2; COST-BE2","COST-BE3; COST-BE4; ISSUE-BE1","**ID:** COST-BE1 · **Priority:** P1 · **Estimate:** 8
 **Blocked by:** PLAT-BE1; PLAT-BE2; COST-BE2 · **Blocks:** COST-BE3; COST-BE4; ISSUE-BE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -230,7 +230,7 @@ decisions are trustworthy.
 - [ ] Re-running the job is idempotent (no double counting); backfill for a date range works.
 - [ ] The Python cost function matches the MVP `computeCallCost` outputs on a shared fixture set.
 - [ ] Unit tests for the cost formula + an integration test that ingests a sample batch."
-"Story","[BE] Cost & Margin · Cost ingestion · Effective-dated pricing catalog","","Cost & Margin","High","5","backend python supabase cost pricing","COST-BE2","PLAT-BE1","COST-BE1","**ID:** COST-BE2 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Cost & Margin · Cost ingestion · Effective-dated pricing catalog","","Cost & Margin","High","5","backend python postgres cost pricing","COST-BE2","PLAT-BE1","COST-BE1","**ID:** COST-BE2 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** PLAT-BE1 · **Blocks:** COST-BE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -257,7 +257,7 @@ time-aware, so re-computing a past month yields the same number it did then.
 - [ ] Cost computation selects the rate effective at the call timestamp (verified with a date-boundary test).
 - [ ] All MVP-catalogued providers/models are represented with real rates.
 - [ ] Updating a rate does not retroactively change already-priced historical calls."
-"Story","[BE] Cost & Margin · Revenue & margin · Contract revenue, margin & MRR engine","","Cost & Margin","High","8","backend python supabase revenue finance cost","COST-BE3","PLAT-BE1; COST-BE1","COST-BE4; BIZ-BE1","**ID:** COST-BE3 · **Priority:** P1 · **Estimate:** 8
+"Story","[BE] Cost & Margin · Revenue & margin · Contract revenue, margin & MRR engine","","Cost & Margin","High","8","backend python postgres revenue finance cost","COST-BE3","PLAT-BE1; COST-BE1","COST-BE4; BIZ-BE1","**ID:** COST-BE3 · **Priority:** P1 · **Estimate:** 8
 **Blocked by:** PLAT-BE1; COST-BE1 · **Blocks:** COST-BE4; BIZ-BE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -290,7 +290,7 @@ Latam = pure usage; others = MGF). Without this, the platform shows cost but not
 - [ ] Headline margin at org/global scope equals the sum of per-org contract margins (reconciliation).
 - [ ] `period_rollup` is refreshed within SLA and powers charts without scanning raw calls.
 - [ ] Unit tests cover both contract types and the scope-based reconciliation."
-"Story","[BE] Cost & Margin · API · Cost & Margin endpoint (Supabase-backed)","","Cost & Margin","High","5","backend python supabase api rbac cost","COST-BE4","COST-BE3; PLAT-BE3; PLAT-BE4","COST-FE1; COST-FE2","**ID:** COST-BE4 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Cost & Margin · API · Cost & Margin endpoint (Supabase-backed)","","Cost & Margin","High","5","backend python postgres api rbac cost","COST-BE4","COST-BE3; PLAT-BE3; PLAT-BE4","COST-FE1; COST-FE2","**ID:** COST-BE4 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** COST-BE3; PLAT-BE3; PLAT-BE4 · **Blocks:** COST-FE1; COST-FE2
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -420,7 +420,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `FE-1-call-logs-ui.md` (`CALLS-FE1`)
 - `FE-2-call-detail-ui.md` (`CALLS-FE2`)
 - `QA-1-calls-tests.md` (`CALLS-QA1`)"
-"Story","[BE] Call Logs · API · Filterable, paginated call logs endpoint","","Call Logs & Call Detail","High","5","backend python supabase api observability calls","CALLS-BE1","PLAT-BE1; PLAT-BE2","CALLS-FE1; CALLS-QA1","**ID:** CALLS-BE1 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Call Logs · API · Filterable, paginated call logs endpoint","","Call Logs & Call Detail","High","5","backend python postgres api observability calls","CALLS-BE1","PLAT-BE1; PLAT-BE2","CALLS-FE1; CALLS-QA1","**ID:** CALLS-BE1 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** PLAT-BE1; PLAT-BE2 · **Blocks:** CALLS-FE1; CALLS-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -446,7 +446,7 @@ The call log is the operational backbone and the entry point for drill-downs acr
 - [ ] `User` rows contain no revenue/margin.
 - [ ] CSV export endpoint for SuperAdmin (bulk), respecting filters.
 - [ ] Parity test vs MVP mock on shared dataset."
-"Story","[BE] Call Logs · API · Call detail (transcript, recording, cost, logs)","","Call Logs & Call Detail","High","5","backend python supabase api storage calls","CALLS-BE2","PLAT-BE2; COST-BE1","CALLS-FE2; CALLS-QA1","**ID:** CALLS-BE2 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Call Logs · API · Call detail (transcript, recording, cost, logs)","","Call Logs & Call Detail","High","5","backend python postgres api storage calls","CALLS-BE2","PLAT-BE2; COST-BE1","CALLS-FE2; CALLS-QA1","**ID:** CALLS-BE2 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** PLAT-BE2; COST-BE1 · **Blocks:** CALLS-FE2; CALLS-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -544,7 +544,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-performance-api.md` (`PERF-BE1`)
 - `FE-1-performance-ui.md` (`PERF-FE1`)
 - `QA-1-performance-tests.md` (`PERF-QA1`)"
-"Story","[BE] Performance · API · Latency & error metrics endpoint","","Performance","High","5","backend python supabase api observability perf","PERF-BE1","PLAT-BE2","PERF-FE1; PERF-QA1","**ID:** PERF-BE1 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Performance · API · Latency & error metrics endpoint","","Performance","High","5","backend python postgres api observability perf","PERF-BE1","PLAT-BE2","PERF-FE1; PERF-QA1","**ID:** PERF-BE1 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** PLAT-BE2 · **Blocks:** PERF-FE1; PERF-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -610,7 +610,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-live-ops-api.md` (`LIVE-BE1`)
 - `FE-1-live-ops-ui.md` (`LIVE-FE1`)
 - `QA-1-live-ops-tests.md` (`LIVE-QA1`)"
-"Story","[BE] Live Operations · API · Live ops endpoint + realtime source","","Live Operations","High","5","backend python supabase api realtime live","LIVE-BE1","PLAT-BE2","LIVE-FE1; LIVE-QA1","**ID:** LIVE-BE1 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Live Operations · API · Live ops endpoint + realtime source","","Live Operations","High","5","backend python postgres api realtime live","LIVE-BE1","PLAT-BE2","LIVE-FE1; LIVE-QA1","**ID:** LIVE-BE1 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** PLAT-BE2 · **Blocks:** LIVE-FE1; LIVE-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -683,7 +683,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-thresholds-api.md` (`THRESH-BE1`)
 - `FE-1-thresholds-ui.md` (`THRESH-FE1`)
 - `QA-1-thresholds-tests.md` (`THRESH-QA1`)"
-"Story","[BE] Thresholds · API · Thresholds & categories CRUD","","Thresholds","High","3","backend python supabase api rbac thresh","THRESH-BE1","PLAT-BE1; PLAT-BE3","ISSUE-BE1; THRESH-FE1","**ID:** THRESH-BE1 · **Priority:** P1 · **Estimate:** 3
+"Story","[BE] Thresholds · API · Thresholds & categories CRUD","","Thresholds","High","3","backend python postgres api rbac thresh","THRESH-BE1","PLAT-BE1; PLAT-BE3","ISSUE-BE1; THRESH-FE1","**ID:** THRESH-BE1 · **Priority:** P1 · **Estimate:** 3
 **Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** ISSUE-BE1; THRESH-FE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -753,7 +753,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-issue-engine-api.md` (`ISSUE-BE1`)
 - `FE-1-issues-ui.md` (`ISSUE-FE1`)
 - `QA-1-issues-tests.md` (`ISSUE-QA1`)"
-"Story","[BE] Issues · Engine & API · Threshold evaluation + auto-flag","","Issues","High","8","backend python supabase api observability issue","ISSUE-BE1","THRESH-BE1; PLAT-BE2; COST-BE1","ISSUE-FE1; FLAG-BE1; ISSUE-QA1","**ID:** ISSUE-BE1 · **Priority:** P1 · **Estimate:** 8
+"Story","[BE] Issues · Engine & API · Threshold evaluation + auto-flag","","Issues","High","8","backend python postgres api observability issue","ISSUE-BE1","THRESH-BE1; PLAT-BE2; COST-BE1","ISSUE-FE1; FLAG-BE1; ISSUE-QA1","**ID:** ISSUE-BE1 · **Priority:** P1 · **Estimate:** 8
 **Blocked by:** THRESH-BE1; PLAT-BE2; COST-BE1 · **Blocks:** ISSUE-FE1; FLAG-BE1; ISSUE-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -829,7 +829,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-flags-api.md` (`FLAG-BE1`)
 - `FE-1-flag-queue-ui.md` (`FLAG-FE1`)
 - `QA-1-flagging-tests.md` (`FLAG-QA1`)"
-"Story","[BE] Call Flagging · API · Flags store & endpoints","","Call Flagging","High","5","backend python supabase api flag","FLAG-BE1","PLAT-BE2; ISSUE-BE1","FLAG-FE1; FLAG-QA1","**ID:** FLAG-BE1 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Call Flagging · API · Flags store & endpoints","","Call Flagging","High","5","backend python postgres api flag","FLAG-BE1","PLAT-BE2; ISSUE-BE1","FLAG-FE1; FLAG-QA1","**ID:** FLAG-BE1 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** PLAT-BE2; ISSUE-BE1 · **Blocks:** FLAG-FE1; FLAG-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -905,7 +905,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-2-notifications.md` (`HEALTH-BE2`)
 - `FE-1-health-ui.md` (`HEALTH-FE1`)
 - `QA-1-health-tests.md` (`HEALTH-QA1`)"
-"Story","[BE] Service Health · API · Health checks, status & incidents","","Service Health","Medium","8","backend python supabase api observability health","HEALTH-BE1","PLAT-BE1","HEALTH-BE2; HEALTH-FE1; HEALTH-QA1","**ID:** HEALTH-BE1 · **Priority:** P2 · **Estimate:** 8
+"Story","[BE] Service Health · API · Health checks, status & incidents","","Service Health","Medium","8","backend python postgres api observability health","HEALTH-BE1","PLAT-BE1","HEALTH-BE2; HEALTH-FE1; HEALTH-QA1","**ID:** HEALTH-BE1 · **Priority:** P2 · **Estimate:** 8
 **Blocked by:** PLAT-BE1 · **Blocks:** HEALTH-BE2; HEALTH-FE1; HEALTH-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -930,7 +930,7 @@ Track platform health and know exactly which projects an outage impacts so the r
 - [ ] Incidents list correct affected projects (provider→projects mapping verified).
 - [ ] Scope filtering matches the MVP behavior; refresh ≤ the dashboard cadence.
 - [ ] History retained for uptime % and heartbeat bars."
-"Story","[BE] Service Health · Notifications · Recipients, overrides & alerting","","Service Health","Medium","5","backend python supabase notifications email health","HEALTH-BE2","HEALTH-BE1","HEALTH-QA1","**ID:** HEALTH-BE2 · **Priority:** P2 · **Estimate:** 5
+"Story","[BE] Service Health · Notifications · Recipients, overrides & alerting","","Service Health","Medium","5","backend python postgres notifications email health","HEALTH-BE2","HEALTH-BE1","HEALTH-QA1","**ID:** HEALTH-BE2 · **Priority:** P2 · **Estimate:** 5
 **Blocked by:** HEALTH-BE1 · **Blocks:** HEALTH-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -1143,7 +1143,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-business-api.md` (`BIZ-BE1`)
 - `FE-1-business-ui.md` (`BIZ-FE1`)
 - `QA-1-business-tests.md` (`BIZ-QA1`)"
-"Story","[BE] Business Health · API · MRR/churn/growth + usage metrics","","Business Health","Medium","8","backend python supabase api finance rbac biz","BIZ-BE1","COST-BE3; PLAT-BE2","BIZ-FE1; BIZ-QA1","**ID:** BIZ-BE1 · **Priority:** P2 · **Estimate:** 8
+"Story","[BE] Business Health · API · MRR/churn/growth + usage metrics","","Business Health","Medium","8","backend python postgres api finance rbac biz","BIZ-BE1","COST-BE3; PLAT-BE2","BIZ-FE1; BIZ-QA1","**ID:** BIZ-BE1 · **Priority:** P2 · **Estimate:** 8
 **Blocked by:** COST-BE3; PLAT-BE2 · **Blocks:** BIZ-FE1; BIZ-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -1218,7 +1218,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-assistant-usage-api.md` (`ASST-BE1`)
 - `FE-1-assistant-ui.md` (`ASST-FE1`)
 - `QA-1-assistant-tests.md` (`ASST-QA1`)"
-"Story","[BE] Assistant Usage · API · Subagent usage ingestion & endpoint","","Assistant Usage (subagents)","Medium","5","backend python supabase api cost asst","ASST-BE1","PLAT-BE1; COST-BE2","ASST-FE1; ASST-QA1; OVW-BE1","**ID:** ASST-BE1 · **Priority:** P2 · **Estimate:** 5
+"Story","[BE] Assistant Usage · API · Subagent usage ingestion & endpoint","","Assistant Usage (subagents)","Medium","5","backend python postgres api cost asst","ASST-BE1","PLAT-BE1; COST-BE2","ASST-FE1; ASST-QA1; OVW-BE1","**ID:** ASST-BE1 · **Priority:** P2 · **Estimate:** 5
 **Blocked by:** PLAT-BE1; COST-BE2 · **Blocks:** ASST-FE1; ASST-QA1; OVW-BE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -1286,7 +1286,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-1-overview-api.md` (`OVW-BE1`)
 - `FE-1-overview-ui.md` (`OVW-FE1`)
 - `QA-1-overview-tests.md` (`OVW-QA1`)"
-"Story","[BE] Overview · API · Aggregated landing metrics","","Overview","Medium","5","backend python supabase api rbac ovw","OVW-BE1","COST-BE4; ASST-BE1; PLAT-BE2","OVW-FE1; OVW-QA1","**ID:** OVW-BE1 · **Priority:** P2 · **Estimate:** 5
+"Story","[BE] Overview · API · Aggregated landing metrics","","Overview","Medium","5","backend python postgres api rbac ovw","OVW-BE1","COST-BE4; ASST-BE1; PLAT-BE2","OVW-FE1; OVW-QA1","**ID:** OVW-BE1 · **Priority:** P2 · **Estimate:** 5
 **Blocked by:** COST-BE4; ASST-BE1; PLAT-BE2 · **Blocks:** OVW-FE1; OVW-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -1356,7 +1356,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-2-pipeline-integration.md` (`FALLB-BE2`)
 - `FE-1-fallback-ui.md` (`FALLB-FE1`)
 - `QA-1-fallback-tests.md` (`FALLB-QA1`)"
-"Story","[BE] Fallbacks · API · Fallback config store & endpoint","","Fallback Controls","Low","3","backend python supabase api rbac fallb","FALLB-BE1","PLAT-BE1; PLAT-BE3","FALLB-BE2; FALLB-FE1","**ID:** FALLB-BE1 · **Priority:** P3 · **Estimate:** 3
+"Story","[BE] Fallbacks · API · Fallback config store & endpoint","","Fallback Controls","Low","3","backend python postgres api rbac fallb","FALLB-BE1","PLAT-BE1; PLAT-BE3","FALLB-BE2; FALLB-FE1","**ID:** FALLB-BE1 · **Priority:** P3 · **Estimate:** 3
 **Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** FALLB-BE2; FALLB-FE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -1453,7 +1453,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-2-ingress-enforcement.md` (`IPACC-BE2`)
 - `FE-1-ip-access-ui.md` (`IPACC-FE1`)
 - `QA-1-ip-access-tests.md` (`IPACC-QA1`)"
-"Story","[BE] IP Access · API · Rules, default policy & evaluation","","IP Access Control","Low","5","backend python supabase api security rbac ipacc","IPACC-BE1","PLAT-BE1; PLAT-BE3","IPACC-BE2; IPACC-FE1","**ID:** IPACC-BE1 · **Priority:** P3 · **Estimate:** 5
+"Story","[BE] IP Access · API · Rules, default policy & evaluation","","IP Access Control","Low","5","backend python postgres api security rbac ipacc","IPACC-BE1","PLAT-BE1; PLAT-BE3","IPACC-BE2; IPACC-FE1","**ID:** IPACC-BE1 · **Priority:** P3 · **Estimate:** 5
 **Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** IPACC-BE2; IPACC-FE1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -1551,7 +1551,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 
 ## Open product decisions (from PRD/11)
 - Which ~2 external eval libraries; Evals revenue model (credits vs included); who may trigger agent pause."
-"Story","[BE] QA Bench · Engine & API · Evaluators, schedules, runs & actions","","QA Bench / Evals","Lowest","13","backend python supabase evals api qabench","QABENCH-BE1","CALLS-BE2; THRESH-BE1; FLAG-BE1","QABENCH-FE1; QABENCH-QA1","**ID:** QABENCH-BE1 · **Priority:** P4 · **Estimate:** 13
+"Story","[BE] QA Bench · Engine & API · Evaluators, schedules, runs & actions","","QA Bench / Evals","Lowest","13","backend python postgres evals api qabench","QABENCH-BE1","CALLS-BE2; THRESH-BE1; FLAG-BE1","QABENCH-FE1; QABENCH-QA1","**ID:** QABENCH-BE1 · **Priority:** P4 · **Estimate:** 13
 **Blocked by:** CALLS-BE2; THRESH-BE1; FLAG-BE1 · **Blocks:** QABENCH-FE1; QABENCH-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/11
 

@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE1`
 - **Blocks:** `COST-BE1`
-- **Components/Labels:** `backend` `python` `supabase` `cost` `pricing`
+- **Components/Labels:** `backend` `python` `postgres` `cost` `pricing`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/engine/pricing.ts`, `PRD/03-cost-revenue-margin.md` §2.2

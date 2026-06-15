@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE1`, `PLAT-BE2`, `COST-BE2`
 - **Blocks:** `COST-BE3`, `COST-BE4`, `ISSUE-BE1` (cost_per_call metric)
-- **Components/Labels:** `backend` `python` `supabase` `cost` `etl`
+- **Components/Labels:** `backend` `python` `postgres` `cost` `etl`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/engine/cost.ts` (`computeCallCost`), `src/lib/types.ts` (`CallUsage`, `CallCost`),

@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE1`, `COST-BE1`
 - **Blocks:** `COST-BE4`, `BIZ-BE1` (MRR/contracts)
-- **Components/Labels:** `backend` `python` `supabase` `revenue` `finance`
+- **Components/Labels:** `backend` `python` `postgres` `revenue` `finance`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/engine/cost.ts` (`computeOrgMonthlyRevenue`, `computeMrr`, `marginPct`),

@@ -7,7 +7,7 @@
 - **Priority:** P3
 - **Blocked by:** `PLAT-BE1`, `PLAT-BE3`
 - **Blocks:** `IPACC-BE2`, `IPACC-FE1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `security` `rbac`
+- **Components/Labels:** `backend` `python` `postgres` `api` `security` `rbac`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/engine/ip.ts`, `source.ts` (`IpRulesResult`, `AddIpRuleInput`, `SetIpPolicyInput`), `src/app/api/access/route.ts`, `PRD/16`

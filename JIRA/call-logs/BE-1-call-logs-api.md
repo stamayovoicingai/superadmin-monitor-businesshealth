@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE1`, `PLAT-BE2`
 - **Blocks:** `CALLS-FE1`, `CALLS-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `observability`
+- **Components/Labels:** `backend` `python` `postgres` `api` `observability`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/data/source.ts` (`CallPage`, `CallFilter`), `src/app/api/calls/route.ts`, `src/lib/data/mock.ts` (`listCalls`)

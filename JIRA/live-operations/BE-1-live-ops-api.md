@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE2`
 - **Blocks:** `LIVE-FE1`, `LIVE-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `realtime`
+- **Components/Labels:** `backend` `python` `postgres` `api` `realtime`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/data/source.ts` (`LiveOpsResult`), `src/lib/data/mock.ts` (`liveOps`), `PRD/07`, `PRD/04` S1

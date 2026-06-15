@@ -7,7 +7,7 @@
 - **Priority:** P1
 - **Blocked by:** `PLAT-BE2`, `COST-BE1` (per-service cost)
 - **Blocks:** `CALLS-FE2`, `CALLS-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `api` `storage`
+- **Components/Labels:** `backend` `python` `postgres` `api` `storage`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `src/lib/data/source.ts` (`CallDetail`), `src/app/(dashboard)/calls/[callId]/page.tsx`, `PRD/05` §3, `PRD/04` S7

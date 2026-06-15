@@ -7,7 +7,7 @@
 - **Priority:** P0
 - **Blocked by:** —
 - **Blocks:** every backend task (esp. `PLAT-BE2`, `COST-BE*`, `THRESH-BE*`, `HEALTH-BE*`, all `*-BE-api`)
-- **Components/Labels:** `backend` `supabase` `database` `foundation`
+- **Components/Labels:** `backend` `postgres` `database` `foundation`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
   `PRD/12-data-model.md`, `src/lib/types.ts`, `src/lib/seed/index.ts`

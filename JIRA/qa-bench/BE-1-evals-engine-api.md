@@ -7,7 +7,7 @@
 - **Priority:** P4
 - **Blocked by:** `CALLS-BE2`, `THRESH-BE1`, `FLAG-BE1`
 - **Blocks:** `QABENCH-FE1`, `QABENCH-QA1`
-- **Components/Labels:** `backend` `python` `supabase` `evals` `api`
+- **Components/Labels:** `backend` `python` `postgres` `evals` `api`
 - **Estimate:** 13
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — `PRD/11`
 
