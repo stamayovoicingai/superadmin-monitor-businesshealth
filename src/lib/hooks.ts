@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useView } from "@/components/view-context";
 import { resolveRangeState, type RangeState } from "@/lib/period";
@@ -226,7 +227,8 @@ function withLocalRange(globalQuery: string, range?: RangeState): string {
 
 export function useInfraK8s(range?: RangeState) {
   const { query } = useView();
-  const qs = withLocalRange(query, range);
+  // Memoize so a preset range (which resolves via new Date()) doesn't change the key every render.
+  const qs = useMemo(() => withLocalRange(query, range), [query, range]);
   return useQuery({
     queryKey: ["infra-k8s", qs],
     queryFn: () => fetchJson<K8sResult>(`/api/infra/kubernetes?${qs}`),
@@ -235,7 +237,7 @@ export function useInfraK8s(range?: RangeState) {
 
 export function useInfraElb(range?: RangeState) {
   const { query } = useView();
-  const qs = withLocalRange(query, range);
+  const qs = useMemo(() => withLocalRange(query, range), [query, range]);
   return useQuery({
     queryKey: ["infra-elb", qs],
     queryFn: () => fetchJson<ElbResult>(`/api/infra/elb?${qs}`),
