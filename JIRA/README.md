@@ -7,8 +7,9 @@ per **tab/module** (= one **Epic**). Each Epic folder contains an `EPIC.md` and 
 > **MVP reference repo:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 > Every task links to the exact MVP files so devs can see the working prototype before building.
 
-Read **[`CONVENTIONS.md`](./CONVENTIONS.md)** first — it defines the issue template, types, labels,
-estimation, and the MVP→production framing used by every task.
+Read **[`CONVENTIONS.md`](./CONVENTIONS.md)** first (issue template, types, labels, estimation, IDs,
+priority scale, and the MVP→production framing) and **[`ROADMAP.md`](./ROADMAP.md)** for the global
+**priority tiers, dependency graph, and delivery waves** (what to build first, what blocks what).
 
 ## Epics (one per tab)
 
