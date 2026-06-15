@@ -2,6 +2,7 @@
 import type {
   Call,
   CallFlag,
+  FlagStatus,
   FallbackConfig,
   FallbackScopeType,
   FallbackService,
@@ -63,6 +64,7 @@ import type {
   IssuesResult,
   CreateThresholdInput,
   UpdateThresholdPatch,
+  CreateFlagInput,
 } from "./source";
 
 /* ----- Infra mock generators (deterministic per scope) ----- */
@@ -152,6 +154,7 @@ function flagStore(): CallFlag[] {
         reason: "Flagged by user",
         status: "open" as const,
         createdAt: c.startTime,
+        comments: [],
       }));
   }
   return _flags;
@@ -848,6 +851,7 @@ export class MockAdapter implements DataSource {
             severity: "critical",
             status: "open",
             createdAt: ac.timestamp,
+            comments: [],
           });
         }
       }
@@ -918,5 +922,47 @@ export class MockAdapter implements DataSource {
     return flagStore()
       .filter((f) => (!scope.orgId || f.orgId === scope.orgId) && (!scope.projectId || f.projectId === scope.projectId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async createFlag(input: CreateFlagInput): Promise<CallFlag> {
+    const { calls, projects } = getDataset();
+    const call = calls.find((c) => c.callId === input.callId || c.id === input.callId);
+    const store = flagStore();
+    const now = new Date().toISOString();
+    const comment = input.comment.trim();
+
+    // One manual flag per call — append a comment if it already exists.
+    const existing = store.find((f) => f.callId === (call?.callId ?? input.callId) && f.source === "manual");
+    if (existing) {
+      if (comment) existing.comments.push({ author: "you@voicing.ai", body: comment, createdAt: now });
+      existing.status = "open";
+      return existing;
+    }
+
+    const projectName = call ? projects.find((p) => p.id === call.projectId)?.name ?? call.projectId : "—";
+    const flag: CallFlag = {
+      id: `flag-manual-${call?.callId ?? input.callId}-${Date.now()}`,
+      callId: call?.callId ?? input.callId,
+      orgId: call?.orgId ?? "",
+      projectId: call?.projectId ?? "",
+      projectName,
+      source: "manual",
+      reason: comment || "Flagged by user",
+      status: "open",
+      createdAt: now,
+      comments: comment ? [{ author: "you@voicing.ai", body: comment, createdAt: now }] : [],
+    };
+    store.push(flag);
+    return flag;
+  }
+
+  async updateFlagStatus(id: string, status: FlagStatus): Promise<void> {
+    const f = flagStore().find((x) => x.id === id);
+    if (f) f.status = status;
+  }
+
+  async addFlagComment(id: string, body: string): Promise<void> {
+    const f = flagStore().find((x) => x.id === id);
+    if (f && body.trim()) f.comments.push({ author: "you@voicing.ai", body: body.trim(), createdAt: new Date().toISOString() });
   }
 }

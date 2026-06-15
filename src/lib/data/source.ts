@@ -8,6 +8,7 @@ import type {
   Call,
   CallEndReason,
   CallFlag,
+  FlagStatus,
   EndReasonCount,
   FallbackConfig,
   FallbackEvent,
@@ -258,6 +259,11 @@ export interface IssuesResult {
   summary: { critical: number; warning: number; affectedCalls: number; autoFlagged: number };
 }
 
+export interface CreateFlagInput {
+  callId: string;
+  comment: string;
+}
+
 export interface CreateThresholdInput {
   metric: ThresholdMetric;
   scopeType: ThresholdScopeType;
@@ -316,4 +322,7 @@ export interface DataSource {
   deleteThreshold(id: string): Promise<void>;
   createIssueCategory(name: string): Promise<IssueCategory>;
   listFlags(scope: Scope): Promise<CallFlag[]>;
+  createFlag(input: CreateFlagInput): Promise<CallFlag>;
+  updateFlagStatus(id: string, status: FlagStatus): Promise<void>;
+  addFlagComment(id: string, body: string): Promise<void>;
 }

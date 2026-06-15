@@ -11,9 +11,10 @@ client plumbing + app shell + 6 pages** (Overview, Cost & Margin, Performance, C
 Live Operations, **Business Health**). `npm run build` passes (**24 routes**); `npm run dev` → all routes
 200 with mock data. The whole project is **pushed to GitHub** (`origin/main`).
 
-What remains: Issues/Thresholds and Call Flagging module UIs, QA Bench (Phase 2 design only), the
-**Supabase wiring**, and minor housekeeping (`.env.example`, tests). (Infra k8s+ELB, Fallbacks,
-Service Health, IP Access, Assistant Usage and Business Health are built.)
+What remains: **QA Bench** (Phase 2, design only), the **Supabase wiring**, and minor housekeeping
+(`.env.example`, tests). Everything else is built: Overview, Cost & Margin, Performance, Call Logs +
+Detail, Live Ops, Business Health, Assistant Usage, IP Access, Fallbacks, Service Health, Infra
+(k8s + ELB), Issues + Thresholds, and Call Flagging.
 
 ## Repo & deploy
 
@@ -126,13 +127,18 @@ allow+block lists, org→project inheritance, add/delete, IP tester; SuperAdmin-
 > = extend `DataSource` + `MockAdapter` (+ `types`/`seed` if new fields) → API route → hook → page →
 > nav. Replacing a `ComingSoon` stub reuses the existing route.
 
-1. **Call Flagging** (PRD/10) — full review queue UI. Auto-flags are ALREADY produced by Issues
-   (critical breaches → `flag-auto-*`, source=auto) and a `CallFlag` store + `listFlags(scope)` exist;
-   the Call Detail flag button still just toasts (wire it to create a manual flag) and `/controls/flags`
-   needs the triage UI. Route: `/controls/flags`.
-2. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
+1. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
 
-### DONE since: Issues + Thresholds (PRD/05 §4-5)
+### DONE since: Call Flagging (PRD/10)
+- **Flag Queue** `/controls/flags` (SuperAdmin): unified triage of manual + auto flags; filters
+  (status/source), KPIs, per-row status change, and a notes/comments popover. Affected project shown.
+- **Manual flagging** wired on Call Detail: the flag button opens a note popover → creates a real
+  `CallFlag` (source=manual) in the store and lands in the queue.
+- `DataSource`: createFlag / updateFlagStatus / addFlagComment (+ existing listFlags). `CallFlag`
+  gained `comments[]`. API `/api/flags` (GET/POST/PATCH). Hooks: useFlags/useCreateFlag/useUpdateFlag.
+- Auto-flags continue to be produced by Issues (critical breaches) into the same store.
+
+### DONE earlier: Issues + Thresholds (PRD/05 §4-5)
 - **Thresholds** `/controls/thresholds` (SuperAdmin): per-metric Warning/Critical, category, enable,
   scope via Org/Project filter; add/delete; manage categories; abandonment metric has a **closed-reason
   multiselect**. **Issues** `/issues`: KPIs (critical/warning/affected/auto-flagged), Issues-by-Category,

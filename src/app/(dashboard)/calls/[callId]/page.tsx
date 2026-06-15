@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Flag } from "lucide-react";
 import { toast } from "sonner";
@@ -8,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DispositionBadge, EndReasonChip, StatusChip } from "@/components/chips";
-import { useCall } from "@/lib/hooks";
+import { useCall, useCreateFlag } from "@/lib/hooks";
 import { useFinancials } from "@/components/financial-gate";
 import { formatMicros, formatMicrosPrecise, formatNumber, microsToUsd } from "@/lib/money";
 import { SERVICE_LABELS } from "@/lib/engine/pricing";
@@ -50,6 +52,9 @@ export default function CallDetailPage() {
   const router = useRouter();
   const fin = useFinancials();
   const { data, isLoading } = useCall(params.callId);
+  const createFlag = useCreateFlag();
+  const [flagNote, setFlagNote] = React.useState("");
+  const [flagOpen, setFlagOpen] = React.useState(false);
 
   if (isLoading) {
     return (
@@ -98,13 +103,42 @@ export default function CallDetailPage() {
             <Button variant="ghost" size="sm" onClick={() => router.push("/calls")}>
               <ArrowLeft className="size-4" /> Back
             </Button>
-            <Button
-              variant={call.flagged ? "secondary" : "default"}
-              size="sm"
-              onClick={() => toast.success(call.flagged ? "Call already flagged" : "Call flagged for review")}
-            >
-              <Flag className="size-4" /> {call.flagged ? "Flagged" : "Flag this call"}
-            </Button>
+            <Popover open={flagOpen} onOpenChange={setFlagOpen}>
+              <PopoverTrigger render={<Button variant={call.flagged ? "secondary" : "default"} size="sm" />}>
+                <Flag className="size-4" /> {call.flagged ? "Flagged" : "Flag this call"}
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 space-y-2">
+                <div className="text-sm font-semibold">Flag this call</div>
+                <p className="text-xs text-muted-foreground">Describe the problem. It enters the review queue (Controls → Flag Queue).</p>
+                <textarea
+                  value={flagNote}
+                  onChange={(e) => setFlagNote(e.target.value)}
+                  placeholder="What went wrong on this call?"
+                  rows={3}
+                  className="w-full rounded-md border bg-transparent p-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                />
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={!flagNote.trim()}
+                  onClick={() =>
+                    createFlag.mutate(
+                      { callId: call.callId, comment: flagNote.trim() },
+                      {
+                        onSuccess: () => {
+                          toast.success("Call flagged for review");
+                          setFlagNote("");
+                          setFlagOpen(false);
+                        },
+                        onError: () => toast.error("Could not flag the call"),
+                      },
+                    )
+                  }
+                >
+                  <Flag className="size-4" /> Flag for review
+                </Button>
+              </PopoverContent>
+            </Popover>
           </>
         }
       />

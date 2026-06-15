@@ -248,6 +248,12 @@ export interface Issue {
 
 export type FlagStatus = "open" | "in_review" | "resolved" | "dismissed";
 
+export interface FlagComment {
+  author: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface CallFlag {
   id: string;
   callId: string;
@@ -260,6 +266,7 @@ export interface CallFlag {
   severity?: Severity;
   status: FlagStatus;
   createdAt: string;
+  comments: FlagComment[];
 }
 
 /* ----- IP Access Control (whitelist / blacklist) ----- */

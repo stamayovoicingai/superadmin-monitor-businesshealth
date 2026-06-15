@@ -27,7 +27,7 @@ import type {
   CreateThresholdInput,
   UpdateThresholdPatch,
 } from "@/lib/data/source";
-import type { Agent, IpRule, IssueCategory, Organization, Project, Threshold } from "@/lib/types";
+import type { Agent, CallFlag, FlagStatus, IpRule, IssueCategory, Organization, Project, Threshold } from "@/lib/types";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -289,6 +289,36 @@ export function useCreateCategory() {
       if (!res.ok) throw new Error("request_failed");
     },
     onSuccess: () => invalidateIssues(qc),
+  });
+}
+
+export function useFlags() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["flags", query],
+    queryFn: () => fetchJson<CallFlag[]>(`/api/flags?${query}`),
+  });
+}
+
+export function useCreateFlag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { callId: string; comment: string }) => {
+      const res = await fetch("/api/flags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["flags"] }),
+  });
+}
+
+export function useUpdateFlag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; status?: FlagStatus; comment?: string }) => {
+      const res = await fetch("/api/flags", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["flags"] }),
   });
 }
 
