@@ -11,8 +11,9 @@ client plumbing + app shell + 6 pages** (Overview, Cost & Margin, Performance, C
 Live Operations, **Business Health**). `npm run build` passes (**24 routes**); `npm run dev` → all routes
 200 with mock data. The whole project is **pushed to GitHub** (`origin/main`).
 
-What remains: 4 module UIs (Issues/Thresholds, Infra k8s+ELB, Fallbacks, Call Flagging), QA Bench
-(Phase 2 design only), the **Supabase wiring**, and minor housekeeping (`.env.example`, tests).
+What remains: Issues/Thresholds and Call Flagging module UIs, QA Bench (Phase 2 design only), the
+**Supabase wiring**, and minor housekeeping (`.env.example`, tests). (Infra k8s+ELB, Fallbacks,
+Service Health, IP Access, Assistant Usage and Business Health are built.)
 
 ## Repo & deploy
 
@@ -116,15 +117,21 @@ allow+block lists, org→project inheritance, add/delete, IP tester; SuperAdmin-
 1. **Issues + Thresholds** (PRD/05 §4–5) — add `threshold` + `issue` shapes; derive active issues by
    comparing calls/rollups to thresholds; Active Issues + Issues-by-Category views; threshold config UI
    (SuperAdmin). Routes already stubbed: `/issues`, `/controls/thresholds`.
-2. **Infra: Kubernetes + AWS ELB** (PRD/06) — replicate the real Grafana panels (mapped in
-   `PRD/04-data-sources.md`): k8s gauges/timeseries (Prometheus metrics) + ELB CloudWatch panels.
-   Build reusable declarative panel components + mock timeseries generators keyed to template vars.
-   Routes: `/infra/kubernetes`, `/infra/elb`.
-3. **Call Flagging** (PRD/10) — flag action (already a toast on Call Detail) → real `call_flag` state +
+2. **Call Flagging** (PRD/10) — flag action (already a toast on Call Detail) → real `call_flag` state +
    review queue. Route: `/controls/flags`.
-4. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
+3. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
 
-### DONE since: Fallbacks (PRD/08) + Service Health (PRD/18)
+### DONE since: Infra k8s + ELB (PRD/06)
+- **Kubernetes** `/infra/kubernetes` (SuperAdmin): Cluster Usage (CPU/Mem/Storage gauges + used/total
+  stats + replica count), Overall Usage, Pods CPU/Mem, Containers CPU/Mem, Requests & Limits bars,
+  Restarts (total + series), Deployment Logs. Namespace from project filter (else cluster-wide).
+- **AWS ELB** `/infra/elb` (SuperAdmin): all CloudWatch panels — RequestCount/TargetResponseTime,
+  HTTPCode_Target, HTTPCode_ELB, ConnectionCount, LCUs/ProcessedBytes, TLS errors, IPv6, RuleEvaluations, Auth.
+- `DataSource.infraK8s/infraElb` with deterministic per-scope mock timeseries (seeded by scope hash);
+  `/api/infra/kubernetes`, `/api/infra/elb`; `useInfraK8s`/`useInfraElb`. New charts: `GaugeChart`,
+  `MultiLineChart`. NOTE: series are mock generators matching the real Grafana metric names (PRD/04).
+
+### DONE earlier: Fallbacks (PRD/08) + Service Health (PRD/18)
 - **Fallbacks** `/controls/fallbacks` (SuperAdmin): tabs STT/TTS/LLM; enable toggle, single fallback
   (STT/TTS), LLM cost-ordered list with reorder (up/down) + cost labels + add/remove; scope override via
   Org/Project filter; recent fallback-activity table. Engine `lib/engine/fallbacks.ts`; mutable config

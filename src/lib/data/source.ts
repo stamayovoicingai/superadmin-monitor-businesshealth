@@ -179,6 +179,64 @@ export interface SetServiceOverrideInput {
   emails: string[];
 }
 
+/* ----- Infra: Kubernetes ----- */
+
+export interface K8sPoint {
+  t: string;
+  [series: string]: number | string;
+}
+
+export interface K8sResult {
+  namespaces: string[];
+  nodes: string[];
+  selectedNamespace: string | null; // null = whole cluster
+  cluster: {
+    cpuPct: number;
+    memPct: number;
+    storagePct: number;
+    cpuUsedCores: number;
+    cpuTotalCores: number;
+    memUsedGiB: number;
+    memTotalGiB: number;
+    storageUsedGiB: number;
+    storageTotalGiB: number;
+    replicaCount: number;
+  };
+  overall: K8sPoint[]; // { t, cpu, mem }
+  podKeys: string[];
+  podCpu: K8sPoint[];
+  podMem: K8sPoint[];
+  containerKeys: string[];
+  containerCpu: K8sPoint[];
+  containerMem: K8sPoint[];
+  requestsLimits: { container: string; cpuRequest: number; cpuLimit: number; memRequestGiB: number; memLimitGiB: number }[];
+  restartsTotal: number;
+  restarts: K8sPoint[]; // { t, restarts }
+  logs: { ts: string; level: "ERROR" | "WARN" | "INFO"; line: string }[];
+}
+
+/* ----- Infra: AWS ELB ----- */
+
+export interface ElbPoint {
+  t: string;
+  [series: string]: number | string;
+}
+
+export interface ElbResult {
+  regions: string[];
+  loadBalancers: string[];
+  selectedLb: string;
+  requests: ElbPoint[]; // requestCount, responseMs
+  httpTarget: ElbPoint[]; // 2xx/3xx/4xx/5xx
+  httpElb: ElbPoint[]; // 3xx/4xx/5xx
+  connections: ElbPoint[]; // active/new/rejected/targetErr
+  capacity: ElbPoint[]; // lcu, processedMB
+  tls: ElbPoint[]; // client, target
+  ipv6: ElbPoint[]; // requests, processedMB
+  ruleEvals: ElbPoint[]; // evals
+  auth: ElbPoint[]; // success/error/failure
+}
+
 export interface DataSource {
   listOrgs(): Promise<Organization[]>;
   listProjects(orgId?: string): Promise<Project[]>;
@@ -205,4 +263,7 @@ export interface DataSource {
   health(scope: Scope): Promise<HealthResult>;
   setRecipients(input: SetRecipientsInput): Promise<void>;
   setServiceOverride(input: SetServiceOverrideInput): Promise<void>;
+
+  infraK8s(scope: Scope): Promise<K8sResult>;
+  infraElb(scope: Scope): Promise<ElbResult>;
 }

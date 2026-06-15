@@ -8,8 +8,12 @@ import {
   CartesianGrid,
   Cell,
   Line,
+  LineChart,
   Pie,
   PieChart,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
   XAxis,
   YAxis,
 } from "recharts";
@@ -181,6 +185,58 @@ export function SimpleDonut({
         </Pie>
         <ChartLegend content={<ChartLegendContent nameKey="key" />} />
       </PieChart>
+    </ChartContainer>
+  );
+}
+
+const hourMin = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+export function GaugeChart({ value, label, unit = "%" }: { value: number; label: string; unit?: string }) {
+  const color = value < 60 ? "var(--chart-3)" : value < 85 ? "var(--chart-4)" : "var(--critical)";
+  const data = [{ name: label, value }];
+  return (
+    <div className="relative mx-auto h-[150px] w-[150px]">
+      <ChartContainer config={{ value: { label } }} className="h-full w-full">
+        <RadialBarChart data={data} startAngle={210} endAngle={-30} innerRadius={58} outerRadius={82} barSize={14}>
+          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+          <RadialBar dataKey="value" cornerRadius={8} fill={color} background />
+        </RadialBarChart>
+      </ChartContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-extrabold tabular-nums">{value}{unit}</span>
+        <span className="text-[11px] text-muted-foreground">{label}</span>
+      </div>
+    </div>
+  );
+}
+
+export function MultiLineChart({
+  data,
+  keys,
+  unit = "",
+  height = 240,
+}: {
+  data: Record<string, number | string>[];
+  keys: { key: string; label: string; color: string }[];
+  unit?: string;
+  height?: number;
+}) {
+  const config: ChartConfig = Object.fromEntries(keys.map((k) => [k.key, { label: k.label, color: k.color }]));
+  return (
+    <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
+      <LineChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <XAxis dataKey="t" tickFormatter={hourMin} tickLine={false} axisLine={false} minTickGap={36} />
+        <YAxis tickFormatter={(v) => `${v}${unit}`} tickLine={false} axisLine={false} width={48} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        {keys.map((k) => (
+          <Line key={k.key} dataKey={k.key} type="monotone" stroke={`var(--color-${k.key})`} strokeWidth={1.8} dot={false} />
+        ))}
+      </LineChart>
     </ChartContainer>
   );
 }

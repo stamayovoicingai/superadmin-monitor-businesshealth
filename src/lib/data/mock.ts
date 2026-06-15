@@ -18,6 +18,7 @@ import type {
 } from "@/lib/types";
 import { getDataset } from "@/lib/seed";
 import { SUBAGENTS, SUBAGENT_LABEL } from "@/lib/engine/subagents";
+import { Rng } from "@/lib/seed/rng";
 import {
   activeAgentsCount,
   callerSeries,
@@ -50,7 +51,36 @@ import type {
   HealthResult,
   SetRecipientsInput,
   SetServiceOverrideInput,
+  K8sResult,
+  K8sPoint,
+  ElbResult,
+  ElbPoint,
 } from "./source";
+
+/* ----- Infra mock generators (deterministic per scope) ----- */
+function hashSeed(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function timePoints(from: string | undefined, to: string | undefined, n: number): string[] {
+  const b = to ? new Date(to).getTime() : Date.now();
+  const a = from ? new Date(from).getTime() : b - 24 * 3600_000;
+  const step = (b - a) / (n - 1);
+  return Array.from({ length: n }, (_, i) => new Date(a + step * i).toISOString());
+}
+function wave(rng: Rng, n: number, base: number, amp: number, noise: number, spikeChance = 0): number[] {
+  const phase = rng.float(0, Math.PI * 2);
+  return Array.from({ length: n }, (_, i) => {
+    let v = base + amp * Math.sin(phase + i / 6) + rng.float(-noise, noise);
+    if (spikeChance && rng.bool(spikeChance)) v += amp * rng.float(2, 4);
+    return Math.max(0, v);
+  });
+}
+const r1 = (x: number) => Math.round(x * 10) / 10;
 
 /** Mutable IP-rule store (seeded copy) so add/delete persist within a server process. */
 let _ipRules: IpRule[] | null = null;
@@ -589,5 +619,141 @@ export class MockAdapter implements DataSource {
     const existing = store.find((o) => o.serviceId === input.serviceId);
     if (existing) existing.emails = input.emails;
     else store.push({ serviceId: input.serviceId, emails: input.emails });
+  }
+
+  async infraK8s(scope: Scope): Promise<K8sResult> {
+    const { projects } = getDataset();
+    const namespaces = projects.map((p) => p.namespace);
+    const nodes = ["ip-10-0-1-21", "ip-10-0-2-44", "ip-10-0-3-9"];
+    const proj = scope.projectId ? projects.find((p) => p.id === scope.projectId) : null;
+    const ns = proj?.namespace ?? null;
+    const nsShort = (ns ?? "cluster").replace("-bot-orchestration", "");
+    const rng = new Rng(hashSeed(`k8s:${ns ?? "cluster"}`));
+    const ts = timePoints(scope.from, scope.to, 48);
+    const N = ts.length;
+
+    const cpuPct = r1(rng.float(35, 72));
+    const memPct = r1(rng.float(42, 78));
+    const storagePct = r1(rng.float(24, 58));
+    const cpuTotalCores = ns ? 16 : 48;
+    const memTotalGiB = ns ? 64 : 192;
+    const storageTotalGiB = ns ? 300 : 1000;
+
+    const cpuW = wave(rng, N, cpuPct, 10, 4);
+    const memW = wave(rng, N, memPct, 8, 3);
+    const overall: K8sPoint[] = ts.map((t, i) => ({ t, cpu: r1(cpuW[i]), mem: r1(memW[i]) }));
+
+    const podKeys = Array.from({ length: 4 }, (_, i) => `${nsShort}-${(7 + i).toString(36)}${i}f-${i}`);
+    const podCpuW = podKeys.map(() => wave(rng, N, rng.float(0.3, 1.1), 0.4, 0.15));
+    const podMemW = podKeys.map(() => wave(rng, N, rng.float(0.5, 1.8), 0.5, 0.2));
+    const podCpu: K8sPoint[] = ts.map((t, i) => Object.fromEntries([["t", t], ...podKeys.map((k, j) => [k, r1(podCpuW[j][i])])]) as K8sPoint);
+    const podMem: K8sPoint[] = ts.map((t, i) => Object.fromEntries([["t", t], ...podKeys.map((k, j) => [k, r1(podMemW[j][i])])]) as K8sPoint);
+
+    const containerKeys = ["orchestrator", "stt-worker", "tts-worker", "llm-router"];
+    const cCpuW = containerKeys.map(() => wave(rng, N, rng.float(0.15, 0.8), 0.3, 0.1));
+    const cMemW = containerKeys.map(() => wave(rng, N, rng.float(0.3, 1.2), 0.4, 0.15));
+    const containerCpu: K8sPoint[] = ts.map((t, i) => Object.fromEntries([["t", t], ...containerKeys.map((k, j) => [k, r1(cCpuW[j][i])])]) as K8sPoint);
+    const containerMem: K8sPoint[] = ts.map((t, i) => Object.fromEntries([["t", t], ...containerKeys.map((k, j) => [k, r1(cMemW[j][i])])]) as K8sPoint);
+
+    const requestsLimits = containerKeys.map((c) => {
+      const cpuRequest = r1(rng.float(0.25, 0.5));
+      const memRequestGiB = r1(rng.float(0.5, 1));
+      return { container: c, cpuRequest, cpuLimit: r1(cpuRequest * rng.float(1.8, 3)), memRequestGiB, memLimitGiB: r1(memRequestGiB * rng.float(1.8, 2.5)) };
+    });
+
+    const restartsTotal = rng.int(0, ns ? 6 : 18);
+    const restarts: K8sPoint[] = ts.map((t) => ({ t, restarts: rng.bool(0.1) ? rng.int(1, 2) : 0 }));
+
+    const levels = ["INFO", "INFO", "INFO", "WARN", "ERROR"] as const;
+    const samples = [
+      "request handled in 142ms",
+      "VAD confidence 0.82",
+      "stream connected",
+      "high latency on STT provider, retrying",
+      "| ERROR | provider timeout, switched to fallback",
+    ];
+    const logs = Array.from({ length: 10 }, (_, i) => {
+      const idx = rng.int(0, 4);
+      return {
+        ts: new Date(new Date(ts[N - 1]).getTime() - i * 9000).toISOString(),
+        level: levels[idx],
+        line: `{namespace="${ns ?? "*"}"} ${samples[idx]}`,
+      };
+    });
+
+    return {
+      namespaces,
+      nodes,
+      selectedNamespace: ns,
+      cluster: {
+        cpuPct,
+        memPct,
+        storagePct,
+        cpuUsedCores: r1((cpuTotalCores * cpuPct) / 100),
+        cpuTotalCores,
+        memUsedGiB: r1((memTotalGiB * memPct) / 100),
+        memTotalGiB,
+        storageUsedGiB: r1((storageTotalGiB * storagePct) / 100),
+        storageTotalGiB,
+        replicaCount: ns ? rng.int(2, 8) : rng.int(20, 38),
+      },
+      overall,
+      podKeys,
+      podCpu,
+      podMem,
+      containerKeys,
+      containerCpu,
+      containerMem,
+      requestsLimits,
+      restartsTotal,
+      restarts,
+      logs,
+    };
+  }
+
+  async infraElb(scope: Scope): Promise<ElbResult> {
+    const loadBalancers = ["voicing-alb-prod", "voicing-alb-staging"];
+    const rng = new Rng(hashSeed(`elb:${loadBalancers[0]}`));
+    const ts = timePoints(scope.from, scope.to, 48);
+    const N = ts.length;
+    const reqW = wave(rng, N, 1200, 380, 120);
+    const respW = wave(rng, N, 120, 50, 25, 0.05);
+    const c2 = wave(rng, N, 1100, 350, 110);
+    const c3 = wave(rng, N, 28, 12, 6);
+    const c4 = wave(rng, N, 42, 18, 10, 0.05);
+    const c5 = wave(rng, N, 9, 6, 4, 0.08);
+    const e3 = wave(rng, N, 14, 6, 3);
+    const e4 = wave(rng, N, 20, 9, 5);
+    const e5 = wave(rng, N, 5, 4, 3, 0.06);
+    const active = wave(rng, N, 320, 90, 30);
+    const newc = wave(rng, N, 140, 50, 20);
+    const rejected = wave(rng, N, 2, 2, 1, 0.04);
+    const targetErr = wave(rng, N, 3, 3, 2, 0.05);
+    const lcu = wave(rng, N, 12, 5, 2);
+    const processed = wave(rng, N, 240, 80, 30);
+    const tlsClient = wave(rng, N, 4, 3, 2);
+    const tlsTarget = wave(rng, N, 2, 2, 1);
+    const ipv6Req = wave(rng, N, 180, 70, 25);
+    const ipv6Proc = wave(rng, N, 40, 18, 8);
+    const evals = wave(rng, N, 1300, 400, 130);
+    const authSuccess = wave(rng, N, 90, 30, 12);
+    const authError = wave(rng, N, 3, 3, 2, 0.05);
+    const authFailure = wave(rng, N, 2, 2, 1, 0.04);
+    const round = Math.round;
+
+    return {
+      regions: ["us-east-1", "us-west-2"],
+      loadBalancers,
+      selectedLb: loadBalancers[0],
+      requests: ts.map((t, i) => ({ t, requestCount: round(reqW[i]), responseMs: round(respW[i]) })),
+      httpTarget: ts.map((t, i) => ({ t, code2xx: round(c2[i]), code3xx: round(c3[i]), code4xx: round(c4[i]), code5xx: round(c5[i]) })),
+      httpElb: ts.map((t, i) => ({ t, elb3xx: round(e3[i]), elb4xx: round(e4[i]), elb5xx: round(e5[i]) })),
+      connections: ts.map((t, i) => ({ t, active: round(active[i]), new: round(newc[i]), rejected: round(rejected[i]), targetErr: round(targetErr[i]) })),
+      capacity: ts.map((t, i) => ({ t, lcu: r1(lcu[i]), processedMB: round(processed[i]) })),
+      tls: ts.map((t, i) => ({ t, client: round(tlsClient[i]), target: round(tlsTarget[i]) })),
+      ipv6: ts.map((t, i) => ({ t, requests: round(ipv6Req[i]), processedMB: round(ipv6Proc[i]) })),
+      ruleEvals: ts.map((t, i) => ({ t, evals: round(evals[i]) })),
+      auth: ts.map((t, i) => ({ t, success: round(authSuccess[i]), error: round(authError[i]), failure: round(authFailure[i]) })),
+    };
   }
 }

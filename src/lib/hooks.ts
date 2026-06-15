@@ -19,6 +19,8 @@ import type {
   HealthResult,
   SetRecipientsInput,
   SetServiceOverrideInput,
+  K8sResult,
+  ElbResult,
 } from "@/lib/data/source";
 import type { Agent, IpRule, Organization, Project } from "@/lib/types";
 
@@ -208,6 +210,22 @@ export function useSetServiceOverride() {
       if (!res.ok) throw new Error("request_failed");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["health"] }),
+  });
+}
+
+export function useInfraK8s() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["infra-k8s", query],
+    queryFn: () => fetchJson<K8sResult>(`/api/infra/kubernetes?${query}`),
+  });
+}
+
+export function useInfraElb() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["infra-elb", query],
+    queryFn: () => fetchJson<ElbResult>(`/api/infra/elb?${query}`),
   });
 }
 
