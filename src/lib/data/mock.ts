@@ -664,22 +664,34 @@ export class MockAdapter implements DataSource {
     const restartsTotal = rng.int(0, ns ? 6 : 18);
     const restarts: K8sPoint[] = ts.map((t) => ({ t, restarts: rng.bool(0.1) ? rng.int(1, 2) : 0 }));
 
-    const levels = ["INFO", "INFO", "INFO", "WARN", "ERROR"] as const;
+    const levels = ["INFO", "INFO", "INFO", "INFO", "WARN", "WARN", "ERROR"] as const;
     const samples = [
       "request handled in 142ms",
-      "VAD confidence 0.82",
-      "stream connected",
+      "VAD confidence 0.82 — speech detected",
+      "websocket stream connected",
+      "call CALL-XYZ session started",
+      "STT partial transcript received",
+      "TTS synthesis 980 chars in 240ms",
       "high latency on STT provider, retrying",
-      "| ERROR | provider timeout, switched to fallback",
+      "rate limit approaching on LLM router (429 risk)",
+      "| ERROR | provider timeout, switched to fallback model",
+      "| ERROR | websocket disconnect, reconnecting",
+      "pod memory pressure: working set 1.8GiB",
+      "deployment scaled: replicas 4 -> 5",
     ];
-    const logs = Array.from({ length: 10 }, (_, i) => {
-      const idx = rng.int(0, 4);
+    const winStart = new Date(ts[0]).getTime();
+    const winEnd = new Date(ts[N - 1]).getTime();
+    const logCount = 80;
+    const logs = Array.from({ length: logCount }, (_, i) => {
+      const lvlIdx = rng.int(0, levels.length - 1);
+      const msg = samples[rng.int(0, samples.length - 1)];
+      const tms = winStart + ((winEnd - winStart) * i) / (logCount - 1) + rng.float(-30000, 30000);
       return {
-        ts: new Date(new Date(ts[N - 1]).getTime() - i * 9000).toISOString(),
-        level: levels[idx],
-        line: `{namespace="${ns ?? "*"}"} ${samples[idx]}`,
+        ts: new Date(Math.max(winStart, Math.min(winEnd, tms))).toISOString(),
+        level: levels[lvlIdx],
+        line: `{namespace="${ns ?? "*"}"} ${msg}`,
       };
-    });
+    }).sort((a, b) => b.ts.localeCompare(a.ts));
 
     return {
       namespaces,

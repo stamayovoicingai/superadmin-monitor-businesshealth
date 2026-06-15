@@ -130,6 +130,11 @@ allow+block lists, org→project inheritance, add/delete, IP tester; SuperAdmin-
 - `DataSource.infraK8s/infraElb` with deterministic per-scope mock timeseries (seeded by scope hash);
   `/api/infra/kubernetes`, `/api/infra/elb`; `useInfraK8s`/`useInfraElb`. New charts: `GaugeChart`,
   `MultiLineChart`. NOTE: series are mock generators matching the real Grafana metric names (PRD/04).
+- **Date ranges:** added a reusable `DateRangeControl` (presets + custom from/to). The global selector
+  (top bar) now supports custom ranges and emits resolved `from`/`to` in the query (all endpoints read
+  from/to via `scopeFromSearch`; `period.ts#RangeState`/`resolveRangeState`). Kubernetes and ELB each
+  have an **independent per-tab date range**. Kubernetes **Deployment Logs** has a **fuzzy search**
+  (`lib/fuzzy.ts`) + the tab's date range.
 
 ### DONE earlier: Fallbacks (PRD/08) + Service Health (PRD/18)
 - **Fallbacks** `/controls/fallbacks` (SuperAdmin): tabs STT/TTS/LLM; enable toggle, single fallback

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { useView } from "@/components/view-context";
 import { useMeta } from "@/lib/hooks";
-import { RANGE_LABELS, RANGE_PRESETS } from "@/lib/period";
+import { DateRangeControl } from "@/components/date-range-control";
 
 const ALL = "__all__";
 
@@ -49,18 +49,7 @@ export function ScopeFilters() {
         </SelectContent>
       </Select>
 
-      <Select value={range} onValueChange={(v) => setRange((v ?? "30d") as typeof range)}>
-        <SelectTrigger size="sm" className="w-[120px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {RANGE_PRESETS.map((r) => (
-            <SelectItem key={r} value={r}>
-              {RANGE_LABELS[r]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <DateRangeControl value={range} onChange={setRange} />
     </div>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 
+import * as React from "react";
 import { Lock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { MultiLineChart } from "@/components/charts";
+import { DateRangeControl } from "@/components/date-range-control";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +12,7 @@ import { useInfraElb } from "@/lib/hooks";
 import { useView } from "@/components/view-context";
 import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
 import type { ElbPoint } from "@/lib/data/source";
+import type { RangeState } from "@/lib/period";
 
 const G = "var(--chart-3)";
 const B = "var(--chart-1)";
@@ -43,7 +46,8 @@ function Panel({
 
 export default function ElbPage() {
   const { role } = useView();
-  const { data, isLoading } = useInfraElb();
+  const [range, setRange] = React.useState<RangeState>({ preset: "24h" });
+  const { data, isLoading } = useInfraElb(range);
 
   if (!canSeeSuperAdminOnly(role)) {
     return (
@@ -65,9 +69,10 @@ export default function ElbPage() {
         title="AWS ELB — Application Load Balancer"
         description="CloudWatch metrics for the platform load balancer."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="font-mono">{data?.regions[0] ?? "us-east-1"}</Badge>
             <Badge variant="secondary" className="font-mono">{data?.selectedLb ?? "—"}</Badge>
+            <DateRangeControl value={range} onChange={setRange} />
           </div>
         }
       />

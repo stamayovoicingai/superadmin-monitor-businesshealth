@@ -2,25 +2,26 @@
 
 /**
  * Client view state: role (View-as switcher), org/project scope, time range.
- * Persisted to localStorage. Server reads the same params via the API query string.
+ * Persisted to localStorage. The query string always carries resolved from/to so every
+ * endpoint reads an explicit window (presets and custom ranges both work).
  */
 import * as React from "react";
 import type { Role } from "@/lib/types";
-import type { RangePreset } from "@/lib/period";
+import { resolveRangeState, type RangeState } from "@/lib/period";
 
 interface ViewState {
   role: Role;
   orgId?: string;
   projectId?: string;
-  range: RangePreset;
+  range: RangeState;
 }
 
 interface ViewContextValue extends ViewState {
   setRole: (r: Role) => void;
   setOrg: (orgId?: string) => void;
   setProject: (projectId?: string) => void;
-  setRange: (r: RangePreset) => void;
-  /** Query string for API calls based on current scope. */
+  setRange: (r: RangeState) => void;
+  /** Query string (orgId, projectId, from, to) for API calls based on current scope. */
   query: string;
 }
 
@@ -28,12 +29,17 @@ const ViewContext = React.createContext<ViewContextValue | null>(null);
 const STORAGE_KEY = "voicing-superadmin-view";
 
 export function ViewProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = React.useState<ViewState>({ role: "superadmin", range: "30d" });
+  const [state, setState] = React.useState<ViewState>({ role: "superadmin", range: { preset: "30d" } });
 
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState((s) => ({ ...s, ...JSON.parse(raw) }));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // migrate older shape where range was a string preset
+        if (typeof parsed.range === "string") parsed.range = { preset: parsed.range };
+        setState((s) => ({ ...s, ...parsed }));
+      }
     } catch {
       /* ignore */
     }
@@ -52,7 +58,9 @@ export function ViewProvider({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams();
     if (state.orgId) params.set("orgId", state.orgId);
     if (state.projectId) params.set("projectId", state.projectId);
-    params.set("range", state.range);
+    const { from, to } = resolveRangeState(state.range);
+    params.set("from", from);
+    params.set("to", to);
     return {
       ...state,
       setRole: (role) => persist({ ...state, role }),

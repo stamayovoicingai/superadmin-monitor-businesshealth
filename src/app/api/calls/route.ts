@@ -6,8 +6,17 @@ import type { CallEndReason, CallStatus } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
-  const range = parsePreset(sp.get("range"));
-  const { from, to } = resolveRange(range === "live" ? "30d" : range);
+  const fromParam = sp.get("from");
+  const toParam = sp.get("to");
+  let from: string;
+  let to: string;
+  if (fromParam && toParam) {
+    from = fromParam;
+    to = toParam;
+  } else {
+    const range = parsePreset(sp.get("range"));
+    ({ from, to } = resolveRange(range === "live" ? "30d" : range));
+  }
   const filter: CallFilter = {
     orgId: sp.get("orgId") || undefined,
     projectId: sp.get("projectId") || undefined,

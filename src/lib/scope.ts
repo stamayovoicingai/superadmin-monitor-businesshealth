@@ -5,7 +5,12 @@ import { parsePreset, resolveRange } from "@/lib/period";
 export function scopeFromSearch(sp: URLSearchParams): Scope & { range: string } {
   const orgId = sp.get("orgId") || undefined;
   const projectId = sp.get("projectId") || undefined;
-  const range = parsePreset(sp.get("range"));
-  const { from, to } = resolveRange(range === "live" ? "24h" : range);
-  return { orgId, projectId, from, to, range };
+  const fromParam = sp.get("from");
+  const toParam = sp.get("to");
+  if (fromParam && toParam) {
+    return { orgId, projectId, from: fromParam, to: toParam, range: "custom" };
+  }
+  const preset = parsePreset(sp.get("range"));
+  const { from, to } = resolveRange(preset === "live" ? "24h" : preset);
+  return { orgId, projectId, from, to, range: preset };
 }

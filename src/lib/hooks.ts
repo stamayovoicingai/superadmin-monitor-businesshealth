@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useView } from "@/components/view-context";
+import { resolveRangeState, type RangeState } from "@/lib/period";
 import type {
   AddIpRuleInput,
   AssistantUsageResult,
@@ -213,19 +214,31 @@ export function useSetServiceOverride() {
   });
 }
 
-export function useInfraK8s() {
+/** Build a query string from the global scope, overriding from/to with a tab-local range. */
+function withLocalRange(globalQuery: string, range?: RangeState): string {
+  if (!range) return globalQuery;
+  const sp = new URLSearchParams(globalQuery);
+  const { from, to } = resolveRangeState(range);
+  sp.set("from", from);
+  sp.set("to", to);
+  return sp.toString();
+}
+
+export function useInfraK8s(range?: RangeState) {
   const { query } = useView();
+  const qs = withLocalRange(query, range);
   return useQuery({
-    queryKey: ["infra-k8s", query],
-    queryFn: () => fetchJson<K8sResult>(`/api/infra/kubernetes?${query}`),
+    queryKey: ["infra-k8s", qs],
+    queryFn: () => fetchJson<K8sResult>(`/api/infra/kubernetes?${qs}`),
   });
 }
 
-export function useInfraElb() {
+export function useInfraElb(range?: RangeState) {
   const { query } = useView();
+  const qs = withLocalRange(query, range);
   return useQuery({
-    queryKey: ["infra-elb", query],
-    queryFn: () => fetchJson<ElbResult>(`/api/infra/elb?${query}`),
+    queryKey: ["infra-elb", qs],
+    queryFn: () => fetchJson<ElbResult>(`/api/infra/elb?${qs}`),
   });
 }
 

@@ -41,7 +41,8 @@ Mirror of **"Kubernetes Cluster Monitoring"**.
 - Container Restarts — timeseries
 
 **Logs**
-- Deployment Logs — log viewer (Loki, by namespace/deployment, with the Logs Filter textbox)
+- Deployment Logs — log viewer (Loki, by namespace/deployment) with a **fuzzy search bar** and a
+  **per-tab date range** (the Kubernetes date range scopes the whole tab, logs included).
 
 > Metric basis (PromQL) documented in doc 04 §4. Demo generates plausible series per node/namespace/
 > deployment that respond to the filter selection.

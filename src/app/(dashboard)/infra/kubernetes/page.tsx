@@ -1,16 +1,21 @@
 "use client";
 
-import { Lock } from "lucide-react";
+import * as React from "react";
+import { Lock, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { GaugeChart, MultiLineChart } from "@/components/charts";
+import { DateRangeControl } from "@/components/date-range-control";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInfraK8s } from "@/lib/hooks";
 import { useView } from "@/components/view-context";
 import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
 import { formatNumber } from "@/lib/money";
+import { fuzzyMatch } from "@/lib/fuzzy";
 import { cn } from "@/lib/utils";
+import type { RangeState } from "@/lib/period";
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
@@ -42,7 +47,9 @@ function ReqLimitBar({ label, request, limit, unit }: { label: string; request: 
 
 export default function KubernetesPage() {
   const { role } = useView();
-  const { data, isLoading } = useInfraK8s();
+  const [range, setRange] = React.useState<RangeState>({ preset: "24h" });
+  const [logQuery, setLogQuery] = React.useState("");
+  const { data, isLoading } = useInfraK8s(range);
 
   if (!canSeeSuperAdminOnly(role)) {
     return (
@@ -59,6 +66,7 @@ export default function KubernetesPage() {
   }
 
   const c = data?.cluster;
+  const filteredLogs = (data?.logs ?? []).filter((l) => fuzzyMatch(logQuery, `${l.level} ${l.line}`));
 
   return (
     <div>
@@ -66,9 +74,10 @@ export default function KubernetesPage() {
         title="Kubernetes"
         description="Cluster / pods / containers usage, requests & limits, restarts and logs (Prometheus)."
         actions={
-          <Badge variant="secondary" className="font-mono">
-            {data?.selectedNamespace ?? "cluster-wide"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="font-mono">{data?.selectedNamespace ?? "cluster-wide"}</Badge>
+            <DateRangeControl value={range} onChange={setRange} />
+          </div>
         }
       />
 
@@ -179,13 +188,33 @@ export default function KubernetesPage() {
 
       {/* Logs */}
       <Card className="mt-4">
-        <CardHeader><CardTitle className="text-base">Deployment Logs</CardTitle><CardDescription>Loki</CardDescription></CardHeader>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-base">Deployment Logs</CardTitle>
+              <CardDescription>Loki · within selected range · {filteredLogs.length} line(s)</CardDescription>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={logQuery}
+                onChange={(e) => setLogQuery(e.target.value)}
+                placeholder="Fuzzy search logs…"
+                className="h-8 w-64 pl-8 font-mono"
+              />
+            </div>
+          </div>
+        </CardHeader>
         <CardContent>
-          {isLoading ? <Skeleton className="h-40 w-full" /> : (
-            <pre className="max-h-72 overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
-              {data!.logs.map((l, i) => (
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : filteredLogs.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No log lines match “{logQuery}”.</p>
+          ) : (
+            <pre className="max-h-96 overflow-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
+              {filteredLogs.map((l, i) => (
                 <div key={i}>
-                  <span className="text-muted-foreground">{new Date(l.ts).toLocaleTimeString()} </span>
+                  <span className="text-muted-foreground">{new Date(l.ts).toLocaleString()} </span>
                   <span className={cn(l.level === "ERROR" ? "text-critical" : l.level === "WARN" ? "text-warning" : "text-success")}>[{l.level}]</span>{" "}
                   <span>{l.line}</span>
                 </div>
