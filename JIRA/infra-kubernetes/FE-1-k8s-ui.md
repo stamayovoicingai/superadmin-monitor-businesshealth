@@ -5,7 +5,7 @@
 - **Epic:** Infra: Kubernetes
 - **Feature:** F2 — Kubernetes UI
 - **Priority:** P2
-- **Blocked by:** `K8S-BE1`
+- **Blocked by:** `PLAT-FE1`, `K8S-BE1`
 - **Blocks:** `K8S-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts` `infra`
 - **Estimate:** 3
@@ -18,6 +18,8 @@ limits, restarts, deployment logs) to the real API, keeping the **per-tab date r
 search**.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useInfraK8s(range)` + `DateRangeControl` + fuzzy log filter. Point at `K8S-BE1`.
 - Keep the memoized range query (avoid the infinite-refetch pitfall noted in the repo). Namespace from
   the project filter. Empty/error states; responsive.

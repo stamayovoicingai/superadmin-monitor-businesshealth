@@ -5,7 +5,7 @@
 - **Epic:** Issues
 - **Feature:** F2 — Issues UI
 - **Priority:** P1
-- **Blocked by:** `ISSUE-BE1`
+- **Blocked by:** `PLAT-FE1`, `ISSUE-BE1`
 - **Blocks:** `ISSUE-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `observability`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Wire the Issues page (KPIs: critical/warning/affected/auto-flagged; Issues-by-Ca
 list with affected projects + call links + auto-flagged badge) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useIssues`. Point at `ISSUE-BE1`; keep severity/category rendering and call links.
 - Empty state ("all within range"); loading/error; responsive; a11y.
 - (Optional) issue status actions (ack/resolve) if added to the API.

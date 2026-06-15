@@ -5,7 +5,7 @@
 - **Epic:** Cost & Margin
 - **Feature:** F4 — Cost & Margin dashboard
 - **Priority:** P1
-- **Blocked by:** `COST-BE4`
+- **Blocked by:** `PLAT-FE1`, `COST-BE4`
 - **Blocks:** `COST-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts` `cost`
 - **Estimate:** 5
@@ -23,6 +23,8 @@ The dashboard is the primary surface for the #1 priority. The MVP UI is built; i
 data, behave well on all states/devices, and be accessible and on-brand.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - The page exists (`cost/page.tsx`) using `useCost()` → `/api/cost`. Keep the components
   (`CostByServiceChart`, `CostRevenueChart`, `ServiceDonut`, KPI cards, margin table).
 - Point `useCost` at the real endpoint (BE-4); no shape change required.

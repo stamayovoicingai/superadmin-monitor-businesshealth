@@ -5,7 +5,7 @@
 - **Epic:** Call Logs & Call Detail
 - **Feature:** F4 — Call Detail UI
 - **Priority:** P1
-- **Blocked by:** `CALLS-BE2`
+- **Blocked by:** `PLAT-FE1`, `CALLS-BE2`
 - **Blocks:** `CALLS-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `audio` `observability`
 - **Estimate:** 5
@@ -18,6 +18,8 @@ waterfall, per-service cost breakdown (+ margin for SuperAdmin), error logs, and
 (create a manual flag with a note → Flag Queue).
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists; wire `useCall` to `CALLS-BE2`. Render real transcript (turns) + audio via signed URL.
 - Keep the flag popover (`useCreateFlag`) — it already creates a real `CallFlag`; ensure it targets the
   production flags API (`FLAG` epic).

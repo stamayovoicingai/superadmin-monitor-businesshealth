@@ -21,9 +21,9 @@ Planning velocity ≈ **10 SP / person / 2-week sprint**:
 | Discipline | Total SP | Sprints of work |
 |------------|----------|-----------------|
 | **Backend** | **156** | **~5–6 (critical path)** |
-| Frontend | 53 | ~3 (comfortable) |
+| Frontend | 58 | ~3 (incl. `PLAT-FE1` design system, 5) |
 | QA | 43 | ~4–5 (1 person → watch the tail) |
-| **Total** | **252** | |
+| **Total** | **257** | |
 
 **Backend is the critical path** (foundation + every data pipeline/engine/API is Python). FE and QA
 trail BE by ~1 sprint. **v1 (all tabs, no QA Bench) ≈ 6–7 sprints ≈ ~12–14 weeks.**
@@ -34,7 +34,7 @@ Lanes run in parallel; FE/QA for an epic start the sprint after its BE API lands
 
 | Sprint | Backend (~30) | Frontend (~20) | QA (~10) |
 |--------|---------------|----------------|----------|
-| **S1** Foundation | PLAT-BE1, BE2, BE3, BE4 (29) | *(shared components, SupabaseAdapter scaffold, design polish)* | — |
+| **S1** Foundation | PLAT-BE1, BE2, BE3, BE4 (29) | **PLAT-FE1** design system (5) + shared components / adapter scaffold | — |
 | **S2** Cost engine | COST-BE2, BE1, BE3, BE4, CALLS-BE1 (31) | *(prep cost/calls components)* | PLAT-QA1 (5) |
 | **S3** Calls/Obs APIs | CALLS-BE2, PERF-BE1, LIVE-BE1, THRESH-BE1, ISSUE-BE1 (26) | COST-FE1, FE2, CALLS-FE1 (11) | COST-QA1 (5) |
 | **S4** Health/Infra APIs | FLAG-BE1, HEALTH-BE1, BE2, K8S-BE1, ELB-BE1 (31) | CALLS-FE2, PERF-FE1, LIVE-FE1, THRESH-FE1, ISSUE-FE1 (17) | CALLS-QA1, PERF-QA1, LIVE-QA1, THRESH-QA1 (9) |

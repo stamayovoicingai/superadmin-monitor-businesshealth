@@ -5,7 +5,7 @@
 - **Epic:** QA Bench / Evals
 - **Feature:** F2 — Eval builder & results UI
 - **Priority:** P4
-- **Blocked by:** `QABENCH-BE1`
+- **Blocked by:** `PLAT-FE1`, `QABENCH-BE1`
 - **Blocks:** `QABENCH-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `evals`
 - **Estimate:** 8
@@ -21,6 +21,8 @@ threshold editor, and pause-on-critical toggle.
 Replaces the stub with the real Phase-2 surface for authoring and reviewing evals.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Net-new screens consuming `QABENCH-BE1`. Reuse design system (cards/tables/charts), date range, and
   the threshold/flag UX patterns from `THRESH`/`FLAG`.
 - Test an evaluator against a sample of past calls before scheduling.

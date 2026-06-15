@@ -23,10 +23,12 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - F3 — Authentication & RBAC (server-side)
 - F4 — Data adapter, environments & deploy/CI
 - F5 — QA / foundation harness
+- F6 — Design system & component library (voicing.ai)
 
 ## Tasks
 - `BE-1-supabase-schema.md` (`PLAT-BE1`)
 - `BE-2-call-data-ingestion.md` (`PLAT-BE2`)
 - `BE-3-auth-rbac.md` (`PLAT-BE3`)
 - `BE-4-supabase-adapter-deploy.md` (`PLAT-BE4`)
+- `FE-1-design-system.md` (`PLAT-FE1`) — blocks all frontend tasks
 - `QA-1-foundation-harness.md` (`PLAT-QA1`)

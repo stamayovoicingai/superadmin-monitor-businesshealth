@@ -5,7 +5,7 @@
 - **Epic:** Cost & Margin
 - **Feature:** F5 — Financial gating / RBAC
 - **Priority:** P1
-- **Blocked by:** `COST-BE4`, `PLAT-BE3`
+- **Blocked by:** `PLAT-FE1`, `COST-BE4`, `PLAT-BE3`
 - **Blocks:** `COST-QA1`
 - **Components/Labels:** `frontend` `nextjs` `rbac` `security` `cost`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Ensure the `User` role sees a **cost-only** Cost & Margin page (cost KPIs, cost-
 cost outliers) and **never** revenue, margin, or MRR. SuperAdmin sees everything.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - The MVP gates client-side via `useFinancials()`/`<FinancialGate>` reading the role from
   `ViewContext`. Keep this for UX, but the **real protection is server-side** (BE-4 omits the fields
   for `User`) — the FE must not assume the fields exist.

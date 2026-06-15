@@ -5,7 +5,7 @@
 - **Epic:** Business Health
 - **Feature:** F2 — Business Health UI
 - **Priority:** P2
-- **Blocked by:** `BIZ-BE1`, `PLAT-BE3`
+- **Blocked by:** `PLAT-FE1`, `BIZ-BE1`, `PLAT-BE3`
 - **Blocks:** `BIZ-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts` `rbac`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Wire the Business Health page (MRR composition, org growth, new/returning caller
 leaderboard) to the real API; enforce SuperAdmin-only (access-denied for User).
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useBusiness` + SuperAdmin guard. Point at `BIZ-BE1`. Keep MRR/callers/growth charts.
 - Server-enforced gating (don't rely on client). Loading/empty/error; responsive.
 

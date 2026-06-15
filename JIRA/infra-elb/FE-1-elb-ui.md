@@ -5,7 +5,7 @@
 - **Epic:** Infra: AWS ELB
 - **Feature:** F2 — ELB UI
 - **Priority:** P2
-- **Blocked by:** `ELB-BE1`
+- **Blocked by:** `PLAT-FE1`, `ELB-BE1`
 - **Blocks:** `ELB-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts` `infra`
 - **Estimate:** 2
@@ -17,6 +17,8 @@ Wire the ELB page (all CloudWatch panels) to the real API, keeping the **per-tab
 region/load-balancer badges.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useInfraElb(range)` + `DateRangeControl`. Point at `ELB-BE1`; keep memoized range
   (no refetch loop). Empty/error states; responsive.
 

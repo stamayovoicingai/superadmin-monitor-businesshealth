@@ -5,7 +5,7 @@
 - **Epic:** Overview
 - **Feature:** F2 — Overview UI
 - **Priority:** P2
-- **Blocked by:** `OVW-BE1`, `PLAT-BE3`
+- **Blocked by:** `PLAT-FE1`, `OVW-BE1`, `PLAT-BE3`
 - **Blocks:** `OVW-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts` `rbac`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Wire the role-aware Overview (KPI strip incl. assistant cost, cost-by-service, m
 projects table, live snippet) to the real API. SuperAdmin sees financials; User sees performance/cost.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useOverview` + financial gating. Point at `OVW-BE1`. Keep role-aware KPI strip and
   charts. Empty/error states; responsive.
 

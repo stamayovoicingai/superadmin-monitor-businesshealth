@@ -5,7 +5,7 @@
 - **Epic:** Call Flagging
 - **Feature:** F2 — Flag Queue UI + manual flag
 - **Priority:** P1
-- **Blocked by:** `FLAG-BE1`
+- **Blocked by:** `PLAT-FE1`, `FLAG-BE1`
 - **Blocks:** `FLAG-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `rbac`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Wire the Flag Queue (filters by status/source, KPIs, per-row status change, comm
 shown) and the manual flag action on Call Detail to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Both surfaces exist. Point hooks at `FLAG-BE1`. Queue is SuperAdmin-only (hidden + server-enforced).
 - Manual flag popover on Call Detail creates a real flag and surfaces it in the queue.
 - Loading/empty/error; responsive; a11y.

@@ -5,7 +5,7 @@
 - **Epic:** Call Logs & Call Detail
 - **Feature:** F3 — Call Logs UI
 - **Priority:** P1
-- **Blocked by:** `CALLS-BE1`
+- **Blocked by:** `PLAT-FE1`, `CALLS-BE1`
 - **Blocks:** `CALLS-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `table` `observability`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Productionize the Call Logs table: search + status/end-reason filters, server-si
 Call Detail, status/end-reason/disposition chips, cost (and margin for SuperAdmin) columns.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useCalls`. Wire to `CALLS-BE1`; keep debounced search + filters + pagination.
 - Real empty/error states; responsive (horizontal scroll/stacked on mobile); accessible table.
 - Hide revenue/margin columns for `User`.

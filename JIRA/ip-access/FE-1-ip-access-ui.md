@@ -5,7 +5,7 @@
 - **Epic:** IP Access Control
 - **Feature:** F3 — IP Access UI
 - **Priority:** P3
-- **Blocked by:** `IPACC-BE1`
+- **Blocked by:** `PLAT-FE1`, `IPACC-BE1`
 - **Blocks:** `IPACC-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `security` `rbac`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Wire the IP Access page (Allow/Block lists, default-policy toggle, add/delete wi
 inherited org rules read-only, IP tester) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists; point hooks at `IPACC-BE1`. Keep default-policy cards, validation, inherited section,
   and tester (tester should call the server evaluate for parity). SuperAdmin-only.
 

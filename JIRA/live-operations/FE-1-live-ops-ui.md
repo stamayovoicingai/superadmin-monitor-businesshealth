@@ -5,7 +5,7 @@
 - **Epic:** Live Operations
 - **Feature:** F2 — Live Ops UI
 - **Priority:** P1
-- **Blocked by:** `LIVE-BE1`
+- **Blocked by:** `PLAT-FE1`, `LIVE-BE1`
 - **Blocks:** `LIVE-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `realtime`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Wire the Live Ops page (concurrency/pods KPIs, pods table, status & end-reason d
 table, live indicator + tick) to the real live source, upgrading from polling to streaming where available.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useLiveOps` (20s refetch). Point at `LIVE-BE1`; subscribe to streaming if present,
   else keep interval. Show "● Live" + last-tick.
 - Empty state (no active calls); responsive; accessible.

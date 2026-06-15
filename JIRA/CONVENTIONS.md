@@ -86,6 +86,22 @@ Detail · `LIVE` Live Operations · `ISSUE` Issues · `THRESH` Thresholds · `FL
 `FALLB` Fallbacks · `IPACC` IP Access · `HEALTH` Service Health · `K8S` Infra Kubernetes · `ELB`
 Infra AWS ELB · `ASST` Assistant Usage · `BIZ` Business Health · `QABENCH` QA Bench.
 
+## Design system (applies to every Frontend task)
+
+The frontend is built on a **design system extracted from the live site voicing.ai** (warm cream +
+vivid orange, **Inter** for UI + **Instrument Serif** for display). It is implemented as tokens in
+`src/app/globals.css` with a **live showcase at `/design`**, and owned by **`PLAT-FE1`** (which blocks
+all `*-FE*` tasks).
+
+Every Frontend task MUST:
+- Reuse the **design tokens** (`bg-primary`, `text-foreground`, `text-success`, `--chart-1…5`, etc.)
+  and **reusable components** (`Button`, `Badge`/chips, `Card`, `KpiCard`, `PageHeader`, the chart
+  wrappers, `DateRangeControl`, form controls) — **never hardcode colors, fonts, or radii**.
+- Use `font-display` (Instrument Serif) for page titles + KPI numbers; Inter elsewhere; `font-mono` for ids.
+- Support light + dark, responsive, and pass basic a11y (axe + keyboard).
+
+See `PRD/14-design-system.md` and the `/design` route.
+
 ## Roles & RBAC (applies across tabs)
 
 Two roles (PRD/01): **SuperAdmin** (everything incl. financials) and **User** (project performance +

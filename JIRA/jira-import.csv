@@ -20,12 +20,14 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - F3 — Authentication & RBAC (server-side)
 - F4 — Data adapter, environments & deploy/CI
 - F5 — QA / foundation harness
+- F6 — Design system & component library (voicing.ai)
 
 ## Tasks
 - `BE-1-supabase-schema.md` (`PLAT-BE1`)
 - `BE-2-call-data-ingestion.md` (`PLAT-BE2`)
 - `BE-3-auth-rbac.md` (`PLAT-BE3`)
 - `BE-4-supabase-adapter-deploy.md` (`PLAT-BE4`)
+- `FE-1-design-system.md` (`PLAT-FE1`) — blocks all frontend tasks
 - `QA-1-foundation-harness.md` (`PLAT-QA1`)"
 "Story","[BE] Platform · Schema · Supabase project, schema & migrations","","Platform Foundation","Highest","8","backend postgres database foundation plat","PLAT-BE1","","PLAT-BE2","**ID:** PLAT-BE1 · **Priority:** P0 · **Estimate:** 8
 **Blocked by:** — · **Blocks:** PLAT-BE2
@@ -139,6 +141,37 @@ adapter change, not a refactor.
 - [ ] Secrets are server-side only; none reach the client bundle.
 - [ ] CI blocks merges on failing typecheck/build/lint; deploys are automated; migrations run on deploy.
 - [ ] A documented switch lets devs run locally against mock or Supabase."
+"Story","[FE] Platform · Design system · Tokens, fonts & reusable component library","","Platform Foundation","Highest","5","frontend nextjs design-system ui-ux foundation plat","PLAT-FE1","","","**ID:** PLAT-FE1 · **Priority:** P0 · **Estimate:** 5
+**Blocked by:** — · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+The shared design system every screen is built from: design tokens (colors, typography, radius,
+spacing), fonts, and a reusable component library — with a **live showcase at `/design`** that renders
+all tokens + components as the single source of truth for frontend.
+
+## Why
+The system was **extracted from the live site voicing.ai** (warm cream + vivid orange, Inter + Instrument
+Serif). Every FE task must build on it — reusing tokens/components and never hardcoding colors/fonts — so
+the product stays consistent and FE work is fast.
+
+## How (building on the MVP)
+- Tokens already exist in `src/app/globals.css` (light + dark, voicing.ai-derived): `--primary` orange,
+  cream `--background`, ink `--foreground`, dark sidebar, semantic `success/warning/critical`, and a
+  chart palette (`--chart-1…5`). Fonts: Inter (UI, `font-sans`) + Instrument Serif (display,
+  `font-display`, used on page titles + KPI numbers) + Geist Mono.
+- Productionize: finalize tokens, verify AA contrast (esp. amber `--warning` vs orange `--primary`,
+  dark mode), and keep the `/design` showcase current. Consider Storybook for component docs later.
+- Reusable components to standardize on: `Button`, `Badge`/chips (`StatusChip`, `SeverityBadge`,
+  `EndReasonChip`, `DispositionBadge`, `LiveDot`), `Card`, `KpiCard`, `PageHeader`, charts
+  (`CostByServiceChart`, `MultiLineChart`, `GaugeChart`, donuts, `HBarChart`), `DateRangeControl`,
+  `DataTable` patterns, form controls.
+
+## Acceptance Criteria
+- [ ] Tokens finalized in `globals.css`; no hardcoded colors/fonts anywhere in app code.
+- [ ] `/design` showcase renders every token + reusable component and stays in sync.
+- [ ] Light + dark pass AA contrast on key text/surfaces; brand fonts load (Inter + Instrument Serif).
+- [ ] FE tasks consume these primitives (enforced in review); a short ""how to use the design system"" note exists."
 "Task","[QA] Platform · Foundation · RBAC matrix + parity & e2e harness","","Platform Foundation","Highest","5","qa rbac e2e foundation plat","PLAT-QA1","PLAT-BE3; PLAT-BE4","","**ID:** PLAT-QA1 · **Priority:** P0 · **Estimate:** 5
 **Blocked by:** PLAT-BE3; PLAT-BE4 · **Blocks:** —
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
@@ -319,8 +352,8 @@ frontend swap is config-only. Range + scope filtering must be honored server-sid
 - [ ] `User` responses contain no revenue/margin fields (verified by test).
 - [ ] Custom date ranges and org/project scoping return correct subsets.
 - [ ] Integration test asserts parity with MVP mock outputs on a shared dataset."
-"Story","[FE] Cost & Margin · Dashboard · Wire UI to real API + harden","","Cost & Margin","High","5","frontend nextjs ui-ux charts cost","COST-FE1","COST-BE4","COST-QA1","**ID:** COST-FE1 · **Priority:** P1 · **Estimate:** 5
-**Blocked by:** COST-BE4 · **Blocks:** COST-QA1
+"Story","[FE] Cost & Margin · Dashboard · Wire UI to real API + harden","","Cost & Margin","High","5","frontend nextjs ui-ux charts cost","COST-FE1","PLAT-FE1; COST-BE4","COST-QA1","**ID:** COST-FE1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-FE1; COST-BE4 · **Blocks:** COST-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -333,6 +366,8 @@ The dashboard is the primary surface for the #1 priority. The MVP UI is built; i
 data, behave well on all states/devices, and be accessible and on-brand.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - The page exists (`cost/page.tsx`) using `useCost()` → `/api/cost`. Keep the components
   (`CostByServiceChart`, `CostRevenueChart`, `ServiceDonut`, KPI cards, margin table).
 - Point `useCost` at the real endpoint (BE-4); no shape change required.
@@ -348,8 +383,8 @@ data, behave well on all states/devices, and be accessible and on-brand.
 - [ ] Layout is responsive (≥320px) and passes basic a11y (axe: no critical issues; keyboard nav).
 - [ ] Margin % cells color by polarity; low-margin rows are visually flagged.
 - [ ] No revenue/margin widgets render for the `User` role (see FE-2)."
-"Story","[FE] Cost & Margin · RBAC · Financial gating (cost-only User variant)","","Cost & Margin","High","3","frontend nextjs rbac security cost","COST-FE2","COST-BE4; PLAT-BE3","COST-QA1","**ID:** COST-FE2 · **Priority:** P1 · **Estimate:** 3
-**Blocked by:** COST-BE4; PLAT-BE3 · **Blocks:** COST-QA1
+"Story","[FE] Cost & Margin · RBAC · Financial gating (cost-only User variant)","","Cost & Margin","High","3","frontend nextjs rbac security cost","COST-FE2","PLAT-FE1; COST-BE4; PLAT-BE3","COST-QA1","**ID:** COST-FE2 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; COST-BE4; PLAT-BE3 · **Blocks:** COST-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -357,6 +392,8 @@ Ensure the `User` role sees a **cost-only** Cost & Margin page (cost KPIs, cost-
 cost outliers) and **never** revenue, margin, or MRR. SuperAdmin sees everything.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - The MVP gates client-side via `useFinancials()`/`<FinancialGate>` reading the role from
   `ViewContext`. Keep this for UX, but the **real protection is server-side** (BE-4 omits the fields
   for `User`) — the FE must not assume the fields exist.
@@ -471,8 +508,8 @@ cost and errors.
 - [ ] Recording plays via a signed URL that expires; no public URLs.
 - [ ] `User` sees cost-to-serve but no revenue/margin.
 - [ ] 404 for unknown call; authorized scope enforced."
-"Story","[FE] Call Logs · UI · Call Logs page (filters, pagination, RBAC)","","Call Logs & Call Detail","High","3","frontend nextjs ui-ux table observability calls","CALLS-FE1","CALLS-BE1","CALLS-QA1","**ID:** CALLS-FE1 · **Priority:** P1 · **Estimate:** 3
-**Blocked by:** CALLS-BE1 · **Blocks:** CALLS-QA1
+"Story","[FE] Call Logs · UI · Call Logs page (filters, pagination, RBAC)","","Call Logs & Call Detail","High","3","frontend nextjs ui-ux table observability calls","CALLS-FE1","PLAT-FE1; CALLS-BE1","CALLS-QA1","**ID:** CALLS-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; CALLS-BE1 · **Blocks:** CALLS-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -480,6 +517,8 @@ Productionize the Call Logs table: search + status/end-reason filters, server-si
 Call Detail, status/end-reason/disposition chips, cost (and margin for SuperAdmin) columns.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useCalls`. Wire to `CALLS-BE1`; keep debounced search + filters + pagination.
 - Real empty/error states; responsive (horizontal scroll/stacked on mobile); accessible table.
 - Hide revenue/margin columns for `User`.
@@ -492,8 +531,8 @@ Operators need fast, filterable access to call history with clean drill-down.
 - [ ] Row click opens Call Detail; chips render correct states (incl. `PIPELINE_TTL_TRIGGERED`).
 - [ ] Empty/error/loading states present; responsive; a11y (keyboard + headers).
 - [ ] `User` sees no revenue/margin columns."
-"Story","[FE] Call Logs · UI · Call Detail page (transcript, recording, cost, flag)","","Call Logs & Call Detail","High","5","frontend nextjs ui-ux audio observability calls","CALLS-FE2","CALLS-BE2","CALLS-QA1","**ID:** CALLS-FE2 · **Priority:** P1 · **Estimate:** 5
-**Blocked by:** CALLS-BE2 · **Blocks:** CALLS-QA1
+"Story","[FE] Call Logs · UI · Call Detail page (transcript, recording, cost, flag)","","Call Logs & Call Detail","High","5","frontend nextjs ui-ux audio observability calls","CALLS-FE2","PLAT-FE1; CALLS-BE2","CALLS-QA1","**ID:** CALLS-FE2 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-FE1; CALLS-BE2 · **Blocks:** CALLS-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -502,6 +541,8 @@ waterfall, per-service cost breakdown (+ margin for SuperAdmin), error logs, and
 (create a manual flag with a note → Flag Queue).
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists; wire `useCall` to `CALLS-BE2`. Render real transcript (turns) + audio via signed URL.
 - Keep the flag popover (`useCreateFlag`) — it already creates a real `CallFlag`; ensure it targets the
   production flags API (`FLAG` epic).
@@ -564,8 +605,8 @@ Catching latency/error regressions before customers do is core observability.
 - [ ] Returns `PerformanceResult` (+ percentiles); UI renders.
 - [ ] Per-service averages and error rate match fixtures; percentiles correct.
 - [ ] Scope + date range honored; p95 < 300 ms on production volumes."
-"Story","[FE] Performance · UI · Performance dashboard wire + harden","","Performance","High","3","frontend nextjs ui-ux charts perf","PERF-FE1","PERF-BE1","PERF-QA1","**ID:** PERF-FE1 · **Priority:** P1 · **Estimate:** 3
-**Blocked by:** PERF-BE1 · **Blocks:** PERF-QA1
+"Story","[FE] Performance · UI · Performance dashboard wire + harden","","Performance","High","3","frontend nextjs ui-ux charts perf","PERF-FE1","PLAT-FE1; PERF-BE1","PERF-QA1","**ID:** PERF-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; PERF-BE1 · **Blocks:** PERF-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -573,6 +614,8 @@ Wire the Performance page (latency KPIs, per-service bars, latency trend, error 
 add a p50/p90/p99 distribution view; harden states/responsive/a11y.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `usePerformance`. Point at `PERF-BE1`; add a percentiles chart.
 - Real empty/error states; responsive; accessible charts/tooltips.
 
@@ -635,8 +678,8 @@ heartbeat.
 - [ ] Streaming (or efficient polling) updates the active set without full reloads.
 - [ ] Scope honored; handles 0-active gracefully.
 - [ ] Load-tested at expected concurrency."
-"Story","[FE] Live Operations · UI · Live Ops page wire + realtime","","Live Operations","High","3","frontend nextjs ui-ux realtime live","LIVE-FE1","LIVE-BE1","LIVE-QA1","**ID:** LIVE-FE1 · **Priority:** P1 · **Estimate:** 3
-**Blocked by:** LIVE-BE1 · **Blocks:** LIVE-QA1
+"Story","[FE] Live Operations · UI · Live Ops page wire + realtime","","Live Operations","High","3","frontend nextjs ui-ux realtime live","LIVE-FE1","PLAT-FE1; LIVE-BE1","LIVE-QA1","**ID:** LIVE-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; LIVE-BE1 · **Blocks:** LIVE-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -644,6 +687,8 @@ Wire the Live Ops page (concurrency/pods KPIs, pods table, status & end-reason d
 table, live indicator + tick) to the real live source, upgrading from polling to streaming where available.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useLiveOps` (20s refetch). Point at `LIVE-BE1`; subscribe to streaming if present,
   else keep interval. Show ""● Live"" + last-tick.
 - Empty state (no active calls); responsive; accessible.
@@ -705,8 +750,8 @@ Thresholds are the rules that define what counts as a problem; Issues depends en
 - [ ] Abandonment threshold stores/returns the selected `closed_reason` set.
 - [ ] Validation: warning/critical consistent with comparator; unknown metric/category rejected.
 - [ ] Shapes match the MVP so `ISSUE-BE1` and the UI consume them unchanged."
-"Story","[FE] Thresholds · UI · Thresholds config page wire","","Thresholds","High","3","frontend nextjs ui-ux rbac thresh","THRESH-FE1","THRESH-BE1","THRESH-QA1","**ID:** THRESH-FE1 · **Priority:** P1 · **Estimate:** 3
-**Blocked by:** THRESH-BE1 · **Blocks:** THRESH-QA1
+"Story","[FE] Thresholds · UI · Thresholds config page wire","","Thresholds","High","3","frontend nextjs ui-ux rbac thresh","THRESH-FE1","PLAT-FE1; THRESH-BE1","THRESH-QA1","**ID:** THRESH-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; THRESH-BE1 · **Blocks:** THRESH-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -714,6 +759,8 @@ Wire the thresholds config page to the real API: editable warning/critical per r
 enable toggle, delete, add-threshold, category management, and the abandonment **reason multiselect**.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists; point hooks at `THRESH-BE1`. Keep inline edit (commit on blur), switches, reason popover.
 - SuperAdmin-only route (hidden + server-enforced). Loading/error states; responsive.
 
@@ -780,8 +827,8 @@ This turns raw calls + thresholds into actionable problems and routes the worst 
 - [ ] Critical breaches create idempotent auto-flags carrying the project.
 - [ ] `IssuesResult` (issues + byCategory + summary incl. autoFlagged) matches the shape; scope/date honored.
 - [ ] Performance acceptable on production windows (precompute/rollup where needed)."
-"Story","[FE] Issues · UI · Issues page wire + harden","","Issues","High","3","frontend nextjs ui-ux observability issue","ISSUE-FE1","ISSUE-BE1","ISSUE-QA1","**ID:** ISSUE-FE1 · **Priority:** P1 · **Estimate:** 3
-**Blocked by:** ISSUE-BE1 · **Blocks:** ISSUE-QA1
+"Story","[FE] Issues · UI · Issues page wire + harden","","Issues","High","3","frontend nextjs ui-ux observability issue","ISSUE-FE1","PLAT-FE1; ISSUE-BE1","ISSUE-QA1","**ID:** ISSUE-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; ISSUE-BE1 · **Blocks:** ISSUE-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -789,6 +836,8 @@ Wire the Issues page (KPIs: critical/warning/affected/auto-flagged; Issues-by-Ca
 list with affected projects + call links + auto-flagged badge) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useIssues`. Point at `ISSUE-BE1`; keep severity/category rendering and call links.
 - Empty state (""all within range""); loading/error; responsive; a11y.
 - (Optional) issue status actions (ack/resolve) if added to the API.
@@ -853,8 +902,8 @@ A real review queue is needed to triage problematic calls; auto-flags from Issue
 - [ ] Each flag records the affected project; scope filtering works.
 - [ ] Idempotent manual flag per call; auto-flag dedupe by `flag-auto-<call>-<metric>`.
 - [ ] RBAC: queue read/triage is SuperAdmin; manual create allowed for accessible calls."
-"Story","[FE] Call Flagging · UI · Flag Queue + manual flag action","","Call Flagging","High","3","frontend nextjs ui-ux rbac flag","FLAG-FE1","FLAG-BE1","FLAG-QA1","**ID:** FLAG-FE1 · **Priority:** P1 · **Estimate:** 3
-**Blocked by:** FLAG-BE1 · **Blocks:** FLAG-QA1
+"Story","[FE] Call Flagging · UI · Flag Queue + manual flag action","","Call Flagging","High","3","frontend nextjs ui-ux rbac flag","FLAG-FE1","PLAT-FE1; FLAG-BE1","FLAG-QA1","**ID:** FLAG-FE1 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; FLAG-BE1 · **Blocks:** FLAG-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -862,6 +911,8 @@ Wire the Flag Queue (filters by status/source, KPIs, per-row status change, comm
 shown) and the manual flag action on Call Detail to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Both surfaces exist. Point hooks at `FLAG-BE1`. Queue is SuperAdmin-only (hidden + server-enforced).
 - Manual flag popover on Call Detail creates a real flag and surfaces it in the queue.
 - Loading/empty/error; responsive; a11y.
@@ -953,8 +1004,8 @@ Teams must be alerted automatically when a dependency/service degrades, scoped t
 - [ ] Email fires on degraded, down, and recovery; includes affected projects.
 - [ ] Flapping doesn't spam (debounce); each transition notifies once.
 - [ ] Per-service override takes precedence over the project list."
-"Story","[FE] Service Health · UI · Health page wire + harden","","Service Health","Medium","3","frontend nextjs ui-ux observability health","HEALTH-FE1","HEALTH-BE1; HEALTH-BE2","HEALTH-QA1","**ID:** HEALTH-FE1 · **Priority:** P2 · **Estimate:** 3
-**Blocked by:** HEALTH-BE1; HEALTH-BE2 · **Blocks:** HEALTH-QA1
+"Story","[FE] Service Health · UI · Health page wire + harden","","Service Health","Medium","3","frontend nextjs ui-ux observability health","HEALTH-FE1","PLAT-FE1; HEALTH-BE1; HEALTH-BE2","HEALTH-QA1","**ID:** HEALTH-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; HEALTH-BE1; HEALTH-BE2 · **Blocks:** HEALTH-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -963,6 +1014,8 @@ service rows with heartbeat bars/uptime/response, per-service notify override, p
 editor) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists; point hooks at `HEALTH-BE1/BE2`. Keep heartbeat bars, incident cards (affected projects),
   recipients editor, and per-service override popover. 30s refresh.
 - Empty/error states; responsive; a11y.
@@ -1027,8 +1080,8 @@ Real infra monitoring inside the SuperAdmin pane, correlated with call activity 
 - [ ] Namespace (project) + node + time-window filtering works; logs scoped via Loki.
 - [ ] Response sizes/latency acceptable; caching where sensible.
 - [ ] Shape matches `K8sResult` so the UI renders unchanged."
-"Story","[FE] Infra Kubernetes · UI · Dashboard wire + date range + log search","","Infra: Kubernetes","Medium","3","frontend nextjs ui-ux charts infra k8s","K8S-FE1","K8S-BE1","K8S-QA1","**ID:** K8S-FE1 · **Priority:** P2 · **Estimate:** 3
-**Blocked by:** K8S-BE1 · **Blocks:** K8S-QA1
+"Story","[FE] Infra Kubernetes · UI · Dashboard wire + date range + log search","","Infra: Kubernetes","Medium","3","frontend nextjs ui-ux charts infra k8s","K8S-FE1","PLAT-FE1; K8S-BE1","K8S-QA1","**ID:** K8S-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; K8S-BE1 · **Blocks:** K8S-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1037,6 +1090,8 @@ limits, restarts, deployment logs) to the real API, keeping the **per-tab date r
 search**.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useInfraK8s(range)` + `DateRangeControl` + fuzzy log filter. Point at `K8S-BE1`.
 - Keep the memoized range query (avoid the infinite-refetch pitfall noted in the repo). Namespace from
   the project filter. Empty/error states; responsive.
@@ -1098,8 +1153,8 @@ Load-balancer health is key infra signal; surfacing it in-platform avoids contex
 - [ ] All panels return real CloudWatch data; values/statistics match Grafana for the same window.
 - [ ] Region + load balancer + time-window selection works.
 - [ ] CloudWatch rate limits respected (caching/batching); shape matches `ElbResult`."
-"Story","[FE] Infra AWS ELB · UI · Dashboard wire + date range","","Infra: AWS ELB","Medium","2","frontend nextjs ui-ux charts infra elb","ELB-FE1","ELB-BE1","ELB-QA1","**ID:** ELB-FE1 · **Priority:** P2 · **Estimate:** 2
-**Blocked by:** ELB-BE1 · **Blocks:** ELB-QA1
+"Story","[FE] Infra AWS ELB · UI · Dashboard wire + date range","","Infra: AWS ELB","Medium","2","frontend nextjs ui-ux charts infra elb","ELB-FE1","PLAT-FE1; ELB-BE1","ELB-QA1","**ID:** ELB-FE1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** PLAT-FE1; ELB-BE1 · **Blocks:** ELB-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1107,6 +1162,8 @@ Wire the ELB page (all CloudWatch panels) to the real API, keeping the **per-tab
 region/load-balancer badges.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useInfraElb(range)` + `DateRangeControl`. Point at `ELB-BE1`; keep memoized range
   (no refetch loop). Empty/error states; responsive.
 
@@ -1170,8 +1227,8 @@ Leadership needs recurring-revenue and platform-usage health in one place to ste
 - [ ] New/returning callers correct; org growth from onboarding/active history.
 - [ ] Churn computed per the agreed definition; documented.
 - [ ] SuperAdmin-only enforced (User blocked at API)."
-"Story","[FE] Business Health · UI · Dashboard wire + gating","","Business Health","Medium","3","frontend nextjs ui-ux charts rbac biz","BIZ-FE1","BIZ-BE1; PLAT-BE3","BIZ-QA1","**ID:** BIZ-FE1 · **Priority:** P2 · **Estimate:** 3
-**Blocked by:** BIZ-BE1; PLAT-BE3 · **Blocks:** BIZ-QA1
+"Story","[FE] Business Health · UI · Dashboard wire + gating","","Business Health","Medium","3","frontend nextjs ui-ux charts rbac biz","BIZ-FE1","PLAT-FE1; BIZ-BE1; PLAT-BE3","BIZ-QA1","**ID:** BIZ-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; BIZ-BE1; PLAT-BE3 · **Blocks:** BIZ-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1179,6 +1236,8 @@ Wire the Business Health page (MRR composition, org growth, new/returning caller
 leaderboard) to the real API; enforce SuperAdmin-only (access-denied for User).
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useBusiness` + SuperAdmin guard. Point at `BIZ-BE1`. Keep MRR/callers/growth charts.
 - Server-enforced gating (don't rely on client). Loading/empty/error; responsive.
 
@@ -1242,8 +1301,8 @@ from call COGS) including in Overview.
 - [ ] Cost uses effective LLM pricing; by-subagent shows model.
 - [ ] Scope + date range honored; totals reconcile with by-subagent and by-project.
 - [ ] Provides the assistant-cost figure consumed by `OVW-BE1`."
-"Story","[FE] Assistant Usage · UI · Page wire + harden","","Assistant Usage (subagents)","Medium","2","frontend nextjs ui-ux charts asst","ASST-FE1","ASST-BE1","ASST-QA1","**ID:** ASST-FE1 · **Priority:** P2 · **Estimate:** 2
-**Blocked by:** ASST-BE1 · **Blocks:** ASST-QA1
+"Story","[FE] Assistant Usage · UI · Page wire + harden","","Assistant Usage (subagents)","Medium","2","frontend nextjs ui-ux charts asst","ASST-FE1","PLAT-FE1; ASST-BE1","ASST-QA1","**ID:** ASST-FE1 · **Priority:** P2 · **Estimate:** 2
+**Blocked by:** PLAT-FE1; ASST-BE1 · **Blocks:** ASST-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1251,6 +1310,8 @@ Wire the Assistant Usage page (KPIs, daily cost trend, cost-by-subagent table wi
 bar) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useAssistant`. Point at `ASST-BE1`. Empty/error states; responsive; a11y.
 
 ## Why
@@ -1308,8 +1369,8 @@ The landing page must summarize the whole platform at a glance for the active sc
 - [ ] Returns `OverviewResult`; numbers match the source tabs for the same scope (no drift).
 - [ ] Assistant cost KPI matches the Assistant tab; margin reconciles with Cost & Margin.
 - [ ] `User` response omits revenue/margin; scope/date honored; p95 < 300 ms (rollup-backed)."
-"Story","[FE] Overview · UI · Role-aware landing wire","","Overview","Medium","3","frontend nextjs ui-ux charts rbac ovw","OVW-FE1","OVW-BE1; PLAT-BE3","OVW-QA1","**ID:** OVW-FE1 · **Priority:** P2 · **Estimate:** 3
-**Blocked by:** OVW-BE1; PLAT-BE3 · **Blocks:** OVW-QA1
+"Story","[FE] Overview · UI · Role-aware landing wire","","Overview","Medium","3","frontend nextjs ui-ux charts rbac ovw","OVW-FE1","PLAT-FE1; OVW-BE1; PLAT-BE3","OVW-QA1","**ID:** OVW-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; OVW-BE1; PLAT-BE3 · **Blocks:** OVW-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1317,6 +1378,8 @@ Wire the role-aware Overview (KPI strip incl. assistant cost, cost-by-service, m
 projects table, live snippet) to the real API. SuperAdmin sees financials; User sees performance/cost.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useOverview` + financial gating. Point at `OVW-BE1`. Keep role-aware KPI strip and
   charts. Empty/error states; responsive.
 
@@ -1402,8 +1465,8 @@ provider failures). LLM scope for MVP = bot-conversation LLM.
 - [ ] Platform-wide outage switches in-scope traffic and reverts on recovery.
 - [ ] LLM order is respected; `fallback_event`s are emitted and visible in the activity log.
 - [ ] Scope override (project/org/global) is honored at runtime."
-"Story","[FE] Fallbacks · UI · Config page wire","","Fallback Controls","Low","3","frontend nextjs ui-ux rbac fallb","FALLB-FE1","FALLB-BE1","FALLB-QA1","**ID:** FALLB-FE1 · **Priority:** P3 · **Estimate:** 3
-**Blocked by:** FALLB-BE1 · **Blocks:** FALLB-QA1
+"Story","[FE] Fallbacks · UI · Config page wire","","Fallback Controls","Low","3","frontend nextjs ui-ux rbac fallb","FALLB-FE1","PLAT-FE1; FALLB-BE1","FALLB-QA1","**ID:** FALLB-FE1 · **Priority:** P3 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; FALLB-BE1 · **Blocks:** FALLB-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1411,6 +1474,8 @@ Wire the Fallbacks page (STT/TTS tabs with enable + fallback select; LLM ordered
 remove + cost labels; scope via Org/Project filter; activity log) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists; point hooks at `FALLB-BE1`. Keep reorder (consider real drag-and-drop vs the MVP's
   up/down buttons). SuperAdmin-only. Loading/error states; responsive.
 
@@ -1499,8 +1564,8 @@ filtered at ingress.
 - [ ] Rule changes take effect within a bounded propagation time.
 - [ ] Decisions are logged/auditable; defined fail-safe behavior.
 - [ ] Inheritance + default policy applied correctly at runtime."
-"Story","[FE] IP Access · UI · Access control page wire","","IP Access Control","Low","3","frontend nextjs ui-ux security rbac ipacc","IPACC-FE1","IPACC-BE1","IPACC-QA1","**ID:** IPACC-FE1 · **Priority:** P3 · **Estimate:** 3
-**Blocked by:** IPACC-BE1 · **Blocks:** IPACC-QA1
+"Story","[FE] IP Access · UI · Access control page wire","","IP Access Control","Low","3","frontend nextjs ui-ux security rbac ipacc","IPACC-FE1","PLAT-FE1; IPACC-BE1","IPACC-QA1","**ID:** IPACC-FE1 · **Priority:** P3 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; IPACC-BE1 · **Blocks:** IPACC-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1508,6 +1573,8 @@ Wire the IP Access page (Allow/Block lists, default-policy toggle, add/delete wi
 inherited org rules read-only, IP tester) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists; point hooks at `IPACC-BE1`. Keep default-policy cards, validation, inherited section,
   and tester (tester should call the server evaluate for parity). SuperAdmin-only.
 
@@ -1577,8 +1644,8 @@ Continuous, automated quality monitoring of conversations without manual review 
 - [ ] Per-evaluator thresholds produce Critical/Warning; breach → auto-flag (+ notify, optional pause).
 - [ ] Results stored with scores + breaches + linked calls; reproducible.
 - [ ] Runs only on recorded calls; no synthetic call generation."
-"Story","[FE] QA Bench · UI · Eval builder, schedules & results","","QA Bench / Evals","Lowest","8","frontend nextjs ui-ux evals qabench","QABENCH-FE1","QABENCH-BE1","QABENCH-QA1","**ID:** QABENCH-FE1 · **Priority:** P4 · **Estimate:** 8
-**Blocked by:** QABENCH-BE1 · **Blocks:** QABENCH-QA1
+"Story","[FE] QA Bench · UI · Eval builder, schedules & results","","QA Bench / Evals","Lowest","8","frontend nextjs ui-ux evals qabench","QABENCH-FE1","PLAT-FE1; QABENCH-BE1","QABENCH-QA1","**ID:** QABENCH-FE1 · **Priority:** P4 · **Estimate:** 8
+**Blocked by:** PLAT-FE1; QABENCH-BE1 · **Blocks:** QABENCH-QA1
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
@@ -1590,6 +1657,8 @@ threshold editor, and pause-on-critical toggle.
 Replaces the stub with the real Phase-2 surface for authoring and reviewing evals.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Net-new screens consuming `QABENCH-BE1`. Reuse design system (cards/tables/charts), date range, and
   the threshold/flag UX patterns from `THRESH`/`FLAG`.
 - Test an evaluator against a sample of past calls before scheduling.

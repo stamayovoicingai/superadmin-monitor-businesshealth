@@ -5,7 +5,7 @@
 - **Epic:** Assistant Usage
 - **Feature:** F2 — Assistant Usage UI
 - **Priority:** P2
-- **Blocked by:** `ASST-BE1`
+- **Blocked by:** `PLAT-FE1`, `ASST-BE1`
 - **Blocks:** `ASST-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts`
 - **Estimate:** 2
@@ -17,6 +17,8 @@ Wire the Assistant Usage page (KPIs, daily cost trend, cost-by-subagent table wi
 bar) to the real API.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `useAssistant`. Point at `ASST-BE1`. Empty/error states; responsive; a11y.
 
 ## Why

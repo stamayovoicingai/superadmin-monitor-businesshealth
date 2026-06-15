@@ -5,7 +5,7 @@
 - **Epic:** Performance
 - **Feature:** F2 — Performance UI
 - **Priority:** P1
-- **Blocked by:** `PERF-BE1`
+- **Blocked by:** `PLAT-FE1`, `PERF-BE1`
 - **Blocks:** `PERF-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts`
 - **Estimate:** 3
@@ -17,6 +17,8 @@ Wire the Performance page (latency KPIs, per-service bars, latency trend, error 
 add a p50/p90/p99 distribution view; harden states/responsive/a11y.
 
 ## How (building on the MVP)
+**Design system:** build on the `/design` tokens + reusable components (voicing.ai system — cream/orange, Inter + Instrument Serif). Reuse `Button`/`Badge`/chips/`Card`/`KpiCard`/`PageHeader`/chart wrappers/`DateRangeControl`; never hardcode colors, fonts, or radii. See `PLAT-FE1`.
+
 - Page exists with `usePerformance`. Point at `PERF-BE1`; add a percentiles chart.
 - Real empty/error states; responsive; accessible charts/tooltips.
 
