@@ -99,11 +99,30 @@ Categories are **user-configurable by SuperAdmin** from the UI.
 
 Configurable thresholds that drive Active Issues (Feature 1A). **Not hardcoded.**
 
+**Metric catalog (built):** two kinds —
+- **Per-call** (each breaching call is flagged): `latency_ms` (>), `cost_per_call_usd` (>),
+  `call_duration_secs` (>).
+- **Aggregate** (rate over scoped calls): `error_rate` (>), `abandonment_rate` (>),
+  `no_data_rate` (>), `tool_success_rate` (<).
+
+`abandonment_rate` carries a **multiselect of `closed_reason`s** that count as abandonment
+(`USER_DISCONNECTED`, `USER_IDLE`, `CALL_END_PHRASE_TRIGGERED`, `PIPELINE_TTL_TRIGGERED`). `no_data_rate`
+uses the call's `hasData` flag. `tool_success_rate` = successful tool calls / total tool calls.
+
+Each threshold has **Warning** and **Critical** values, a scope, a category, and an enable toggle:
+
 | Threshold | Critical example | Warning example |
 |-----------|------------------|-----------------|
 | Latency (ms) | > X ms | > A ms |
 | Error rate (%) | > Y% | > B% |
 | Cost per call (USD) | > Z USD | > C USD |
+| Call duration (s) | > X s | > A s |
+| Abandonment rate (%) | > Y% | > B% |
+| Calls without data (%) | > Y% | > B% |
+| Tool-call success rate (%) | < Z% | < C% |
+
+**Auto-flag:** when a **Critical** threshold breaches, the affected calls are auto-flagged into the
+Flag Queue (`source=auto`, with the project recorded). See doc 10.
 
 - Scope: global / per-org / per-project / per-agent (most specific wins).
 - Each threshold maps to a **category** (so breaches auto-file under Infra/Technical/etc.).

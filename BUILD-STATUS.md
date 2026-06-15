@@ -126,14 +126,26 @@ allow+block lists, org→project inheritance, add/delete, IP tester; SuperAdmin-
 > = extend `DataSource` + `MockAdapter` (+ `types`/`seed` if new fields) → API route → hook → page →
 > nav. Replacing a `ComingSoon` stub reuses the existing route.
 
-1. **Issues + Thresholds** (PRD/05 §4–5) — add `threshold` + `issue` shapes; derive active issues by
-   comparing calls/rollups to thresholds; Active Issues + Issues-by-Category views; threshold config UI
-   (SuperAdmin). Routes already stubbed: `/issues`, `/controls/thresholds`.
-2. **Call Flagging** (PRD/10) — flag action (already a toast on Call Detail) → real `call_flag` state +
-   review queue. Route: `/controls/flags`.
-3. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
+1. **Call Flagging** (PRD/10) — full review queue UI. Auto-flags are ALREADY produced by Issues
+   (critical breaches → `flag-auto-*`, source=auto) and a `CallFlag` store + `listFlags(scope)` exist;
+   the Call Detail flag button still just toasts (wire it to create a manual flag) and `/controls/flags`
+   needs the triage UI. Route: `/controls/flags`.
+2. **QA Bench / Evals** (PRD/11) — **Phase 2, design only**. Route `/qa-bench` stays a stub.
 
-### DONE since: Infra k8s + ELB (PRD/06)
+### DONE since: Issues + Thresholds (PRD/05 §4-5)
+- **Thresholds** `/controls/thresholds` (SuperAdmin): per-metric Warning/Critical, category, enable,
+  scope via Org/Project filter; add/delete; manage categories; abandonment metric has a **closed-reason
+  multiselect**. **Issues** `/issues`: KPIs (critical/warning/affected/auto-flagged), Issues-by-Category,
+  active issues list with affected projects + call links.
+- 7 metrics (`lib/engine/issues.ts`): per-call `latency_ms`/`cost_per_call_usd`/`call_duration_secs`;
+  aggregate `error_rate`/`abandonment_rate`/`no_data_rate`/`tool_success_rate`. Critical breaches
+  **auto-flag** affected calls into a `CallFlag` store (with project). Call gained `hasData`,
+  `toolCalls`, `toolFailures`; new `closed_reason` `PIPELINE_TTL_TRIGGERED`.
+- `DataSource`: getIssues/listThresholds/createThreshold/updateThreshold/deleteThreshold/
+  listIssueCategories/createIssueCategory/listFlags. APIs `/api/issues`, `/api/thresholds` (GET/POST/
+  PATCH/DELETE), `/api/issue-categories`. Hooks: useIssues/useThresholds/use{Create,Update,Delete}Threshold/useCreateCategory.
+
+### DONE earlier: Infra k8s + ELB (PRD/06)
 - **Kubernetes** `/infra/kubernetes` (SuperAdmin): Cluster Usage (CPU/Mem/Storage gauges + used/total
   stats + replica count), Overall Usage, Pods CPU/Mem, Containers CPU/Mem, Requests & Limits bars,
   Restarts (total + series), Deployment Logs. Namespace from project filter (else cluster-wide).

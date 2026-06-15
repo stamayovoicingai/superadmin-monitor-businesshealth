@@ -23,8 +23,11 @@ import type {
   SetServiceOverrideInput,
   K8sResult,
   ElbResult,
+  IssuesResult,
+  CreateThresholdInput,
+  UpdateThresholdPatch,
 } from "@/lib/data/source";
-import type { Agent, IpRule, Organization, Project } from "@/lib/types";
+import type { Agent, IpRule, IssueCategory, Organization, Project, Threshold } from "@/lib/types";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -223,6 +226,70 @@ function withLocalRange(globalQuery: string, range?: RangeState): string {
   sp.set("from", from);
   sp.set("to", to);
   return sp.toString();
+}
+
+export function useIssues() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["issues", query],
+    queryFn: () => fetchJson<IssuesResult>(`/api/issues?${query}`),
+  });
+}
+
+export function useThresholds() {
+  return useQuery({
+    queryKey: ["thresholds"],
+    queryFn: () => fetchJson<{ thresholds: Threshold[]; categories: IssueCategory[] }>("/api/thresholds"),
+  });
+}
+
+function invalidateIssues(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["thresholds"] });
+  qc.invalidateQueries({ queryKey: ["issues"] });
+}
+
+export function useCreateThreshold() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateThresholdInput) => {
+      const res = await fetch("/api/thresholds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => invalidateIssues(qc),
+  });
+}
+
+export function useUpdateThreshold() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: UpdateThresholdPatch) => {
+      const res = await fetch("/api/thresholds", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => invalidateIssues(qc),
+  });
+}
+
+export function useDeleteThreshold() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/thresholds?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => invalidateIssues(qc),
+  });
+}
+
+export function useCreateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await fetch("/api/issue-categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => invalidateIssues(qc),
+  });
 }
 
 export function useInfraK8s(range?: RangeState) {

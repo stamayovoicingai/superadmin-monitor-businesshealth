@@ -86,6 +86,7 @@ export default function CallsPage() {
               <SelectItem value="CALL_END_PHRASE_TRIGGERED">End phrase</SelectItem>
               <SelectItem value="USER_IDLE">User idle</SelectItem>
               <SelectItem value="CALL_TRANSFERRED">Transferred</SelectItem>
+              <SelectItem value="PIPELINE_TTL_TRIGGERED">Max duration</SelectItem>
               <SelectItem value="OTHER">Other</SelectItem>
             </SelectContent>
           </Select>

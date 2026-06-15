@@ -1,12 +1,21 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { CallEndReason, CallStatus, Disposition } from "@/lib/types";
+import type { CallEndReason, CallStatus, Disposition, Severity } from "@/lib/types";
+
+export function SeverityBadge({ severity }: { severity: Severity }) {
+  return severity === "critical" ? (
+    <Badge className="bg-critical/10 text-critical">Critical</Badge>
+  ) : (
+    <Badge className="bg-warning/10 text-warning">Warning</Badge>
+  );
+}
 
 const END_REASON_LABEL: Record<CallEndReason, string> = {
   USER_IDLE: "User idle",
   USER_DISCONNECTED: "User disconnected",
   CALL_TRANSFERRED: "Transferred",
   CALL_END_PHRASE_TRIGGERED: "End phrase",
+  PIPELINE_TTL_TRIGGERED: "Max duration",
   OTHER: "Other",
 };
 

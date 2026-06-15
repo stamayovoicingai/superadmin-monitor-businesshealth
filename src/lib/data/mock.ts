@@ -1,6 +1,7 @@
 /** MockAdapter — implements DataSource from the deterministic seed dataset. */
 import type {
   Call,
+  CallFlag,
   FallbackConfig,
   FallbackScopeType,
   FallbackService,
@@ -10,14 +11,18 @@ import type {
   IpRule,
   IpScopePolicy,
   IpScopeType,
+  Issue,
+  IssueCategory,
   NotifyRecipients,
   ServiceNotifyOverride,
   ServiceStatus,
   SubagentKey,
   SubagentUsageRow,
+  Threshold,
 } from "@/lib/types";
 import { getDataset } from "@/lib/seed";
 import { SUBAGENTS, SUBAGENT_LABEL } from "@/lib/engine/subagents";
+import { evaluateIssues, formatMetric } from "@/lib/engine/issues";
 import { Rng } from "@/lib/seed/rng";
 import {
   activeAgentsCount,
@@ -55,6 +60,9 @@ import type {
   K8sPoint,
   ElbResult,
   ElbPoint,
+  IssuesResult,
+  CreateThresholdInput,
+  UpdateThresholdPatch,
 } from "./source";
 
 /* ----- Infra mock generators (deterministic per scope) ----- */
@@ -114,6 +122,39 @@ let _overrides: ServiceNotifyOverride[] | null = null;
 function overrideStore(): ServiceNotifyOverride[] {
   if (!_overrides) _overrides = getDataset().serviceNotifyOverrides.map((o) => ({ ...o, emails: [...o.emails] }));
   return _overrides;
+}
+
+/** Mutable stores for thresholds, issue categories and call flags. */
+let _thresholds: Threshold[] | null = null;
+function thresholdStore(): Threshold[] {
+  if (!_thresholds) _thresholds = getDataset().thresholds.map((t) => ({ ...t, reasons: t.reasons ? [...t.reasons] : undefined }));
+  return _thresholds;
+}
+let _categories: IssueCategory[] | null = null;
+function categoryStore(): IssueCategory[] {
+  if (!_categories) _categories = getDataset().issueCategories.map((c) => ({ ...c }));
+  return _categories;
+}
+let _flags: CallFlag[] | null = null;
+function flagStore(): CallFlag[] {
+  if (!_flags) {
+    const { calls, projects } = getDataset();
+    const projName = (id: string) => projects.find((p) => p.id === id)?.name ?? id;
+    _flags = calls
+      .filter((c) => c.flagged)
+      .map((c) => ({
+        id: `flag-manual-${c.id}`,
+        callId: c.callId,
+        orgId: c.orgId,
+        projectId: c.projectId,
+        projectName: projName(c.projectId),
+        source: "manual" as const,
+        reason: "Flagged by user",
+        status: "open" as const,
+        createdAt: c.startTime,
+      }));
+  }
+  return _flags;
 }
 
 /** Subagent usage rows filtered by scope (org/project) and date range. */
@@ -767,5 +808,115 @@ export class MockAdapter implements DataSource {
       ruleEvals: ts.map((t, i) => ({ t, evals: round(evals[i]) })),
       auth: ts.map((t, i) => ({ t, success: round(authSuccess[i]), error: round(authError[i]), failure: round(authFailure[i]) })),
     };
+  }
+
+  async getIssues(scope: Scope): Promise<IssuesResult> {
+    const ds = getDataset();
+    const calls = scopedCalls(scope);
+    const orgName = (id: string) => ds.orgs.find((o) => o.id === id)?.name ?? id;
+    const projName = (id: string) => ds.projects.find((p) => p.id === id)?.name ?? id;
+    const agentName = (id: string) => ds.agents.find((a) => a.id === id)?.name ?? id;
+    const catName = (id: string) => categoryStore().find((c) => c.id === id)?.name ?? id;
+    const scopeLabel = (type: Threshold["scopeType"], id: string | null) =>
+      type === "global" ? "All orgs" : type === "org" ? orgName(id!) : type === "project" ? projName(id!) : agentName(id!);
+
+    const issues = evaluateIssues(calls, thresholdStore(), categoryStore(), {
+      categoryName: catName,
+      scopeLabel,
+      projectName: projName,
+    });
+
+    // Auto-flag affected calls of CRITICAL issues into the review queue (idempotent).
+    // affectedCalls is capped for the UI, so count auto-flagged from the full issue counts.
+    const store = flagStore();
+    let autoFlagged = 0;
+    for (const iss of issues) {
+      if (iss.severity !== "critical") continue;
+      autoFlagged += iss.count;
+      for (const ac of iss.affectedCalls) {
+        const id = `flag-auto-${ac.callId}-${iss.metric}`;
+        if (!store.some((f) => f.id === id)) {
+          store.push({
+            id,
+            callId: ac.callId,
+            orgId: ds.projects.find((p) => p.id === ac.projectId)?.orgId ?? "",
+            projectId: ac.projectId,
+            projectName: ac.projectName,
+            source: "auto",
+            reason: `${iss.metricLabel} ${iss.comparator === "gt" ? ">" : "<"} ${formatMetric(iss.metric, iss.thresholdValue)} (Critical)`,
+            metric: iss.metric,
+            severity: "critical",
+            status: "open",
+            createdAt: ac.timestamp,
+          });
+        }
+      }
+    }
+
+    // Per-category rollup across all categories.
+    const byCategory = categoryStore().map((cat) => {
+      const catIssues = issues.filter((i) => i.categoryId === cat.id);
+      return {
+        categoryId: cat.id,
+        categoryName: cat.name,
+        critical: catIssues.filter((i) => i.severity === "critical").length,
+        warning: catIssues.filter((i) => i.severity === "warning").length,
+        affectedCalls: catIssues.reduce((s, i) => s + i.count, 0),
+      };
+    });
+
+    const affected = new Set<string>();
+    issues.forEach((i) => i.affectedCalls.forEach((ac) => affected.add(ac.callId)));
+
+    return {
+      issues,
+      byCategory,
+      summary: {
+        critical: issues.filter((i) => i.severity === "critical").length,
+        warning: issues.filter((i) => i.severity === "warning").length,
+        affectedCalls: affected.size,
+        autoFlagged,
+      },
+    };
+  }
+
+  async listThresholds(): Promise<Threshold[]> {
+    return thresholdStore();
+  }
+
+  async listIssueCategories(): Promise<IssueCategory[]> {
+    return categoryStore();
+  }
+
+  async createThreshold(input: CreateThresholdInput): Promise<Threshold> {
+    const t: Threshold = { id: `th-${Date.now()}-${Math.floor(Math.random() * 1e4)}`, ...input };
+    thresholdStore().push(t);
+    return t;
+  }
+
+  async updateThreshold(patch: UpdateThresholdPatch): Promise<void> {
+    const t = thresholdStore().find((x) => x.id === patch.id);
+    if (!t) return;
+    if (patch.warning !== undefined) t.warning = patch.warning;
+    if (patch.critical !== undefined) t.critical = patch.critical;
+    if (patch.enabled !== undefined) t.enabled = patch.enabled;
+    if (patch.categoryId !== undefined) t.categoryId = patch.categoryId;
+    if (patch.reasons !== undefined) t.reasons = patch.reasons;
+  }
+
+  async deleteThreshold(id: string): Promise<void> {
+    _thresholds = thresholdStore().filter((t) => t.id !== id);
+  }
+
+  async createIssueCategory(name: string): Promise<IssueCategory> {
+    const cat: IssueCategory = { id: `cat-${Date.now()}-${Math.floor(Math.random() * 1e4)}`, name, isDefault: false };
+    categoryStore().push(cat);
+    return cat;
+  }
+
+  async listFlags(scope: Scope): Promise<CallFlag[]> {
+    return flagStore()
+      .filter((f) => (!scope.orgId || f.orgId === scope.orgId) && (!scope.projectId || f.projectId === scope.projectId))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 }

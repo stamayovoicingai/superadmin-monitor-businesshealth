@@ -14,6 +14,7 @@ export type CallEndReason =
   | "USER_DISCONNECTED"
   | "CALL_TRANSFERRED"
   | "CALL_END_PHRASE_TRIGGERED"
+  | "PIPELINE_TTL_TRIGGERED"
   | "OTHER";
 
 export type Disposition =
@@ -118,6 +119,11 @@ export interface Call {
   recordingUrl: string | null;
   flagged: boolean;
   errorCount: number;
+  /** Whether the bot captured the expected business data. */
+  hasData: boolean;
+  /** Tool/function calls made during the call and how many failed. */
+  toolCalls: number;
+  toolFailures: number;
 }
 
 export interface OrgContract {
@@ -171,6 +177,89 @@ export interface TimePoint {
   minutes: number;
   calls: number;
   service: ServiceCostBreakdown;
+}
+
+/* ----- Issues & Thresholds ----- */
+
+export type ThresholdMetric =
+  | "latency_ms"
+  | "cost_per_call_usd"
+  | "call_duration_secs"
+  | "error_rate"
+  | "abandonment_rate"
+  | "no_data_rate"
+  | "tool_success_rate";
+
+export type ThresholdKind = "per_call" | "aggregate";
+export type Comparator = "gt" | "lt";
+export type ThresholdScopeType = "global" | "org" | "project" | "agent";
+
+export interface IssueCategory {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface Threshold {
+  id: string;
+  metric: ThresholdMetric;
+  scopeType: ThresholdScopeType;
+  scopeId: string | null;
+  warning: number;
+  critical: number;
+  categoryId: string;
+  enabled: boolean;
+  /** For abandonment_rate: which closed reasons count as abandonment. */
+  reasons?: CallEndReason[];
+}
+
+export interface IssueAffectedCall {
+  callId: string;
+  projectId: string;
+  projectName: string;
+  timestamp: string;
+  value: number; // the per-call value (for per-call metrics)
+}
+
+export interface Issue {
+  id: string;
+  metric: ThresholdMetric;
+  metricLabel: string;
+  kind: ThresholdKind;
+  severity: Severity;
+  categoryId: string;
+  categoryName: string;
+  scopeType: ThresholdScopeType;
+  scopeId: string | null;
+  scopeLabel: string;
+  comparator: Comparator;
+  value: number; // breaching value (rate %, or worst per-call value, or count)
+  thresholdValue: number;
+  unit: string;
+  count: number; // affected calls
+  affectedProjects: string[];
+  affectedCalls: IssueAffectedCall[];
+  firstSeen: string;
+  lastSeen: string;
+  status: "open" | "acknowledged" | "resolved";
+}
+
+/* ----- Call flags (manual + auto from Issues / QA Bench) ----- */
+
+export type FlagStatus = "open" | "in_review" | "resolved" | "dismissed";
+
+export interface CallFlag {
+  id: string;
+  callId: string;
+  orgId: string;
+  projectId: string;
+  projectName: string;
+  source: "manual" | "auto";
+  reason: string;
+  metric?: ThresholdMetric;
+  severity?: Severity;
+  status: FlagStatus;
+  createdAt: string;
 }
 
 /* ----- IP Access Control (whitelist / blacklist) ----- */

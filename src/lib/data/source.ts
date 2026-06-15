@@ -6,6 +6,8 @@
 import type {
   Agent,
   Call,
+  CallEndReason,
+  CallFlag,
   EndReasonCount,
   FallbackConfig,
   FallbackEvent,
@@ -13,6 +15,11 @@ import type {
   FallbackService,
   HealthIncident,
   HealthService,
+  Issue,
+  IssueCategory,
+  Threshold,
+  ThresholdMetric,
+  ThresholdScopeType,
   IpDefaultPolicy,
   IpListType,
   IpRule,
@@ -237,6 +244,40 @@ export interface ElbResult {
   auth: ElbPoint[]; // success/error/failure
 }
 
+export interface IssueCategoryRollup {
+  categoryId: string;
+  categoryName: string;
+  critical: number;
+  warning: number;
+  affectedCalls: number;
+}
+
+export interface IssuesResult {
+  issues: Issue[];
+  byCategory: IssueCategoryRollup[];
+  summary: { critical: number; warning: number; affectedCalls: number; autoFlagged: number };
+}
+
+export interface CreateThresholdInput {
+  metric: ThresholdMetric;
+  scopeType: ThresholdScopeType;
+  scopeId: string | null;
+  warning: number;
+  critical: number;
+  categoryId: string;
+  enabled: boolean;
+  reasons?: CallEndReason[];
+}
+
+export interface UpdateThresholdPatch {
+  id: string;
+  warning?: number;
+  critical?: number;
+  enabled?: boolean;
+  categoryId?: string;
+  reasons?: CallEndReason[];
+}
+
 export interface DataSource {
   listOrgs(): Promise<Organization[]>;
   listProjects(orgId?: string): Promise<Project[]>;
@@ -266,4 +307,13 @@ export interface DataSource {
 
   infraK8s(scope: Scope): Promise<K8sResult>;
   infraElb(scope: Scope): Promise<ElbResult>;
+
+  getIssues(scope: Scope): Promise<IssuesResult>;
+  listThresholds(): Promise<Threshold[]>;
+  listIssueCategories(): Promise<IssueCategory[]>;
+  createThreshold(input: CreateThresholdInput): Promise<Threshold>;
+  updateThreshold(patch: UpdateThresholdPatch): Promise<void>;
+  deleteThreshold(id: string): Promise<void>;
+  createIssueCategory(name: string): Promise<IssueCategory>;
+  listFlags(scope: Scope): Promise<CallFlag[]>;
 }

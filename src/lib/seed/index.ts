@@ -15,6 +15,8 @@ import type {
   HealthService,
   IpRule,
   IpScopePolicy,
+  IssueCategory,
+  Threshold,
   NotifyRecipients,
   Organization,
   OrgContract,
@@ -168,11 +170,12 @@ const SUBAGENT_WEIGHT: Record<string, number> = {
 };
 
 const END_REASONS: { value: CallEndReason; weight: number }[] = [
-  { value: "USER_DISCONNECTED", weight: 0.34 },
-  { value: "CALL_END_PHRASE_TRIGGERED", weight: 0.3 },
-  { value: "USER_IDLE", weight: 0.15 },
-  { value: "CALL_TRANSFERRED", weight: 0.13 },
-  { value: "OTHER", weight: 0.08 },
+  { value: "CALL_END_PHRASE_TRIGGERED", weight: 0.52 }, // bot ended normally
+  { value: "USER_DISCONNECTED", weight: 0.18 },
+  { value: "CALL_TRANSFERRED", weight: 0.12 },
+  { value: "USER_IDLE", weight: 0.08 },
+  { value: "PIPELINE_TTL_TRIGGERED", weight: 0.04 }, // max duration reached
+  { value: "OTHER", weight: 0.06 },
 ];
 
 function dispositionFor(reason: CallEndReason, failed: boolean): Disposition {
@@ -186,10 +189,29 @@ function dispositionFor(reason: CallEndReason, failed: boolean): Disposition {
       return "voicemail";
     case "USER_DISCONNECTED":
       return "no_answer";
+    case "PIPELINE_TTL_TRIGGERED":
+      return "failed";
     default:
       return "completed";
   }
 }
+
+const ISSUE_CATEGORIES_SEED: IssueCategory[] = [
+  { id: "cat-infra", name: "Infra", isDefault: true },
+  { id: "cat-compliance", name: "Compliance", isDefault: true },
+  { id: "cat-technical", name: "Technical", isDefault: true },
+  { id: "cat-effectiveness", name: "Effectiveness", isDefault: true },
+];
+
+const THRESHOLDS_SEED: Threshold[] = [
+  { id: "th-latency", metric: "latency_ms", scopeType: "global", scopeId: null, warning: 1800, critical: 2600, categoryId: "cat-technical", enabled: true },
+  { id: "th-cost", metric: "cost_per_call_usd", scopeType: "global", scopeId: null, warning: 0.5, critical: 0.9, categoryId: "cat-technical", enabled: true },
+  { id: "th-duration", metric: "call_duration_secs", scopeType: "global", scopeId: null, warning: 420, critical: 600, categoryId: "cat-effectiveness", enabled: true },
+  { id: "th-error", metric: "error_rate", scopeType: "global", scopeId: null, warning: 5, critical: 10, categoryId: "cat-technical", enabled: true },
+  { id: "th-abandon", metric: "abandonment_rate", scopeType: "global", scopeId: null, warning: 20, critical: 30, categoryId: "cat-effectiveness", enabled: true, reasons: ["USER_DISCONNECTED", "USER_IDLE"] },
+  { id: "th-nodata", metric: "no_data_rate", scopeType: "global", scopeId: null, warning: 10, critical: 18, categoryId: "cat-effectiveness", enabled: true },
+  { id: "th-tool", metric: "tool_success_rate", scopeType: "global", scopeId: null, warning: 90, critical: 80, categoryId: "cat-technical", enabled: true },
+];
 
 export interface Dataset {
   generatedAt: string;
@@ -207,6 +229,8 @@ export interface Dataset {
   healthIncidents: HealthIncident[];
   notifyRecipients: NotifyRecipients[];
   serviceNotifyOverrides: ServiceNotifyOverride[];
+  issueCategories: IssueCategory[];
+  thresholds: Threshold[];
 }
 
 export function buildDataset(): Dataset {
@@ -296,6 +320,9 @@ export function buildDataset(): Dataset {
         latency.totalMs = latency.llmMs + latency.sttMs + latency.ttsMs + latency.toolMs + latency.telephonyMs;
 
         const errorCount = failed ? rng.int(1, 4) : rng.bool(0.05) ? rng.int(1, 2) : 0;
+        const hasData = active ? true : rng.bool(0.88);
+        const toolCalls = latency.toolMs > 0 ? rng.int(1, 4) : 0;
+        const toolFailures = toolCalls > 0 && rng.bool(0.18) ? rng.int(1, toolCalls) : 0;
         const agent = projAgents[rng.int(0, projAgents.length - 1)];
         const idx = calls.length + 1;
 
@@ -320,6 +347,9 @@ export function buildDataset(): Dataset {
           recordingUrl: active ? null : `/recordings/call-${idx}.mp3`,
           flagged: !active && rng.bool(0.02),
           errorCount,
+          hasData,
+          toolCalls,
+          toolFailures,
         });
       }
     }
@@ -459,6 +489,8 @@ export function buildDataset(): Dataset {
     healthIncidents,
     notifyRecipients: NOTIFY_SEED,
     serviceNotifyOverrides: SERVICE_OVERRIDE_SEED,
+    issueCategories: ISSUE_CATEGORIES_SEED,
+    thresholds: THRESHOLDS_SEED,
   };
 }
 

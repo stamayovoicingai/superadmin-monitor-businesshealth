@@ -22,6 +22,7 @@ const REASON_CONFIG: ChartConfig = {
   CALL_END_PHRASE_TRIGGERED: { label: "End phrase", color: "var(--chart-2)" },
   USER_IDLE: { label: "Idle", color: "var(--chart-3)" },
   CALL_TRANSFERRED: { label: "Transferred", color: "var(--chart-4)" },
+  PIPELINE_TTL_TRIGGERED: { label: "Max duration", color: "var(--chart-2)" },
   OTHER: { label: "Other", color: "var(--chart-5)" },
 };
 
