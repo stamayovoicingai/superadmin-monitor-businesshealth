@@ -10,9 +10,10 @@ per **tab/module** (= one **Epic**). Each Epic folder contains an `EPIC.md` and 
 Read **[`CONVENTIONS.md`](./CONVENTIONS.md)** first (issue template, types, labels, estimation, IDs,
 priority scale, and the MVP→production framing) and **[`ROADMAP.md`](./ROADMAP.md)** for the global
 **priority tiers, dependency graph, and delivery waves** (what to build first, what blocks what).
-For sprint sizing/sequencing see **[`SPRINT-PLAN.md`](./SPRINT-PLAN.md)** — calibrated to the squad
-(3 BE · 2 FE · 1 QA): **~252 SP (QA Bench deferred) ≈ 6–7 two-week sprints (~12–14 weeks)**, or
-~6 weeks with 2 squads. **QA Bench (`QABENCH`) is out of scope for now** (tickets kept for later).
+For sprint sizing/sequencing see **[`SPRINT-PLAN.md`](./SPRINT-PLAN.md)** — calibrated to the real team
+(**3 backend engineers; one covers frontend with Claude Code; no dedicated QA → shift-left**):
+**~257 SP (QA Bench deferred) ≈ 8–9 two-week sprints (~16–18 weeks)**. **QA Bench (`QABENCH`) is out of
+scope for now** (tickets kept for later).
 
 ## Epics (one per tab)
 
