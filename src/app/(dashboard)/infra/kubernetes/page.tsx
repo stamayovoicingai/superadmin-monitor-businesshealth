@@ -5,7 +5,7 @@ import { Lock, Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { GaugeChart, MultiLineChart } from "@/components/charts";
 import { DateRangeControl } from "@/components/date-range-control";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -189,21 +189,19 @@ export default function KubernetesPage() {
       {/* Logs */}
       <Card className="mt-4">
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-base">Deployment Logs</CardTitle>
-              <CardDescription>Loki · within selected range · {filteredLogs.length} line(s)</CardDescription>
-            </div>
+          <CardTitle className="text-base">Deployment Logs</CardTitle>
+          <CardDescription>Loki · within selected range · {filteredLogs.length} line(s)</CardDescription>
+          <CardAction>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={logQuery}
                 onChange={(e) => setLogQuery(e.target.value)}
                 placeholder="Fuzzy search logs…"
-                className="h-8 w-64 pl-8 font-mono"
+                className="h-8 w-56 pl-8 font-mono sm:w-64"
               />
             </div>
-          </div>
+          </CardAction>
         </CardHeader>
         <CardContent>
           {isLoading ? (

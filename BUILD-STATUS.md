@@ -27,6 +27,15 @@ Service Health, IP Access, Assistant Usage and Business Health are built.)
 1. **shadcn = Base UI, NOT Radix** (`base-nova` preset, `@base-ui/react`). Use the **`render` prop**
    (`render={<Link/>}`) not `asChild`; Tooltip uses `delay` not `delayDuration`; `Select.onValueChange`
    can yield `null` → coerce `(v) => set(v && v !== ALL ? v : undefined)`. See DOCUMENTATION §15.
+   - **CardHeader is a CSS grid** — its direct children must be `CardTitle`/`CardDescription`/`CardAction`.
+     Do NOT wrap them in an extra `<div>` (breaks layout + caused a hydration mismatch). Put header-right
+     content in `<CardAction>`.
+   - **Theme is a custom provider** (`components/theme.tsx`), NOT next-themes (which injected a `<script>`
+     that triggered React 19's "script tag" console error). A server-rendered inline script in
+     `layout.tsx` (`themeInitScript`) applies the saved theme pre-paint (no FOUC). `useTheme()` from
+     `@/components/theme`. next-themes is no longer imported anywhere.
+   - Browser wallet extensions (e.g. Phantom) inject scripts and can cause spurious hydration warnings —
+     verify console issues in an incognito window without extensions.
 2. **`npx` is rewritten by the RTK shell hook** and fails → run npx via **`rtk proxy npx <…>`**
    (e.g. `rtk proxy npx shadcn@latest add <name> --yes`). Plain `npm install` / `npm run …` are fine.
 3. No **Docker** / **Supabase CLI** → use **Supabase Cloud** (needs credentials) when wiring the backend.
