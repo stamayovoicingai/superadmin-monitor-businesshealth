@@ -29,3 +29,4 @@ SuperAdmins must tune detection rules without code changes.
 - [ ] All CRUD works against the real API; changes reflect in Issues on next eval.
 - [ ] Abandonment reason multiselect persists; per-metric units/comparators shown correctly.
 - [ ] SuperAdmin-only; `User` cannot reach the page or mutate; responsive; a11y clean.
+- [ ] All form `Select`s are controlled from first render (default to a defined value/`""` while data loads) — no Base UI uncontrolled→controlled console warnings, especially the Category select before categories load.
