@@ -34,4 +34,4 @@ verified end-to-end.
 - [ ] **Date range**: 24h/7d/30d and custom windows return correct, consistent subsets.
 - [ ] **RBAC**: `User` API response and UI contain no revenue/margin; `SuperAdmin` sees all.
 - [ ] **Performance**: dashboard p95 < 300 ms on production-scale data.
-- [ ] **Regression**: parity check between Supabase adapter and MVP mock on a shared dataset.
+- [ ] **Regression**: parity check between Postgres (Supabase or equivalent) adapter and MVP mock on a shared dataset.

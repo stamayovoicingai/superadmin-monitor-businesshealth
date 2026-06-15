@@ -34,7 +34,7 @@ decisions are trustworthy.
 - Cloud allocation = **talk-minutes** (confirmed): `cloud_cost(project,period) × call_minutes/project_minutes`.
 - Write `call_cost` rows (micro-USD integers): `llm/stt/tts/telephony/cloud` addends + `total`,
   plus `pricing_asof`. Keep money as integer micro-USD to avoid float drift.
-- Idempotent + backfillable; run as a scheduled Python job (and/or stream) populating Supabase.
+- Idempotent + backfillable; run as a scheduled Python job (and/or stream) populating Postgres (Supabase or equivalent).
 
 ## Acceptance Criteria
 - [ ] `call_cost` is produced for ≥99% of completed calls within the refresh SLA (≤15–30 min).

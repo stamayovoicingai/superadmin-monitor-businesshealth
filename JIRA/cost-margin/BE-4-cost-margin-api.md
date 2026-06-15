@@ -1,4 +1,4 @@
-# [BE] Cost & Margin · API · Cost & Margin endpoint (Supabase-backed)
+# [BE] Cost & Margin · API · Cost & Margin endpoint (Postgres-backed)
 
 - **ID:** `COST-BE4`
 - **Type:** Backend
@@ -23,8 +23,8 @@ frontend swap is config-only. Range + scope filtering must be honored server-sid
 
 ## How (building on the MVP)
 - Honor the existing contract in `source.ts` (`CostResult`) so the UI needs no shape changes.
-- Implement as a Python (FastAPI) endpoint or Supabase RPC/view that the Next.js route handler calls;
-  flip `DATA_SOURCE=supabase` and add a `SupabaseAdapter` (`src/lib/data/supabase.ts`) implementing
+- Implement as a Python (FastAPI) endpoint or Postgres (Supabase or equivalent) RPC/view that the Next.js route handler calls;
+  flip `DATA_SOURCE=postgres` and add a `PostgresAdapter` (`src/lib/data/postgres.ts`) implementing
   `DataSource.cost(scope)`.
 - Parse `from`/`to` (explicit window) per the MVP `scopeFromSearch` behavior; default presets if absent.
 - **RBAC server-side:** for `User`, return cost-to-serve only — **omit revenue/margin fields** (don't

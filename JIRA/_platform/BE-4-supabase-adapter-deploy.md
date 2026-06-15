@@ -1,4 +1,4 @@
-# [BE] Platform · Adapter & Deploy · SupabaseAdapter, envs & CI/CD
+# [BE] Platform · Adapter & Deploy · Postgres adapter, envs & CI/CD
 
 - **ID:** `PLAT-BE4`
 - **Type:** Backend
@@ -13,7 +13,7 @@
   `src/lib/data/index.ts` (`getDataSource`, `DATA_SOURCE`), `src/lib/data/source.ts`, `DOCUMENTATION.md` §20
 
 ## What
-Implement `SupabaseAdapter` (implements the `DataSource` interface), flip `DATA_SOURCE=supabase`, wire
+Implement `PostgresAdapter` (implements the `DataSource` interface), flip `DATA_SOURCE=postgres`, wire
 environments/secrets, and set up CI/CD (Vercel for the app; Python services deploy). The UI then reads
 real data with no component changes.
 
@@ -22,15 +22,16 @@ This is the seam that turns the prototype into a live product. The MVP was built
 adapter change, not a refactor.
 
 ## How (building on the MVP)
-- Create `src/lib/data/supabase.ts` implementing each `DataSource` method by calling Supabase
+- Create `src/lib/data/postgres.ts` implementing each `DataSource` method by calling Postgres
   (views/RPC) or the Python API; return the **same result shapes** as the mock.
-- Enable the `case "supabase"` in `src/lib/data/index.ts`; set env: `NEXT_PUBLIC_SUPABASE_URL`,
-  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_SOURCE=supabase`.
+- Enable the `case "postgres"` in `src/lib/data/index.ts`; set env: `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_SOURCE=postgres`.
 - CI: typecheck/build/lint on PR; deploy app to Vercel; deploy Python services; run migrations on deploy.
 - Keep mock adapter available for local/dev and tests.
+- Expose the global lookup/filter feeds the UI's scope pickers need (`useMeta`): `listOrgs`/`listProjects`/`listAgents`/`getContract` (`src/app/api/meta`) and `listIssueCategories` (`src/app/api/issue-categories`), backed by real tables.
 
 ## Acceptance Criteria
-- [ ] With `DATA_SOURCE=supabase`, every screen renders real data, no component code changes.
+- [ ] With `DATA_SOURCE=postgres`, every screen renders real data, no component code changes.
 - [ ] Secrets are server-side only; none reach the client bundle.
 - [ ] CI blocks merges on failing typecheck/build/lint; deploys are automated; migrations run on deploy.
-- [ ] A documented switch lets devs run locally against mock or Supabase.
+- [ ] A documented switch lets devs run locally against mock or Postgres.

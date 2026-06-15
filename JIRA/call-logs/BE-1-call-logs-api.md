@@ -23,7 +23,7 @@ The call log is the operational backbone and the entry point for drill-downs acr
 
 ## How (building on the MVP)
 - Honor the `CallPage`/`CallFilter` shapes so the UI is unchanged.
-- Implement against Supabase (indexed on org_id/project_id/start_time/status); server-side pagination
+- Implement against Postgres (Supabase or equivalent) (indexed on org_id/project_id/start_time/status); server-side pagination
   + sorting; explicit `from`/`to` window (match `scopeFromSearch`).
 - **RBAC:** omit revenue/margin for `User`.
 - Free-text search across `call_id`/`session_id`/`host_id`.

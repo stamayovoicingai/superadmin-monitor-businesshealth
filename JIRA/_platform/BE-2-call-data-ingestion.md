@@ -13,7 +13,7 @@
   `PRD/04-data-sources.md` (S1/S2), `src/lib/types.ts` (`Call`), `src/lib/seed/index.ts`
 
 ## What
-Ingest production call/conversation data into Supabase: per-call rows with `host_id` (pod), `status`,
+Ingest production call/conversation data into Postgres (Supabase or equivalent): per-call rows with `host_id` (pod), `status`,
 `closed_reason`, `start_time`/`end_time`/`duration`, per-service usage (LLM tokens, STT minutes, TTS
 chars, telephony minutes), per-service latency, `hasData`, tool calls/failures, transcript
 (`chat_message`) and error logs (`call_error_log`). Near-real-time (≤15–30 min) + backfill.
@@ -31,7 +31,7 @@ Business Health. Everything call-related is blocked until this exists.
 - Mark `ACTIVE` calls for Live Ops; keep `host_id` for per-pod views.
 
 ## Acceptance Criteria
-- [ ] Calls land in Supabase within the refresh SLA; ACTIVE calls reflect live state.
+- [ ] Calls land in Postgres within the refresh SLA; ACTIVE calls reflect live state.
 - [ ] All fields required by downstream tabs are populated (usage, latency, hasData, tools, reasons).
 - [ ] Ingestion is idempotent; backfill for a date range works and doesn't duplicate.
 - [ ] Transcript + error logs are linked to their call and queryable by `call_id`/`session_id`.

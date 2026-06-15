@@ -15,7 +15,7 @@
 
 ## What
 CRUD for thresholds (metric, scope, warning, critical, category, enabled, and `reasons[]` for
-abandonment) and for issue categories. SuperAdmin-only, persisted to Supabase.
+abandonment) and for issue categories. SuperAdmin-only, persisted to Postgres (Supabase or equivalent).
 
 ## Why
 Thresholds are the rules that define what counts as a problem; Issues depends entirely on this config.

@@ -14,7 +14,7 @@
 
 ## What
 Establish the cross-cutting test harness: an end-to-end smoke suite, the RBAC role/scope matrix, and a
-**parity harness** that asserts the SupabaseAdapter returns the same shapes/values as the mock on a
+**parity harness** that asserts the PostgresAdapter returns the same shapes/values as the mock on a
 shared dataset.
 
 ## Why
@@ -22,12 +22,12 @@ Foundation correctness underpins every tab. RBAC and adapter parity must be guar
 live on real data.
 
 ## How (building on the MVP)
-- Parity: run the same queries against mock and Supabase adapters; diff results (shapes + values).
+- Parity: run the same queries against mock and Postgres adapters; diff results (shapes + values).
 - RBAC: drive the `PRD/01` permission matrix as automated checks (SuperAdmin vs User, per endpoint).
 - E2E: auth → navigate each tab → assert it loads with real data and gating applies.
 
 ## Acceptance Criteria
-- [ ] E2E smoke passes for all tabs against a staging Supabase.
+- [ ] E2E smoke passes for all tabs against a staging Postgres.
 - [ ] RBAC matrix from `PRD/01` is fully automated and green.
-- [ ] Adapter parity suite passes (mock vs Supabase) on the shared dataset.
+- [ ] Adapter parity suite passes (mock vs Postgres) on the shared dataset.
 - [ ] Suite runs in CI and gates deploys.

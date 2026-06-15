@@ -29,12 +29,12 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 - `BE-4-supabase-adapter-deploy.md` (`PLAT-BE4`)
 - `FE-1-design-system.md` (`PLAT-FE1`) — blocks all frontend tasks
 - `QA-1-foundation-harness.md` (`PLAT-QA1`)"
-"Story","[BE] Platform · Schema · Supabase project, schema & migrations","","Platform Foundation","Highest","8","backend postgres database foundation plat","PLAT-BE1","","PLAT-BE2","**ID:** PLAT-BE1 · **Priority:** P0 · **Estimate:** 8
+"Story","[BE] Platform · Schema · Postgres project, schema & migrations","","Platform Foundation","Highest","8","backend postgres database foundation plat","PLAT-BE1","","PLAT-BE2","**ID:** PLAT-BE1 · **Priority:** P0 · **Estimate:** 8
 **Blocked by:** — · **Blocks:** PLAT-BE2
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
-Create the Supabase (Postgres) project and the base schema with migrations: `organization`, `project`,
+Create the Postgres (Supabase or equivalent) project and the base schema with migrations: `organization`, `project`,
 `agent`, `call` (+ `call_cost`, `conversation_details`, `chat_message`, `call_error_log`), `org_contract`,
 `pricing_*`, `period_rollup`, `issue_category`, `threshold`, `issue`, `call_flag` (+ comments),
 `fallback_config`/`fallback_event`, `ip_rule`/`ip_policy`, `health_service`/`incident`/`notify_*`,
@@ -63,7 +63,7 @@ connection change, not a remodel — schema must match so adapters and the UI st
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
-Ingest production call/conversation data into Supabase: per-call rows with `host_id` (pod), `status`,
+Ingest production call/conversation data into Postgres (Supabase or equivalent): per-call rows with `host_id` (pod), `status`,
 `closed_reason`, `start_time`/`end_time`/`duration`, per-service usage (LLM tokens, STT minutes, TTS
 chars, telephony minutes), per-service latency, `hasData`, tool calls/failures, transcript
 (`chat_message`) and error logs (`call_error_log`). Near-real-time (≤15–30 min) + backfill.
@@ -81,7 +81,7 @@ Business Health. Everything call-related is blocked until this exists.
 - Mark `ACTIVE` calls for Live Ops; keep `host_id` for per-pod views.
 
 ## Acceptance Criteria
-- [ ] Calls land in Supabase within the refresh SLA; ACTIVE calls reflect live state.
+- [ ] Calls land in Postgres within the refresh SLA; ACTIVE calls reflect live state.
 - [ ] All fields required by downstream tabs are populated (usage, latency, hasData, tools, reasons).
 - [ ] Ingestion is idempotent; backfill for a date range works and doesn't duplicate.
 - [ ] Transcript + error logs are linked to their call and queryable by `call_id`/`session_id`.
@@ -100,10 +100,10 @@ Financial data and SuperAdmin-only controls must be protected at the API/DB laye
 not security. This is required before any real financial endpoint ships.
 
 ## How (building on the MVP)
-- Use Supabase Auth (or the platform's SSO) for sessions; map users to `app_user` (`role`, `org_id`,
+- Use Postgres-backed sessions (e.g. Supabase Auth or the platform's SSO) for sessions; map users to `app_user` (`role`, `org_id`,
   `project_ids`).
 - Encode the MVP policy (`policy.ts`: `canSeeFinancials`, `canSeeCost`, `canSeeSuperAdminOnly`) as the
-  single source of truth shared by API authorization and **Supabase RLS**.
+  single source of truth shared by API authorization and **Postgres Row-Level Security (RLS)**.
 - Enforce on every endpoint: scope by `org_id`/`project_ids`; **omit** revenue/margin fields for `User`.
 - Keep `policy.ts` predicates in the FE for UX (hide/disable), but never rely on them for protection.
 - Provide a way to impersonate/test roles in non-prod (replacing the demo switcher).
@@ -115,12 +115,12 @@ not security. This is required before any real financial endpoint ships.
   IP access) are denied to `User` server-side.
 - [ ] RLS policies mirror `policy.ts`; scope leakage across orgs/projects is impossible.
 - [ ] Security tests cover role/scope matrix from `PRD/01`."
-"Story","[BE] Platform · Adapter & Deploy · SupabaseAdapter, envs & CI/CD","","Platform Foundation","Highest","5","backend postgres nextjs devops foundation plat","PLAT-BE4","PLAT-BE1; PLAT-BE3","","**ID:** PLAT-BE4 · **Priority:** P0 · **Estimate:** 5
+"Story","[BE] Platform · Adapter & Deploy · Postgres adapter, envs & CI/CD","","Platform Foundation","Highest","5","backend postgres nextjs devops foundation plat","PLAT-BE4","PLAT-BE1; PLAT-BE3","","**ID:** PLAT-BE4 · **Priority:** P0 · **Estimate:** 5
 **Blocked by:** PLAT-BE1; PLAT-BE3 · **Blocks:** —
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
 ## What
-Implement `SupabaseAdapter` (implements the `DataSource` interface), flip `DATA_SOURCE=supabase`, wire
+Implement `PostgresAdapter` (implements the `DataSource` interface), flip `DATA_SOURCE=postgres`, wire
 environments/secrets, and set up CI/CD (Vercel for the app; Python services deploy). The UI then reads
 real data with no component changes.
 
@@ -129,18 +129,19 @@ This is the seam that turns the prototype into a live product. The MVP was built
 adapter change, not a refactor.
 
 ## How (building on the MVP)
-- Create `src/lib/data/supabase.ts` implementing each `DataSource` method by calling Supabase
+- Create `src/lib/data/postgres.ts` implementing each `DataSource` method by calling Postgres
   (views/RPC) or the Python API; return the **same result shapes** as the mock.
-- Enable the `case ""supabase""` in `src/lib/data/index.ts`; set env: `NEXT_PUBLIC_SUPABASE_URL`,
-  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_SOURCE=supabase`.
+- Enable the `case ""postgres""` in `src/lib/data/index.ts`; set env: `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATA_SOURCE=postgres`.
 - CI: typecheck/build/lint on PR; deploy app to Vercel; deploy Python services; run migrations on deploy.
 - Keep mock adapter available for local/dev and tests.
+- Expose the global lookup/filter feeds the UI's scope pickers need (`useMeta`): `listOrgs`/`listProjects`/`listAgents`/`getContract` (`src/app/api/meta`) and `listIssueCategories` (`src/app/api/issue-categories`), backed by real tables.
 
 ## Acceptance Criteria
-- [ ] With `DATA_SOURCE=supabase`, every screen renders real data, no component code changes.
+- [ ] With `DATA_SOURCE=postgres`, every screen renders real data, no component code changes.
 - [ ] Secrets are server-side only; none reach the client bundle.
 - [ ] CI blocks merges on failing typecheck/build/lint; deploys are automated; migrations run on deploy.
-- [ ] A documented switch lets devs run locally against mock or Supabase."
+- [ ] A documented switch lets devs run locally against mock or Postgres."
 "Story","[FE] Platform · Design system · Tokens, fonts & reusable component library","","Platform Foundation","Highest","5","frontend nextjs design-system ui-ux foundation plat","PLAT-FE1","","","**ID:** PLAT-FE1 · **Priority:** P0 · **Estimate:** 5
 **Blocked by:** — · **Blocks:** —
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
@@ -178,7 +179,7 @@ the product stays consistent and FE work is fast.
 
 ## What
 Establish the cross-cutting test harness: an end-to-end smoke suite, the RBAC role/scope matrix, and a
-**parity harness** that asserts the SupabaseAdapter returns the same shapes/values as the mock on a
+**parity harness** that asserts the PostgresAdapter returns the same shapes/values as the mock on a
 shared dataset.
 
 ## Why
@@ -186,14 +187,14 @@ Foundation correctness underpins every tab. RBAC and adapter parity must be guar
 live on real data.
 
 ## How (building on the MVP)
-- Parity: run the same queries against mock and Supabase adapters; diff results (shapes + values).
+- Parity: run the same queries against mock and Postgres adapters; diff results (shapes + values).
 - RBAC: drive the `PRD/01` permission matrix as automated checks (SuperAdmin vs User, per endpoint).
 - E2E: auth → navigate each tab → assert it loads with real data and gating applies.
 
 ## Acceptance Criteria
-- [ ] E2E smoke passes for all tabs against a staging Supabase.
+- [ ] E2E smoke passes for all tabs against a staging Postgres.
 - [ ] RBAC matrix from `PRD/01` is fully automated and green.
-- [ ] Adapter parity suite passes (mock vs Supabase) on the shared dataset.
+- [ ] Adapter parity suite passes (mock vs Postgres) on the shared dataset.
 - [ ] Suite runs in CI and gates deploys."
 "Epic","Cost & Margin","Cost & Margin","","High","","epic cost","COST","","","## Goal
 Give the Voicing team an accurate, real-time view of **what each call/project/org costs us**, **what
@@ -254,7 +255,7 @@ decisions are trustworthy.
 - Cloud allocation = **talk-minutes** (confirmed): `cloud_cost(project,period) × call_minutes/project_minutes`.
 - Write `call_cost` rows (micro-USD integers): `llm/stt/tts/telephony/cloud` addends + `total`,
   plus `pricing_asof`. Keep money as integer micro-USD to avoid float drift.
-- Idempotent + backfillable; run as a scheduled Python job (and/or stream) populating Supabase.
+- Idempotent + backfillable; run as a scheduled Python job (and/or stream) populating Postgres (Supabase or equivalent).
 
 ## Acceptance Criteria
 - [ ] `call_cost` is produced for ≥99% of completed calls within the refresh SLA (≤15–30 min).
@@ -278,7 +279,7 @@ time-aware, so re-computing a past month yields the same number it did then.
 
 ## How (building on the MVP)
 - The MVP hardcodes illustrative rates in `pricing.ts` (`LLM_RATES`, `STT_RATES`, `TTS_RATES`,
-  `TELEPHONY_RATE_PER_MIN`, `CLOUD_RATE_PER_MIN`). Replace with Supabase tables
+  `TELEPHONY_RATE_PER_MIN`, `CLOUD_RATE_PER_MIN`). Replace with Postgres (Supabase or equivalent) tables
   `pricing_llm/pricing_stt/pricing_tts/pricing_telephony/pricing_cloud`, each with `valid_from`/
   `valid_to` (see `PRD/12-data-model.md` §3).
 - The ingestion job (BE-1) looks up the rate effective at the call's `start_time`.
@@ -323,7 +324,7 @@ Latam = pure usage; others = MGF). Without this, the platform shows cost but not
 - [ ] Headline margin at org/global scope equals the sum of per-org contract margins (reconciliation).
 - [ ] `period_rollup` is refreshed within SLA and powers charts without scanning raw calls.
 - [ ] Unit tests cover both contract types and the scope-based reconciliation."
-"Story","[BE] Cost & Margin · API · Cost & Margin endpoint (Supabase-backed)","","Cost & Margin","High","5","backend python postgres api rbac cost","COST-BE4","COST-BE3; PLAT-BE3; PLAT-BE4","COST-FE1; COST-FE2","**ID:** COST-BE4 · **Priority:** P1 · **Estimate:** 5
+"Story","[BE] Cost & Margin · API · Cost & Margin endpoint (Postgres-backed)","","Cost & Margin","High","5","backend python postgres api rbac cost","COST-BE4","COST-BE3; PLAT-BE3; PLAT-BE4","COST-FE1; COST-FE2","**ID:** COST-BE4 · **Priority:** P1 · **Estimate:** 5
 **Blocked by:** COST-BE3; PLAT-BE3; PLAT-BE4 · **Blocks:** COST-FE1; COST-FE2
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
 
@@ -338,8 +339,8 @@ frontend swap is config-only. Range + scope filtering must be honored server-sid
 
 ## How (building on the MVP)
 - Honor the existing contract in `source.ts` (`CostResult`) so the UI needs no shape changes.
-- Implement as a Python (FastAPI) endpoint or Supabase RPC/view that the Next.js route handler calls;
-  flip `DATA_SOURCE=supabase` and add a `SupabaseAdapter` (`src/lib/data/supabase.ts`) implementing
+- Implement as a Python (FastAPI) endpoint or Postgres (Supabase or equivalent) RPC/view that the Next.js route handler calls;
+  flip `DATA_SOURCE=postgres` and add a `PostgresAdapter` (`src/lib/data/postgres.ts`) implementing
   `DataSource.cost(scope)`.
 - Parse `from`/`to` (explicit window) per the MVP `scopeFromSearch` behavior; default presets if absent.
 - **RBAC server-side:** for `User`, return cost-to-serve only — **omit revenue/margin fields** (don't
@@ -436,7 +437,7 @@ verified end-to-end.
 - [ ] **Date range**: 24h/7d/30d and custom windows return correct, consistent subsets.
 - [ ] **RBAC**: `User` API response and UI contain no revenue/margin; `SuperAdmin` sees all.
 - [ ] **Performance**: dashboard p95 < 300 ms on production-scale data.
-- [ ] **Regression**: parity check between Supabase adapter and MVP mock on a shared dataset."
+- [ ] **Regression**: parity check between Postgres (Supabase or equivalent) adapter and MVP mock on a shared dataset."
 "Epic","Call Logs & Call Detail","Call Logs & Call Detail","","High","","epic calls","CALLS","PLAT-BE1; PLAT-BE2","","## Goal
 A filterable call history and a rich per-call detail view (transcript, recording, latency waterfall,
 per-service cost, error logs, flagging) — the drill-down hub the whole app links into.
@@ -472,7 +473,7 @@ The call log is the operational backbone and the entry point for drill-downs acr
 
 ## How (building on the MVP)
 - Honor the `CallPage`/`CallFilter` shapes so the UI is unchanged.
-- Implement against Supabase (indexed on org_id/project_id/start_time/status); server-side pagination
+- Implement against Postgres (Supabase or equivalent) (indexed on org_id/project_id/start_time/status); server-side pagination
   + sorting; explicit `from`/`to` window (match `scopeFromSearch`).
 - **RBAC:** omit revenue/margin for `User`.
 - Free-text search across `call_id`/`session_id`/`host_id`.
@@ -558,10 +559,16 @@ This is where flagged/issue calls are investigated end-to-end.
 - [ ] Audio uses an expiring signed URL; graceful state when no recording."
 "Task","[QA] Call Logs · QA · Call logs & detail test scenarios","","Call Logs & Call Detail","High","3","qa observability rbac calls","CALLS-QA1","CALLS-FE1; CALLS-FE2","","**ID:** CALLS-QA1 · **Priority:** P1 · **Estimate:** 3
 **Blocked by:** CALLS-FE1; CALLS-FE2 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05,
 
 ## What / Why
 Validate filtering, pagination, drill-down, detail rendering, recordings, and RBAC for the call surfaces.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/aggregate.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shapes `CallPage` (and `CallDetail`) in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Each filter (status, end_reason incl. `PIPELINE_TTL_TRIGGERED`, flagged, date range, search) returns correct subsets.
@@ -624,13 +631,21 @@ Operators need a quick read on whether the platform is fast and reliable per ser
 
 ## Acceptance Criteria
 - [ ] KPIs, per-service latency, trend, error rate, and percentiles render from the real API.
-- [ ] Scope + date range honored; loading/empty/error states; responsive; a11y clean."
+- [ ] Scope + date range honored; loading/empty/error states; responsive; a11y clean.
+- [ ] Loading, empty, and error states are implemented and visually correct (skeletons + retry on error).
+- [ ] Selected scope (org/project) and period/date-range persist across navigation and survive refresh; no refetch loop on mount."
 "Task","[QA] Performance · QA · Latency & error metric scenarios","","Performance","High","2","qa observability perf","PERF-QA1","PERF-FE1","","**ID:** PERF-QA1 · **Priority:** P1 · **Estimate:** 2
 **Blocked by:** PERF-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §1, PerformanceResult in src/lib/data/source.ts, src/lib/engine/aggregate.ts (latency/error aggregation)
 
 ## What / Why
 Validate latency/error metrics correctness, percentiles, scoping and performance.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/aggregate.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `PerformanceResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Avg + per-service latency and error rate match fixtures across scopes.
@@ -669,7 +684,7 @@ heartbeat.
 ## How (building on the MVP)
 - Honor `LiveOpsResult`. Query live `chat_conversations` (`status='ACTIVE'`, `host_id`,
   `closed_reason`) per `PRD/04` S1 SQL.
-- The MVP polls every 20s; in production support **Supabase Realtime / SSE** for active-calls + status,
+- The MVP polls every 20s; in production support **Postgres CDC / SSE (e.g. Supabase Realtime or equivalent)** for active-calls + status,
   falling back to short polling. Keep a stable `LiveSource` seam.
 - Scope by org/project; near-real-time freshness (≤30s).
 
@@ -702,10 +717,16 @@ Operators watch live load and outcomes; the surface must feel live and reliable.
 - [ ] Scoped by org/project; pod links cross-reference Kubernetes view where relevant."
 "Task","[QA] Live Operations · QA · Live ops scenarios","","Live Operations","High","2","qa realtime observability live","LIVE-QA1","LIVE-FE1","","**ID:** LIVE-QA1 · **Priority:** P1 · **Estimate:** 2
 **Blocked by:** LIVE-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/07
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/07, LiveOpsResult in src/lib/data/source.ts, src/lib/engine/aggregate.ts (status/end-reason/pod aggregation)
 
 ## What / Why
 Validate live freshness, correctness of counts, scoping and resilience.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/aggregate.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `LiveOpsResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Active-calls-per-pod, status and end-reason counts match the DB at a point in time.
@@ -734,7 +755,7 @@ Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
 
 ## What
 CRUD for thresholds (metric, scope, warning, critical, category, enabled, and `reasons[]` for
-abandonment) and for issue categories. SuperAdmin-only, persisted to Supabase.
+abandonment) and for issue categories. SuperAdmin-only, persisted to Postgres (Supabase or equivalent).
 
 ## Why
 Thresholds are the rules that define what counts as a problem; Issues depends entirely on this config.
@@ -773,10 +794,16 @@ SuperAdmins must tune detection rules without code changes.
 - [ ] SuperAdmin-only; `User` cannot reach the page or mutate; responsive; a11y clean."
 "Task","[QA] Thresholds · QA · Threshold config scenarios","","Thresholds","High","2","qa rbac thresh","THRESH-QA1","THRESH-FE1","","**ID:** THRESH-QA1 · **Priority:** P1 · **Estimate:** 2
 **Blocked by:** THRESH-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §5
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §5, CreateThresholdInput / UpdateThresholdPatch in src/lib/data/source.ts, src/lib/engine/issues.ts (metric catalog / comparator semantics)
 
 ## What / Why
 Validate threshold CRUD, scoping, abandonment reasons, and that changes drive Issues correctly.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/issues.ts` for the metric catalog/comparator semantics) for the same scope+period.
+- Validate the request/response against the `DataSource` shapes `CreateThresholdInput` / `UpdateThresholdPatch` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — thresholds are SuperAdmin-only and must never be writable by User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Create/edit/delete thresholds and categories persist and survive reload.
@@ -851,10 +878,16 @@ Operators need a single, prioritized view of what's wrong and where, with one cl
 - [ ] Empty/error/loading states; responsive; a11y clean."
 "Task","[QA] Issues · QA · Detection & auto-flag scenarios","","Issues","High","3","qa observability issue","ISSUE-QA1","ISSUE-FE1","","**ID:** ISSUE-QA1 · **Priority:** P1 · **Estimate:** 3
 **Blocked by:** ISSUE-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — src/lib/engine/issues.ts, PRD/05 §4
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §4, src/lib/engine/issues.ts (evaluateIssues, ISSUE_METRICS), IssuesResult in src/lib/data/source.ts
 
 ## What / Why
 Validate each metric's detection, severity, by-category rollup, scoping, and auto-flag behavior.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/issues.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `IssuesResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Per-call metrics (latency, cost/call, duration) flag the right calls at warning vs critical.
@@ -927,10 +960,16 @@ Centralized triage of flagged calls (manual + auto) is the operational close-the
 - [ ] SuperAdmin-only queue; responsive; a11y clean."
 "Task","[QA] Call Flagging · QA · Queue & flagging scenarios","","Call Flagging","High","2","qa rbac flag","FLAG-QA1","FLAG-FE1","","**ID:** FLAG-QA1 · **Priority:** P1 · **Estimate:** 2
 **Blocked by:** FLAG-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/10
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/10,
 
 ## What / Why
 Validate manual + auto flagging, triage, comments, scoping and RBAC.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/issues.ts` where applicable, for auto-flags) for the same scope+period.
+- Validate the response against the `DataSource` shape `CallFlag` (and `CreateFlagInput`) in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Manual flag from Call Detail creates a queue item (source=manual) with project + note.
@@ -1029,10 +1068,16 @@ The single pane to watch platform health and manage who gets alerted.
 - [ ] Scope (project/org) filters internal services; externals always shown; responsive; a11y clean."
 "Task","[QA] Service Health · QA · Health & alerting scenarios","","Service Health","Medium","3","qa observability notifications health","HEALTH-QA1","HEALTH-FE1; HEALTH-BE2","","**ID:** HEALTH-QA1 · **Priority:** P2 · **Estimate:** 3
 **Blocked by:** HEALTH-FE1; HEALTH-BE2 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/18
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/18, HealthResult (+ SetRecipientsInput, SetServiceOverrideInput) in src/lib/data/source.ts, health impl in src/lib/data/mock.ts
 
 ## What / Why
 Validate health computation, incident affected-projects, scoping, and alerting.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (the `health` impl, incl. the `projectsUsingProvider` mapping) for the same scope+period.
+- Validate the response against the `DataSource` shape `HealthResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Status/uptime/heartbeats reflect real checks; incidents created on non-operational.
@@ -1105,10 +1150,16 @@ Engineers need the familiar Grafana panels inside the platform with quick time s
 - [ ] No refetch loop; loading/empty/error states; responsive."
 "Task","[QA] Infra Kubernetes · QA · Metrics & logs scenarios","","Infra: Kubernetes","Medium","2","qa infra k8s","K8S-QA1","K8S-FE1","","**ID:** K8S-QA1 · **Priority:** P2 · **Estimate:** 2
 **Blocked by:** K8S-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/04 §4, PRD/06
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/04 §4, PRD/06,
 
 ## What / Why
 Validate parity with Grafana, scoping (namespace/node/time), and log search.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (`infraK8s`) for the same scope+period.
+- Validate the response against the `DataSource` shape `K8sResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Panel values match Grafana for the same query/window (spot-checked per panel).
@@ -1172,13 +1223,21 @@ ELB health in-platform with quick time scoping.
 
 ## Acceptance Criteria
 - [ ] All panels render real data; date range scopes correctly; no refetch loop.
-- [ ] Region/LB shown; loading/empty/error states; responsive."
+- [ ] Region/LB shown; loading/empty/error states; responsive.
+- [ ] Loading, empty, and error states are implemented and visually correct (skeletons + retry on error).
+- [ ] Selected scope (org/project) and period/date-range persist across navigation and survive refresh; no refetch loop on mount."
 "Task","[QA] Infra AWS ELB · QA · CloudWatch panel scenarios","","Infra: AWS ELB","Medium","2","qa infra elb","ELB-QA1","ELB-FE1","","**ID:** ELB-QA1 · **Priority:** P2 · **Estimate:** 2
 **Blocked by:** ELB-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/04 §5, PRD/06
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/04 §5, PRD/06,
 
 ## What / Why
 Validate parity with Grafana/CloudWatch, region/LB and time scoping.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (`infraElb`) for the same scope+period.
+- Validate the response against the `DataSource` shape `ElbResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Each panel matches CloudWatch/Grafana for the same metric/statistic/window.
@@ -1250,10 +1309,16 @@ The exec view of recurring revenue and platform usage.
 - [ ] Loading/empty/error states; responsive; a11y clean."
 "Task","[QA] Business Health · QA · Business metrics scenarios","","Business Health","Medium","2","qa finance rbac biz","BIZ-QA1","BIZ-FE1","","**ID:** BIZ-QA1 · **Priority:** P2 · **Estimate:** 2
 **Blocked by:** BIZ-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/09
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/09,
 
 ## What / Why
 Validate MRR/composition/churn/growth/usage correctness and SuperAdmin-only access.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/cost.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `BusinessHealthResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] MRR + composition reconcile with contracts/cost engine; MoM delta correct.
@@ -1322,10 +1387,16 @@ Visibility into platform-assistant spend per project/subagent.
 - [ ] Loading/empty/error states; responsive; a11y clean."
 "Task","[QA] Assistant Usage · QA · Subagent usage/cost scenarios","","Assistant Usage (subagents)","Medium","2","qa cost asst","ASST-QA1","ASST-FE1","","**ID:** ASST-QA1 · **Priority:** P2 · **Estimate:** 2
 **Blocked by:** ASST-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/17
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/17,
 
 ## What / Why
 Validate per-project/per-subagent usage and cost correctness, and the Overview KPI.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/subagents.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `AssistantUsageResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] By-subagent and by-project totals reconcile with the grand total.
@@ -1392,10 +1463,16 @@ First screen users land on; must be fast, accurate, and role-appropriate.
 - [ ] Loading/empty/error states; responsive; a11y clean."
 "Task","[QA] Overview · QA · Landing aggregation & RBAC scenarios","","Overview","Medium","2","qa rbac ovw","OVW-QA1","OVW-FE1","","**ID:** OVW-QA1 · **Priority:** P2 · **Estimate:** 2
 **Blocked by:** OVW-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/02 §3
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/02 §3, OverviewResult in src/lib/data/source.ts, src/lib/engine/aggregate.ts (rollups) + src/lib/engine/cost.ts (org/global vs project reconciliation)
 
 ## What / Why
 Validate that Overview aggregates match source tabs and respects role.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/aggregate.ts` / `src/lib/engine/cost.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `OverviewResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] KPIs (cost, revenue, margin, assistant cost, latency, active calls) match source tabs for the same scope.
@@ -1488,10 +1565,16 @@ SuperAdmins configure resilience without code.
 - [ ] SuperAdmin-only; responsive; a11y clean."
 "Task","[QA] Fallbacks · QA · Config + enforcement scenarios","","Fallback Controls","Low","3","qa reliability rbac fallb","FALLB-QA1","FALLB-BE2; FALLB-FE1","","**ID:** FALLB-QA1 · **Priority:** P3 · **Estimate:** 3
 **Blocked by:** FALLB-BE2; FALLB-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/08
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/08,
 
 ## What / Why
 Validate config CRUD/scoping and, crucially, real fallback enforcement in the pipeline.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/fallbacks.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `FallbacksResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] STT/TTS primary failure → configured fallback used; call recovers.
@@ -1587,10 +1670,16 @@ SuperAdmins manage access per scope with immediate feedback.
 - [ ] SuperAdmin-only; responsive; a11y clean."
 "Task","[QA] IP Access · QA · Rules, policy & enforcement scenarios","","IP Access Control","Low","3","qa security ipacc","IPACC-QA1","IPACC-BE2; IPACC-FE1","","**ID:** IPACC-QA1 · **Priority:** P3 · **Estimate:** 3
 **Blocked by:** IPACC-BE2; IPACC-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/16
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/16,
 
 ## What / Why
 Validate evaluation correctness, inheritance, default policy, and real ingress enforcement.
+
+## How (building on the MVP)
+- Treat the MVP mock/engine outputs as **golden fixtures**: assert the production API returns the same shapes/values as `src/lib/data/mock.ts` (and `src/lib/engine/ip.ts` where applicable) for the same scope+period.
+- Validate the response against the `DataSource` shape `IpRulesResult` in `src/lib/data/source.ts`.
+- Cover RBAC (SuperAdmin vs User — financial/SuperAdmin-only data must never reach User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Block wins over allow; allowlist mode denies non-listed; blacklist mode allows by default.
@@ -1669,10 +1758,16 @@ Replaces the stub with the real Phase-2 surface for authoring and reviewing eval
 - [ ] Pause-on-critical toggle (config-gated by role); empty/error states; responsive; a11y."
 "Task","[QA] QA Bench · QA · Evaluation, scheduling & action scenarios","","QA Bench / Evals","Lowest","5","qa evals qabench","QABENCH-QA1","QABENCH-FE1","","**ID:** QABENCH-QA1 · **Priority:** P4 · **Estimate:** 5
 **Blocked by:** QABENCH-FE1 · **Blocks:** —
-**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/11
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/11 (§6 planned models evaluator / eval_schedule / eval_run / eval_result / eval_threshold). Note: QA Bench is **design-only** in the MVP — no DataSource shape or src/lib/engine/* file exists yet; threshold/auto-flag semantics reuse src/lib/engine/issues.ts and the FLAG store.
 
 ## What / Why
 Validate evaluators, scheduling, threshold breaches and breach actions (flag/notify/pause).
+
+## How (building on the MVP)
+- Because QA Bench is new (design-only in the MVP), there is no mock/engine golden fixture for the result shape itself; instead pin **reproducible run fixtures** (fixed call set + evaluator + thresholds → expected scores/breaches) and assert runs are deterministic against them.
+- Validate the planned shapes from `PRD/11` §6 (`eval_result`/`eval_run` and the per-project `eval_threshold` config); for the reused breach path, assert auto-flags match the `FLAG` store and threshold semantics in `src/lib/engine/issues.ts`.
+- Cover RBAC (SuperAdmin vs User — SuperAdmin-only actions like agent pause must never be triggerable by User), loading/empty/error states, and scope/period correctness.
+- Automate in CI: pytest for backend/engine logic, Playwright or RTL for the UI flows.
 
 ## Acceptance Criteria (scenarios)
 - [ ] Evaluators score recorded calls correctly (templated / LLM-judge / rule).

@@ -28,3 +28,5 @@ Operators need a quick read on whether the platform is fast and reliable per ser
 ## Acceptance Criteria
 - [ ] KPIs, per-service latency, trend, error rate, and percentiles render from the real API.
 - [ ] Scope + date range honored; loading/empty/error states; responsive; a11y clean.
+- [ ] Loading, empty, and error states are implemented and visually correct (skeletons + retry on error).
+- [ ] Selected scope (org/project) and period/date-range persist across navigation and survive refresh; no refetch loop on mount.

@@ -22,10 +22,10 @@ Financial data and SuperAdmin-only controls must be protected at the API/DB laye
 not security. This is required before any real financial endpoint ships.
 
 ## How (building on the MVP)
-- Use Supabase Auth (or the platform's SSO) for sessions; map users to `app_user` (`role`, `org_id`,
+- Use Postgres-backed sessions (e.g. Supabase Auth or the platform's SSO) for sessions; map users to `app_user` (`role`, `org_id`,
   `project_ids`).
 - Encode the MVP policy (`policy.ts`: `canSeeFinancials`, `canSeeCost`, `canSeeSuperAdminOnly`) as the
-  single source of truth shared by API authorization and **Supabase RLS**.
+  single source of truth shared by API authorization and **Postgres Row-Level Security (RLS)**.
 - Enforce on every endpoint: scope by `org_id`/`project_ids`; **omit** revenue/margin fields for `User`.
 - Keep `policy.ts` predicates in the FE for UX (hide/disable), but never rely on them for protection.
 - Provide a way to impersonate/test roles in non-prod (replacing the demo switcher).

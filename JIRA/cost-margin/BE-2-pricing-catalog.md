@@ -23,7 +23,7 @@ time-aware, so re-computing a past month yields the same number it did then.
 
 ## How (building on the MVP)
 - The MVP hardcodes illustrative rates in `pricing.ts` (`LLM_RATES`, `STT_RATES`, `TTS_RATES`,
-  `TELEPHONY_RATE_PER_MIN`, `CLOUD_RATE_PER_MIN`). Replace with Supabase tables
+  `TELEPHONY_RATE_PER_MIN`, `CLOUD_RATE_PER_MIN`). Replace with Postgres (Supabase or equivalent) tables
   `pricing_llm/pricing_stt/pricing_tts/pricing_telephony/pricing_cloud`, each with `valid_from`/
   `valid_to` (see `PRD/12-data-model.md` §3).
 - The ingestion job (BE-1) looks up the rate effective at the call's `start_time`.

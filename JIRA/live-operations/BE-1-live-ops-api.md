@@ -24,7 +24,7 @@ heartbeat.
 ## How (building on the MVP)
 - Honor `LiveOpsResult`. Query live `chat_conversations` (`status='ACTIVE'`, `host_id`,
   `closed_reason`) per `PRD/04` S1 SQL.
-- The MVP polls every 20s; in production support **Supabase Realtime / SSE** for active-calls + status,
+- The MVP polls every 20s; in production support **Postgres CDC / SSE (e.g. Supabase Realtime or equivalent)** for active-calls + status,
   falling back to short polling. Keep a stable `LiveSource` seam.
 - Scope by org/project; near-real-time freshness (≤30s).
 

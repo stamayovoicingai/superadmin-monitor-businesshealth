@@ -1,9 +1,9 @@
-# [BE] Platform · Schema · Supabase project, schema & migrations
+# [BE] Platform · Schema · Postgres project, schema & migrations
 
 - **ID:** `PLAT-BE1`
 - **Type:** Backend
 - **Epic:** Platform Foundation
-- **Feature:** F1 — Supabase project, schema & migrations
+- **Feature:** F1 — Postgres project, schema & migrations
 - **Priority:** P0
 - **Blocked by:** —
 - **Blocks:** every backend task (esp. `PLAT-BE2`, `COST-BE*`, `THRESH-BE*`, `HEALTH-BE*`, all `*-BE-api`)
@@ -13,7 +13,7 @@
   `PRD/12-data-model.md`, `src/lib/types.ts`, `src/lib/seed/index.ts`
 
 ## What
-Create the Supabase (Postgres) project and the base schema with migrations: `organization`, `project`,
+Create the Postgres (Supabase or equivalent) project and the base schema with migrations: `organization`, `project`,
 `agent`, `call` (+ `call_cost`, `conversation_details`, `chat_message`, `call_error_log`), `org_contract`,
 `pricing_*`, `period_rollup`, `issue_category`, `threshold`, `issue`, `call_flag` (+ comments),
 `fallback_config`/`fallback_event`, `ip_rule`/`ip_policy`, `health_service`/`incident`/`notify_*`,

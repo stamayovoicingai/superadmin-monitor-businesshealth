@@ -28,3 +28,5 @@ ELB health in-platform with quick time scoping.
 ## Acceptance Criteria
 - [ ] All panels render real data; date range scopes correctly; no refetch loop.
 - [ ] Region/LB shown; loading/empty/error states; responsive.
+- [ ] Loading, empty, and error states are implemented and visually correct (skeletons + retry on error).
+- [ ] Selected scope (org/project) and period/date-range persist across navigation and survive refresh; no refetch loop on mount.
