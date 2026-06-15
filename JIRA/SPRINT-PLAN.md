@@ -1,67 +1,73 @@
 # Sprint Plan
 
-## Assessment (read this)
+Calibrated to Voicing's real squad. **Cadence: 2-week sprints.**
 
-The **waves** in [`ROADMAP.md`](./ROADMAP.md) are **dependency tiers, not sprints**. By story points
-they're too big to each fit a single 1–2 week sprint with one squad:
+## Team & capacity
 
-| Wave | Scope | Story points |
-|------|-------|--------------|
-| 0 — Foundation (`PLAT`) | platform | ~34 |
-| 1 — Core | COST, CALLS, PERF, LIVE, THRESH, ISSUE, FLAG | ~112 |
-| 2 — High-value | HEALTH, K8S, ELB, BIZ, ASST, OVW | ~73 |
-| 3 — Controls | FALLB, IPACC | ~33 |
-| 4 — Phase 2 | QABENCH | ~26 |
-| **Total** | | **~278** |
+Primary squad (**6**): **3 Backend (Python) · 2 Frontend · 1 QA**.
+Alternative: **3 Backend · 1 Frontend · 1 QA · 1 LLM/AI**.
 
-So a wave ≠ a sprint. Two ways to honor "~1–2 week sprints":
-1. **One squad** (recommended baseline): keep the dependency order but slice into **~2-week sprints of
-   ~30 SP**. That's **~10 sprints ≈ ~20 weeks (~4.5 months)**.
-2. **Compress with parallel squads** (to make each *wave* ≈ 1–2 weeks): run BE/FE/QA streams across
-   2–3 squads. Wave 1 (~112 SP) ≈ 2 sprints with ~3 squads → whole program in **~8–10 weeks**.
+Planning velocity ≈ **10 SP / person / 2-week sprint** → per-discipline capacity per sprint:
 
-### Capacity assumptions (tune to your team)
-- 1 cross-functional squad ≈ **2 BE (Python) + 1–2 FE + 1 QA**, velocity **~30 SP / 2-week sprint**.
-- 1-week sprints are possible but a single squad realistically does ~15 SP/week → ~18 sprints. We
-  therefore recommend a **2-week cadence at ~30 SP** (the upper end of your 1–2 week ask).
+| Discipline | People | Capacity / sprint |
+|------------|--------|-------------------|
+| Backend | 3 | ~30 SP |
+| Frontend | 2 | ~20 SP |
+| QA | 1 | ~10 SP |
 
-| Squads | SP / 2-wk sprint | Calendar to finish (~278 SP) |
-|--------|------------------|------------------------------|
-| 1 | ~30 | ~10 sprints (~20 wks) |
-| 2 | ~60 | ~5 sprints (~10 wks) |
-| 3 | ~90 | ~3–4 sprints (~7–8 wks) |
+## Workload by discipline (the bottleneck)
 
-> Within a sprint, BE/FE/QA run in parallel; FE/QA for an epic start once its BE API lands (often the
-> next sprint), which is why epics span sprint boundaries below.
+| Discipline | Total SP | Sprints of work |
+|------------|----------|-----------------|
+| **Backend** | **169** | **~6 (critical path)** |
+| Frontend | 61 | ~3 (comfortable) |
+| QA | 48 | ~5 (1 person → watch the tail) |
+| **Total** | **278** | |
 
-## Recommended sprint sequence (1 squad, ~30 SP, 2-week sprints)
+**Backend is the critical path** (foundation + every data pipeline/engine/API is Python). FE and QA
+trail BE by ~1 sprint and have slack — except QA, which with one person is near-saturated and stretches
+the tail. **v1 (all tabs, excl. QA Bench) ≈ 6–7 sprints (~12–14 weeks); incl. QA Bench (Phase 2) ≈ 8 sprints (~16 weeks).**
 
-Dependency-respecting. Each line is `ID (SP)`.
+## Sprint sequence (3 BE · 2 FE · 1 QA, 2-week sprints)
 
-**Sprint 1 — Foundation** (~29): `PLAT-BE1 (8)` · `PLAT-BE2 (8)` · `PLAT-BE3 (8)` · `PLAT-BE4 (5)`
+Lanes run in parallel; FE/QA for an epic start the sprint after its BE API lands.
 
-**Sprint 2 — Foundation QA + Cost engine** (~26): `PLAT-QA1 (5)` · `COST-BE2 (5)` · `COST-BE1 (8)` · `COST-BE3 (8)`
+| Sprint | Backend (~30) | Frontend (~20) | QA (~10) |
+|--------|---------------|----------------|----------|
+| **S1** Foundation | PLAT-BE1, BE2, BE3, BE4 (29) | *(shared components, SupabaseAdapter scaffold, design polish)* | — |
+| **S2** Cost engine | COST-BE2, BE1, BE3, BE4, CALLS-BE1 (31) | *(prep cost/calls components)* | PLAT-QA1 (5) |
+| **S3** Calls/Obs APIs | CALLS-BE2, PERF-BE1, LIVE-BE1, THRESH-BE1, ISSUE-BE1 (26) | COST-FE1, FE2, CALLS-FE1 (11) | COST-QA1 (5) |
+| **S4** Health/Infra APIs | FLAG-BE1, HEALTH-BE1, BE2, K8S-BE1, ELB-BE1 (31) | CALLS-FE2, PERF-FE1, LIVE-FE1, THRESH-FE1, ISSUE-FE1 (17) | CALLS-QA1, PERF-QA1, LIVE-QA1, THRESH-QA1 (9) |
+| **S5** Biz/Assistant/Controls APIs | ASST-BE1, BIZ-BE1, OVW-BE1, FALLB-BE1, FALLB-BE2 (29) | FLAG-FE1, HEALTH-FE1, K8S-FE1, ELB-FE1 (11) | ISSUE-QA1, FLAG-QA1, HEALTH-QA1, K8S-QA1 (10) |
+| **S6** Finish APIs + QA Bench BE | IPACC-BE1, BE2, QABENCH-BE1 (23) | ASST-FE1, BIZ-FE1, OVW-FE1, FALLB-FE1 (11) | ELB-QA1, ASST-QA1, BIZ-QA1, OVW-QA1, FALLB-QA1 (11) |
+| **S7** Controls UI + QA Bench UI | *(BE done — hardening/perf/bugfix, ingress for IPACC-BE2)* | IPACC-FE1, QABENCH-FE1 (11) | IPACC-QA1 (3) |
+| **S8** QA Bench QA + stabilization | *(buffer / tech debt)* | *(polish/a11y pass)* | QABENCH-QA1 (5) + regression |
 
-**Sprint 3 — Cost finish + Calls API** (~28): `COST-BE4 (5)` · `COST-FE1 (5)` · `COST-FE2 (3)` · `COST-QA1 (5)` · `CALLS-BE1 (5)` · `CALLS-BE2 (5)`
+- **Backend finishes ~S6**; FE ~S7; QA tail ~S8 (QA Bench).
+- **Drop QA Bench (Phase 2)** → v1 done by **~S6–S7 (~12–14 weeks)**.
 
-**Sprint 4 — Calls UI + Performance + Live API** (~26): `CALLS-FE1 (3)` · `CALLS-FE2 (5)` · `CALLS-QA1 (3)` · `PERF-BE1 (5)` · `PERF-FE1 (3)` · `PERF-QA1 (2)` · `LIVE-BE1 (5)`
+## Notes & risks
 
-**Sprint 5 — Live + Thresholds + Issues** (~27): `LIVE-FE1 (3)` · `LIVE-QA1 (2)` · `THRESH-BE1 (3)` · `THRESH-FE1 (3)` · `THRESH-QA1 (2)` · `ISSUE-BE1 (8)` · `ISSUE-FE1 (3)` · `ISSUE-QA1 (3)`
+- **QA is the tail risk** (1 person, 48 SP). Mitigate with **shift-left** (devs write unit/integration
+  tests; QA focuses on RBAC, parity, e2e, exploratory) — already implied by each epic's BE/FE AC.
+- **Backend is the gate.** If you need to go faster, add a 4th BE (→ ~40 SP/sprint → ~5 sprints) or
+  split into 2 squads (see multi-squad table below).
+- **Alternative team (1 FE + 1 LLM/AI):** FE capacity halves (~10 SP/sprint) → FE becomes co-critical;
+  stretch FE-heavy sprints (S4) by one. Put the **LLM/AI engineer** on: QA Bench LLM-judge evaluators
+  (`QABENCH-BE1`), and the LLM-shaped backend logic (cost/issues engines, `FALLB-BE2` LLM ordering,
+  `ASST-BE1`). Net: similar calendar, with QA Bench better staffed.
 
-**Sprint 6 — Flagging + Service Health** (~29): `FLAG-BE1 (5)` · `FLAG-FE1 (3)` · `FLAG-QA1 (2)` · `HEALTH-BE1 (8)` · `HEALTH-BE2 (5)` · `HEALTH-FE1 (3)` · `HEALTH-QA1 (3)`
+## Compression with parallel squads (optional)
 
-**Sprint 7 — Infra (k8s + ELB) + Assistant API** (~27): `K8S-BE1 (8)` · `K8S-FE1 (3)` · `K8S-QA1 (2)` · `ELB-BE1 (5)` · `ELB-FE1 (2)` · `ELB-QA1 (2)` · `ASST-BE1 (5)`
+If you staff more than one squad to make each *wave* land in ~1–2 weeks. Because **backend is the
+gate** (169 SP), the calendar is driven by **BE capacity**, not the headcount sum (BE/FE/QA aren't
+interchangeable):
 
-**Sprint 8 — Assistant + Business + Overview** (~27): `ASST-FE1 (2)` · `ASST-QA1 (2)` · `BIZ-BE1 (8)` · `BIZ-FE1 (3)` · `BIZ-QA1 (2)` · `OVW-BE1 (5)` · `OVW-FE1 (3)` · `OVW-QA1 (2)`
+| Squads (each 3BE+2FE+1QA) | Backend devs | BE SP / sprint | Calendar (BE-gated, ~169 SP) |
+|---------------------------|--------------|----------------|------------------------------|
+| 1 (this plan) | 3 | ~30 | ~6 sprints core / ~8 with QA Bench (~12–16 wks) |
+| 2 | 6 | ~60 | ~3 sprints (~6 wks) |
+| 3 | 9 | ~90 | ~2 sprints (~4 wks) |
 
-**Sprint 9 — Controls (Fallbacks + IP Access)** (~30): `FALLB-BE1 (3)` · `FALLB-BE2 (8)` · `FALLB-FE1 (3)` · `FALLB-QA1 (3)` · `IPACC-BE1 (5)` · `IPACC-BE2 (5)` · `IPACC-FE1 (3)`
-
-**Sprint 10 — IP Access QA + QA Bench (Phase 2)** (~29): `IPACC-QA1 (3)` · `QABENCH-BE1 (13)` · `QABENCH-FE1 (8)` · `QABENCH-QA1 (5)`
-
-## Notes
-- Estimates are the per-task story points in each ticket header; re-point in your planning poker.
-- Sprints 1–2 are mostly Python/data (foundation + engines); FE engineers can prep components and the
-  SupabaseAdapter scaffolding in parallel.
-- If you want **each wave to land in ~1–2 weeks**, staff 2–3 squads and run the per-epic BE→FE→QA chains
-  concurrently (see compression table). The dependency graph in `ROADMAP.md` is the constraint to respect.
-- QA Bench (Phase 2) can be dropped from the initial program and scheduled later without affecting v1.
+> Respect the dependency graph in `ROADMAP.md`: `_platform` (P0) must land first; per epic the chain is
+> BE → FE → QA. Estimates are the per-task story points in each ticket; re-point in planning.
