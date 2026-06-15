@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useView } from "@/components/view-context";
-import { useAddIpRule, useDeleteIpRule, useIpRules, useMeta } from "@/lib/hooks";
+import { useAddIpRule, useDeleteIpRule, useIpRules, useMeta, useSetIpPolicy } from "@/lib/hooks";
 import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
 import { evaluateIp, isValidIpOrCidr } from "@/lib/engine/ip";
+import { cn } from "@/lib/utils";
 import type { IpListType, IpRule } from "@/lib/types";
 
 export default function AccessPage() {
@@ -21,6 +22,7 @@ export default function AccessPage() {
   const { data, isLoading } = useIpRules();
   const addRule = useAddIpRule();
   const deleteRule = useDeleteIpRule();
+  const setPolicy = useSetIpPolicy();
   const [testIp, setTestIp] = React.useState("");
 
   if (!canSeeSuperAdminOnly(role)) {
@@ -51,7 +53,19 @@ export default function AccessPage() {
   const own = data?.own ?? [];
   const inherited = data?.inherited ?? [];
   const effective = [...own, ...inherited];
-  const decision = testIp.trim() ? evaluateIp(effective, testIp.trim()) : null;
+  const defaultPolicy = data?.defaultPolicy ?? "allow";
+  const decision = testIp.trim() ? evaluateIp(effective, testIp.trim(), defaultPolicy) : null;
+
+  function changePolicy(next: "allow" | "block") {
+    if (!scopeType || !scopeId || next === defaultPolicy) return;
+    setPolicy.mutate(
+      { scopeType, scopeId, defaultPolicy: next },
+      {
+        onSuccess: () =>
+          toast.success(next === "allow" ? "Default: Allow (blacklist mode)" : "Default: Block (whitelist mode)"),
+      },
+    );
+  }
 
   function add(listType: IpListType, value: string, label: string, reset: () => void) {
     if (!scopeType || !scopeId) return;
@@ -96,11 +110,50 @@ export default function AccessPage() {
         </div>
       )}
 
+      {scopeType && (
+        <Card className="mb-4">
+          <CardHeader>
+            <CardTitle className="text-base">Default policy</CardTitle>
+            <CardDescription>What happens to an IP that matches no rule at this scope</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => changePolicy("allow")}
+              className={cn(
+                "flex-1 rounded-lg border p-3 text-left transition",
+                defaultPolicy === "allow" ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted",
+              )}
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                <ShieldCheck className="size-4 text-success" /> Allow by default
+                {defaultPolicy === "allow" && <Badge variant="secondary" className="ml-auto">Active</Badge>}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Blacklist mode — everyone passes except the IPs you block.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => changePolicy("block")}
+              className={cn(
+                "flex-1 rounded-lg border p-3 text-left transition",
+                defaultPolicy === "block" ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted",
+              )}
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                <ShieldBan className="size-4 text-critical" /> Block by default
+                {defaultPolicy === "block" && <Badge variant="secondary" className="ml-auto">Active</Badge>}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Whitelist mode — only the IPs / CIDRs you allow can access.</p>
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <RuleListCard
           title="Allowlist"
           icon={<ShieldCheck className="size-4 text-success" />}
-          description="If any allow rule exists, only matching IPs are permitted."
+          description="Explicitly permitted IPs/CIDRs (the only ones allowed in whitelist mode)."
           listType="allow"
           rules={own.filter((r) => r.listType === "allow")}
           canEdit={!!scopeType}
@@ -111,7 +164,7 @@ export default function AccessPage() {
         <RuleListCard
           title="Blocklist"
           icon={<ShieldBan className="size-4 text-critical" />}
-          description="Listed IPs are always denied (overrides allow)."
+          description="Explicitly denied IPs/CIDRs — always wins, in any mode."
           listType="block"
           rules={own.filter((r) => r.listType === "block")}
           canEdit={!!scopeType}

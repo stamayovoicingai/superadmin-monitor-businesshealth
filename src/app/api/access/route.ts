@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDataSource } from "@/lib/data";
 import { isValidIpOrCidr } from "@/lib/engine/ip";
-import type { AddIpRuleInput } from "@/lib/data/source";
+import type { AddIpRuleInput, SetIpPolicyInput } from "@/lib/data/source";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -34,5 +34,18 @@ export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "missing_id" }, { status: 400 });
   await getDataSource().deleteIpRule(id);
+  return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(req: NextRequest) {
+  const body = (await req.json()) as Partial<SetIpPolicyInput>;
+  if (!body.scopeType || !body.scopeId || !body.defaultPolicy) {
+    return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  }
+  await getDataSource().setIpPolicy({
+    scopeType: body.scopeType,
+    scopeId: body.scopeId,
+    defaultPolicy: body.defaultPolicy,
+  });
   return NextResponse.json({ ok: true });
 }

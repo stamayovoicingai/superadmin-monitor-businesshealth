@@ -7,6 +7,7 @@ import type {
   Agent,
   Call,
   EndReasonCount,
+  IpDefaultPolicy,
   IpListType,
   IpRule,
   IpScopeType,
@@ -106,6 +107,14 @@ export interface IpRulesResult {
   own: IpRule[];
   /** Org rules inherited by a project scope (read-only at project level). */
   inherited: IpRule[];
+  /** Default action for the managed scope when no rule matches. */
+  defaultPolicy: IpDefaultPolicy;
+}
+
+export interface SetIpPolicyInput {
+  scopeType: IpScopeType;
+  scopeId: string;
+  defaultPolicy: IpDefaultPolicy;
 }
 
 export interface AddIpRuleInput {
@@ -141,4 +150,5 @@ export interface DataSource {
   listIpRules(scope: Scope): Promise<IpRulesResult>;
   addIpRule(input: AddIpRuleInput): Promise<IpRule>;
   deleteIpRule(id: string): Promise<void>;
+  setIpPolicy(input: SetIpPolicyInput): Promise<void>;
 }

@@ -2,7 +2,7 @@
  * IP access-control engine — two independent lists (allow + block) per scope, IPv4 + CIDR.
  * See PRD/16-ip-access-control.md.
  */
-import type { IpRule } from "@/lib/types";
+import type { IpDefaultPolicy, IpRule } from "@/lib/types";
 
 /** Parse an IPv4 string to an unsigned 32-bit number, or null if invalid. */
 export function ipToLong(ip: string): number | null {
@@ -51,21 +51,25 @@ export interface IpDecision {
 }
 
 /**
- * Evaluate an IP against a set of effective rules.
- * Block always wins. If an allowlist exists (any allow rules), only matching IPs pass; otherwise
- * the default is allow.
+ * Evaluate an IP against effective rules and the scope's default policy.
+ * Precedence: explicit block → explicit allow → default policy.
+ * - defaultPolicy "allow"  → blacklist mode (everything passes except blocked IPs)
+ * - defaultPolicy "block"  → whitelist mode (only allowed IPs pass)
  */
-export function evaluateIp(rules: IpRule[], ip: string): IpDecision {
+export function evaluateIp(
+  rules: IpRule[],
+  ip: string,
+  defaultPolicy: IpDefaultPolicy = "allow",
+): IpDecision {
   const matchedBlock = rules.filter((r) => r.listType === "block").find((r) => ipMatches(r.value, ip));
   if (matchedBlock) {
     return { decision: "blocked", reason: `Blocked by rule ${matchedBlock.value}`, rule: matchedBlock };
   }
-  const allows = rules.filter((r) => r.listType === "allow");
-  if (allows.length > 0) {
-    const matchedAllow = allows.find((r) => ipMatches(r.value, ip));
-    return matchedAllow
-      ? { decision: "allowed", reason: `Allowed by rule ${matchedAllow.value}`, rule: matchedAllow }
-      : { decision: "blocked", reason: "Not in allowlist (default deny)" };
+  const matchedAllow = rules.filter((r) => r.listType === "allow").find((r) => ipMatches(r.value, ip));
+  if (matchedAllow) {
+    return { decision: "allowed", reason: `Allowed by rule ${matchedAllow.value}`, rule: matchedAllow };
   }
-  return { decision: "allowed", reason: "Default allow (no allowlist configured)" };
+  return defaultPolicy === "allow"
+    ? { decision: "allowed", reason: "Default allow (blacklist mode)" }
+    : { decision: "blocked", reason: "Default block (whitelist mode) — not in allowlist" };
 }

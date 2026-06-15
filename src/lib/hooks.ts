@@ -13,6 +13,7 @@ import type {
   LiveOpsResult,
   OverviewResult,
   PerformanceResult,
+  SetIpPolicyInput,
 } from "@/lib/data/source";
 import type { Agent, IpRule, Organization, Project } from "@/lib/types";
 
@@ -122,6 +123,21 @@ export function useDeleteIpRule() {
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/access?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["access"] }),
+  });
+}
+
+export function useSetIpPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SetIpPolicyInput) => {
+      const res = await fetch("/api/access", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
       if (!res.ok) throw new Error("request_failed");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["access"] }),

@@ -8,16 +8,21 @@ Route: `/controls/access`. **SuperAdmin only.**
 
 ## 1. Model
 
-Each scope (org **or** project) has **two independent lists**:
+Each scope (org **or** project) has an explicit **default policy** plus **two independent lists**:
 
-- **Allowlist** — if it has any entries, only matching IPs are permitted (default-deny gate).
-- **Blocklist** — listed IPs are always denied.
+- **Default policy** (per scope, configurable):
+  - **Allow by default** = *blacklist mode* — everyone passes except blocked IPs.
+  - **Block by default** = *whitelist mode* — only allowed IPs/CIDRs can access.
+- **Allowlist** — explicitly permitted IPs/CIDRs.
+- **Blocklist** — explicitly denied IPs/CIDRs.
 
-**Resolution order (block wins):**
+**Resolution order (explicit rules beat the default; block beats allow):**
 1. If the IP matches any **block** rule → **BLOCKED**.
-2. Else if an **allowlist exists** → permitted only if it matches an allow rule; otherwise **BLOCKED**
-   (not in allowlist).
-3. Else (no allowlist) → **ALLOWED** (default).
+2. Else if it matches any **allow** rule → **ALLOWED**.
+3. Else → the scope's **default policy** (allow → ALLOWED, block → BLOCKED).
+
+The SuperAdmin chooses the mode per scope: *allow-by-default + blacklist specific IPs*, or
+*block-by-default + whitelist IPs/CIDRs*.
 
 ## 2. Entries
 

@@ -177,6 +177,14 @@ export interface TimePoint {
 
 export type IpListType = "allow" | "block";
 export type IpScopeType = "org" | "project";
+/** Default action for IPs that match no rule: "allow" = blacklist mode, "block" = whitelist mode. */
+export type IpDefaultPolicy = "allow" | "block";
+
+export interface IpScopePolicy {
+  scopeType: IpScopeType;
+  scopeId: string;
+  defaultPolicy: IpDefaultPolicy;
+}
 
 export interface IpRule {
   id: string;

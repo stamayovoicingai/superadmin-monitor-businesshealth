@@ -10,6 +10,7 @@ import type {
   CallStatus,
   Disposition,
   IpRule,
+  IpScopePolicy,
   Organization,
   OrgContract,
   Project,
@@ -105,6 +106,14 @@ const IP_RULES_SEED: IpRule[] = [
   { id: "ip-6", scopeType: "project", scopeId: "prj-allegiant", listType: "block", value: "102.129.0.0/16", label: "Bot traffic", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(3)) },
 ];
 
+const IP_POLICIES_SEED: IpScopePolicy[] = [
+  // Telmex restricts platform access to its corporate egress → whitelist (block by default).
+  { scopeType: "project", scopeId: "prj-telmex", defaultPolicy: "block" },
+  // Orgs default to blacklist mode (allow by default).
+  { scopeType: "org", scopeId: "org-tp-latam", defaultPolicy: "allow" },
+  { scopeType: "org", scopeId: "org-ltm", defaultPolicy: "allow" },
+];
+
 const SUBAGENT_WEIGHT: Record<string, number> = {
   prompt_writer: 1.4,
   general: 1.3,
@@ -145,6 +154,7 @@ export interface Dataset {
   contracts: OrgContract[];
   calls: Call[];
   ipRules: IpRule[];
+  ipPolicies: IpScopePolicy[];
   subagentUsage: SubagentUsageRow[];
 }
 
@@ -300,6 +310,7 @@ export function buildDataset(): Dataset {
     contracts: CONTRACTS,
     calls,
     ipRules: IP_RULES_SEED,
+    ipPolicies: IP_POLICIES_SEED,
     subagentUsage,
   };
 }

@@ -1,5 +1,5 @@
 /** MockAdapter — implements DataSource from the deterministic seed dataset. */
-import type { Call, IpRule, SubagentKey, SubagentUsageRow } from "@/lib/types";
+import type { Call, IpDefaultPolicy, IpRule, IpScopePolicy, IpScopeType, SubagentKey, SubagentUsageRow } from "@/lib/types";
 import { getDataset } from "@/lib/seed";
 import { SUBAGENTS, SUBAGENT_LABEL } from "@/lib/engine/subagents";
 import {
@@ -28,6 +28,7 @@ import type {
   OverviewResult,
   PerformanceResult,
   Scope,
+  SetIpPolicyInput,
 } from "./source";
 
 /** Mutable IP-rule store (seeded copy) so add/delete persist within a server process. */
@@ -35,6 +36,16 @@ let _ipRules: IpRule[] | null = null;
 function ipStore(): IpRule[] {
   if (!_ipRules) _ipRules = [...getDataset().ipRules];
   return _ipRules;
+}
+
+/** Mutable default-policy store (seeded copy). */
+let _ipPolicies: IpScopePolicy[] | null = null;
+function policyStore(): IpScopePolicy[] {
+  if (!_ipPolicies) _ipPolicies = [...getDataset().ipPolicies];
+  return _ipPolicies;
+}
+function getPolicy(scopeType: IpScopeType, scopeId: string): IpDefaultPolicy {
+  return policyStore().find((p) => p.scopeType === scopeType && p.scopeId === scopeId)?.defaultPolicy ?? "allow";
 }
 
 /** Subagent usage rows filtered by scope (org/project) and date range. */
@@ -408,16 +419,18 @@ export class MockAdapter implements DataSource {
       return {
         own: rules.filter((r) => r.scopeType === "project" && r.scopeId === scope.projectId),
         inherited: rules.filter((r) => r.scopeType === "org" && r.scopeId === orgId),
+        defaultPolicy: getPolicy("project", scope.projectId),
       };
     }
     if (scope.orgId) {
       return {
         own: rules.filter((r) => r.scopeType === "org" && r.scopeId === scope.orgId),
         inherited: [],
+        defaultPolicy: getPolicy("org", scope.orgId),
       };
     }
     // No scope selected → return everything (read-only overview).
-    return { own: [...rules], inherited: [] };
+    return { own: [...rules], inherited: [], defaultPolicy: "allow" };
   }
 
   async addIpRule(input: AddIpRuleInput): Promise<IpRule> {
@@ -437,5 +450,12 @@ export class MockAdapter implements DataSource {
 
   async deleteIpRule(id: string): Promise<void> {
     _ipRules = ipStore().filter((r) => r.id !== id);
+  }
+
+  async setIpPolicy(input: SetIpPolicyInput): Promise<void> {
+    const store = policyStore();
+    const existing = store.find((p) => p.scopeType === input.scopeType && p.scopeId === input.scopeId);
+    if (existing) existing.defaultPolicy = input.defaultPolicy;
+    else store.push({ scopeType: input.scopeType, scopeId: input.scopeId, defaultPolicy: input.defaultPolicy });
   }
 }
