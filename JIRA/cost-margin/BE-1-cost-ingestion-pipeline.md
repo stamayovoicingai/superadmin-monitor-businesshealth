@@ -1,8 +1,12 @@
 # [BE] Cost & Margin · Cost ingestion · Provider usage→cost pipeline
 
+- **ID:** `COST-BE1`
 - **Type:** Backend
 - **Epic:** Cost & Margin
 - **Feature:** F1 — Cost ingestion & pricing engine
+- **Priority:** P1
+- **Blocked by:** `PLAT-BE1`, `PLAT-BE2`, `COST-BE2`
+- **Blocks:** `COST-BE3`, `COST-BE4`, `ISSUE-BE1` (cost_per_call metric)
 - **Components/Labels:** `backend` `python` `supabase` `cost` `etl`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —

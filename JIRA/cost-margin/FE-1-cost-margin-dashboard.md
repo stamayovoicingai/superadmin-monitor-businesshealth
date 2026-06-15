@@ -1,8 +1,12 @@
 # [FE] Cost & Margin · Dashboard · Wire UI to real API + harden
 
+- **ID:** `COST-FE1`
 - **Type:** Frontend/UI-UX
 - **Epic:** Cost & Margin
 - **Feature:** F4 — Cost & Margin dashboard
+- **Priority:** P1
+- **Blocked by:** `COST-BE4`
+- **Blocks:** `COST-QA1`
 - **Components/Labels:** `frontend` `nextjs` `ui-ux` `charts` `cost`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —

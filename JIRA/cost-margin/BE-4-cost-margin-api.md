@@ -1,8 +1,12 @@
 # [BE] Cost & Margin · API · Cost & Margin endpoint (Supabase-backed)
 
+- **ID:** `COST-BE4`
 - **Type:** Backend
 - **Epic:** Cost & Margin
 - **Feature:** F3 — Cost & Margin API
+- **Priority:** P1
+- **Blocked by:** `COST-BE3`, `PLAT-BE3`, `PLAT-BE4`
+- **Blocks:** `COST-FE1`, `COST-FE2`
 - **Components/Labels:** `backend` `python` `supabase` `api` `rbac`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —

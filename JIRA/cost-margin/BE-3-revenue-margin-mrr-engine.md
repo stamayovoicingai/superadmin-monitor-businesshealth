@@ -1,8 +1,12 @@
 # [BE] Cost & Margin · Revenue & margin · Contract revenue, margin & MRR engine
 
+- **ID:** `COST-BE3`
 - **Type:** Backend
 - **Epic:** Cost & Margin
 - **Feature:** F2 — Revenue, margin & MRR engine
+- **Priority:** P1
+- **Blocked by:** `PLAT-BE1`, `COST-BE1`
+- **Blocks:** `COST-BE4`, `BIZ-BE1` (MRR/contracts)
 - **Components/Labels:** `backend` `python` `supabase` `revenue` `finance`
 - **Estimate:** 8
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —

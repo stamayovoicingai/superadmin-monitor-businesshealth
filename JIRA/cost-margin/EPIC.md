@@ -1,6 +1,7 @@
-# EPIC — Cost & Margin
+# EPIC — Cost & Margin (`COST`)
 
-**Route:** `/cost` · **Roles:** SuperAdmin (full), User (cost-to-serve only) · **Priority:** #1
+**Route:** `/cost` · **Roles:** SuperAdmin (full), User (cost-to-serve only)
+**Backlog priority:** P1 (Wave 1, product priority #1) · **Blocked by:** `_platform` (`PLAT-BE1/BE2/BE3/BE4`)
 
 ## Goal
 Give the Voicing team an accurate, real-time view of **what each call/project/org costs us**, **what

@@ -1,8 +1,12 @@
 # [QA] Cost & Margin · QA · Cost/margin/MGF correctness + RBAC scenarios
 
+- **ID:** `COST-QA1`
 - **Type:** QA
 - **Epic:** Cost & Margin
 - **Feature:** F6 — QA
+- **Priority:** P1
+- **Blocked by:** `COST-FE1`, `COST-FE2`
+- **Blocks:** —
 - **Components/Labels:** `qa` `cost` `rbac` `regression`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —

@@ -51,13 +51,36 @@ Python/Supabase, endpoints, data model, libraries. Call out the delta from the m
 
 ## Fields on every task
 
+- **ID:** stable key `<EPIC-KEY>-<DISC><n>` (e.g. `COST-BE1`, `PLAT-BE3`). Used for dependencies.
 - **Type:** `Backend` | `Frontend/UI-UX` | `QA` (Jira issue type: Story or Task).
-- **Epic:** the tab (folder).
-- **Feature:** the sub-area within the epic.
+- **Epic:** the tab (folder). **Feature:** the sub-area within the epic.
+- **Priority:** `P0`…`P4` (see scale below).
+- **Blocked by:** task IDs that must ship first (cross-epic allowed). `—` if none.
+- **Blocks:** task IDs this unblocks. `—` if none.
 - **Components/Labels:** e.g. `backend`, `python`, `supabase`, `frontend`, `nextjs`, `rbac`,
   `observability`, `infra`, `qa`. Add the epic key as a label too.
 - **Estimate:** story points (Fibonacci 1/2/3/5/8/13).
 - **MVP reference (repo):** link + the exact files to study.
+
+## Priority scale (global, by "what must be done first")
+
+| Priority | Meaning | Tier |
+|----------|---------|------|
+| **P0** | Foundation that blocks most other work — do first | `_platform` (auth/RBAC, Supabase, call-data ingestion, adapter+deploy) |
+| **P1** | Core product value | Cost & Margin, Call Logs/Detail, Performance, Issues, Live Operations |
+| **P2** | High-value, depends on core data | Service Health, Infra (k8s/ELB), Business Health, Assistant Usage, Overview |
+| **P3** | Operator controls / config | Thresholds, Call Flagging, Fallbacks, IP Access |
+| **P4** | Later / Phase 2 | QA Bench |
+
+Within an epic the usual order is: pricing/schema → ingestion → engine → API → FE wiring → QA.
+The **delivery order and the full dependency graph** live in [`ROADMAP.md`](./ROADMAP.md).
+
+## Epic keys
+
+`PLAT` (platform) · `OVW` Overview · `COST` Cost & Margin · `PERF` Performance · `CALLS` Call Logs &
+Detail · `LIVE` Live Operations · `ISSUE` Issues · `THRESH` Thresholds · `FLAG` Call Flagging ·
+`FALLB` Fallbacks · `IPACC` IP Access · `HEALTH` Service Health · `K8S` Infra Kubernetes · `ELB`
+Infra AWS ELB · `ASST` Assistant Usage · `BIZ` Business Health · `QABENCH` QA Bench.
 
 ## Roles & RBAC (applies across tabs)
 

@@ -1,8 +1,12 @@
 # [FE] Cost & Margin · RBAC · Financial gating (cost-only User variant)
 
+- **ID:** `COST-FE2`
 - **Type:** Frontend/UI-UX
 - **Epic:** Cost & Margin
 - **Feature:** F5 — Financial gating / RBAC
+- **Priority:** P1
+- **Blocked by:** `COST-BE4`, `PLAT-BE3`
+- **Blocks:** `COST-QA1`
 - **Components/Labels:** `frontend` `nextjs` `rbac` `security` `cost`
 - **Estimate:** 3
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —

@@ -1,8 +1,12 @@
 # [BE] Cost & Margin · Cost ingestion · Effective-dated pricing catalog
 
+- **ID:** `COST-BE2`
 - **Type:** Backend
 - **Epic:** Cost & Margin
 - **Feature:** F1 — Cost ingestion & pricing engine
+- **Priority:** P1
+- **Blocked by:** `PLAT-BE1`
+- **Blocks:** `COST-BE1`
 - **Components/Labels:** `backend` `python` `supabase` `cost` `pricing`
 - **Estimate:** 5
 - **MVP reference:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
