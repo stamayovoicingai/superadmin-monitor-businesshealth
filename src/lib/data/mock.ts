@@ -1,6 +1,7 @@
 /** MockAdapter — implements DataSource from the deterministic seed dataset. */
-import type { Call } from "@/lib/types";
+import type { Call, IpRule, SubagentKey, SubagentUsageRow } from "@/lib/types";
 import { getDataset } from "@/lib/seed";
+import { SUBAGENTS, SUBAGENT_LABEL } from "@/lib/engine/subagents";
 import {
   activeAgentsCount,
   callerSeries,
@@ -15,16 +16,45 @@ import {
   type CallFilter,
 } from "@/lib/engine/aggregate";
 import type {
+  AddIpRuleInput,
+  AssistantUsageResult,
   BusinessHealthResult,
   CallDetail,
   CallPage,
   CostResult,
   DataSource,
+  IpRulesResult,
   LiveOpsResult,
   OverviewResult,
   PerformanceResult,
   Scope,
 } from "./source";
+
+/** Mutable IP-rule store (seeded copy) so add/delete persist within a server process. */
+let _ipRules: IpRule[] | null = null;
+function ipStore(): IpRule[] {
+  if (!_ipRules) _ipRules = [...getDataset().ipRules];
+  return _ipRules;
+}
+
+/** Subagent usage rows filtered by scope (org/project) and date range. */
+function scopedSubagentUsage(scope: Scope): SubagentUsageRow[] {
+  const { subagentUsage, projects } = getDataset();
+  const fromDay = scope.from?.slice(0, 10);
+  const toDay = scope.to?.slice(0, 10);
+  const orgOf = (pid: string) => projects.find((p) => p.id === pid)?.orgId;
+  return subagentUsage.filter((u) => {
+    if (scope.projectId && u.projectId !== scope.projectId) return false;
+    if (scope.orgId && orgOf(u.projectId) !== scope.orgId) return false;
+    if (fromDay && u.date < fromDay) return false;
+    if (toDay && u.date > toDay) return false;
+    return true;
+  });
+}
+
+function assistantCostInScope(scope: Scope): number {
+  return scopedSubagentUsage(scope).reduce((s, u) => s + u.costMicros, 0);
+}
 
 /** Last N calendar months as "YYYY-MM" (oldest → newest, ending current month). */
 function lastMonths(n: number): string[] {
@@ -106,6 +136,7 @@ export class MockAdapter implements DataSource {
         errorRate: t.errorRate,
       },
       activeConcurrency: calls.filter((c) => c.status === "ACTIVE").length,
+      assistantCostMicros: assistantCostInScope(scope),
       projects: projRoll,
       orgs: orgRoll,
       costSeries: dailySeries(calls),
@@ -317,5 +348,94 @@ export class MockAdapter implements DataSource {
         .map((r) => ({ name: orgName(r.orgId), mrrMicros: r.mrrMicros, marginMicros: r.marginMicros, minutes: r.minutes }))
         .sort((a, b) => b.mrrMicros - a.mrrMicros),
     };
+  }
+
+  async assistantUsage(scope: Scope): Promise<AssistantUsageResult> {
+    const { projects } = getDataset();
+    const rows = scopedSubagentUsage(scope);
+    const projName = (id: string) => projects.find((p) => p.id === id)?.name ?? id;
+
+    let costMicros = 0;
+    let invocations = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
+    const bySub = new Map<SubagentKey, { costMicros: number; invocations: number }>();
+    const byProj = new Map<string, { costMicros: number; invocations: number }>();
+    const byDay = new Map<string, { costMicros: number; invocations: number }>();
+
+    for (const u of rows) {
+      costMicros += u.costMicros;
+      invocations += u.invocations;
+      inputTokens += u.inputTokens;
+      outputTokens += u.outputTokens;
+      const s = bySub.get(u.subagent) ?? { costMicros: 0, invocations: 0 };
+      s.costMicros += u.costMicros;
+      s.invocations += u.invocations;
+      bySub.set(u.subagent, s);
+      const p = byProj.get(u.projectId) ?? { costMicros: 0, invocations: 0 };
+      p.costMicros += u.costMicros;
+      p.invocations += u.invocations;
+      byProj.set(u.projectId, p);
+      const d = byDay.get(u.date) ?? { costMicros: 0, invocations: 0 };
+      d.costMicros += u.costMicros;
+      d.invocations += u.invocations;
+      byDay.set(u.date, d);
+    }
+
+    return {
+      totals: { costMicros, invocations, inputTokens, outputTokens },
+      bySubagent: SUBAGENTS.map((sa) => ({
+        subagent: sa.key,
+        label: sa.label,
+        model: sa.model,
+        costMicros: bySub.get(sa.key)?.costMicros ?? 0,
+        invocations: bySub.get(sa.key)?.invocations ?? 0,
+      })).sort((a, b) => b.costMicros - a.costMicros),
+      byProject: Array.from(byProj.entries())
+        .map(([projectId, v]) => ({ projectId, projectName: projName(projectId), ...v }))
+        .sort((a, b) => b.costMicros - a.costMicros),
+      series: Array.from(byDay.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, v]) => ({ date, ...v })),
+    };
+  }
+
+  async listIpRules(scope: Scope): Promise<IpRulesResult> {
+    const { projects } = getDataset();
+    const rules = ipStore();
+    if (scope.projectId) {
+      const orgId = projects.find((p) => p.id === scope.projectId)?.orgId;
+      return {
+        own: rules.filter((r) => r.scopeType === "project" && r.scopeId === scope.projectId),
+        inherited: rules.filter((r) => r.scopeType === "org" && r.scopeId === orgId),
+      };
+    }
+    if (scope.orgId) {
+      return {
+        own: rules.filter((r) => r.scopeType === "org" && r.scopeId === scope.orgId),
+        inherited: [],
+      };
+    }
+    // No scope selected → return everything (read-only overview).
+    return { own: [...rules], inherited: [] };
+  }
+
+  async addIpRule(input: AddIpRuleInput): Promise<IpRule> {
+    const rule: IpRule = {
+      id: `ip-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
+      scopeType: input.scopeType,
+      scopeId: input.scopeId,
+      listType: input.listType,
+      value: input.value.trim(),
+      label: input.label.trim(),
+      addedBy: "you@voicing.ai",
+      createdAt: new Date().toISOString(),
+    };
+    ipStore().push(rule);
+    return rule;
+  }
+
+  async deleteIpRule(id: string): Promise<void> {
+    _ipRules = ipStore().filter((r) => r.id !== id);
   }
 }

@@ -23,6 +23,8 @@
 | 13 | [Technical Architecture & mock→backend strategy](./13-technical-architecture.md) | ✅ v1 |
 | 14 | [Design System (Voicing brand)](./14-design-system.md) | ✅ v1 |
 | 15 | [Roadmap & Open Questions](./15-roadmap-open-questions.md) | ✅ v1 |
+| 16 | [Module: IP Access Control (whitelist/blacklist)](./16-ip-access-control.md) | ✅ built |
+| 17 | [Module: Assistant / Subagent Usage](./17-assistant-subagent-usage.md) | ✅ built |
 
 ## Key decisions (discovery session, Jun 2026)
 

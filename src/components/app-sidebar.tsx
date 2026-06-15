@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  Bot,
   Boxes,
   ClipboardCheck,
   DollarSign,
@@ -12,6 +13,7 @@ import {
   LayoutDashboard,
   Network,
   PhoneCall,
+  ShieldBan,
   Shuffle,
   SlidersHorizontal,
   TrendingUp,
@@ -39,10 +41,12 @@ const ICONS: Record<string, LucideIcon> = {
   DollarSign,
   Gauge,
   PhoneCall,
+  Bot,
   TriangleAlert,
   Activity,
   Boxes,
   Network,
+  ShieldBan,
   Shuffle,
   SlidersHorizontal,
   Flag,

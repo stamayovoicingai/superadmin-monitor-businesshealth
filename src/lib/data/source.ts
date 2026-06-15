@@ -7,6 +7,9 @@ import type {
   Agent,
   Call,
   EndReasonCount,
+  IpListType,
+  IpRule,
+  IpScopeType,
   Organization,
   OrgContract,
   OrgRollup,
@@ -15,6 +18,7 @@ import type {
   ProjectRollup,
   RollupTotals,
   StatusCount,
+  SubagentKey,
   TimePoint,
 } from "@/lib/types";
 import type { CallFilter } from "@/lib/engine/aggregate";
@@ -29,6 +33,8 @@ export interface Scope {
 export interface OverviewResult {
   totals: RollupTotals & { avgLatencyMs: number; errorRate: number };
   activeConcurrency: number;
+  /** Platform assistant (subagent) cost in scope — separate from call COGS/margin. */
+  assistantCostMicros: number;
   projects: (ProjectRollup & { name: string; orgName: string })[];
   orgs: (OrgRollup & { name: string })[];
   costSeries: TimePoint[];
@@ -95,6 +101,28 @@ export interface BusinessHealthResult {
   orgs: { name: string; mrrMicros: number; marginMicros: number; minutes: number }[];
 }
 
+export interface IpRulesResult {
+  /** Rules defined exactly at the requested scope (editable). */
+  own: IpRule[];
+  /** Org rules inherited by a project scope (read-only at project level). */
+  inherited: IpRule[];
+}
+
+export interface AddIpRuleInput {
+  scopeType: IpScopeType;
+  scopeId: string;
+  listType: IpListType;
+  value: string;
+  label: string;
+}
+
+export interface AssistantUsageResult {
+  totals: { costMicros: number; invocations: number; inputTokens: number; outputTokens: number };
+  bySubagent: { subagent: SubagentKey; label: string; model: string; costMicros: number; invocations: number }[];
+  byProject: { projectId: string; projectName: string; costMicros: number; invocations: number }[];
+  series: { date: string; costMicros: number; invocations: number }[];
+}
+
 export interface DataSource {
   listOrgs(): Promise<Organization[]>;
   listProjects(orgId?: string): Promise<Project[]>;
@@ -108,4 +136,9 @@ export interface DataSource {
   getCall(callId: string): Promise<CallDetail | null>;
   liveOps(scope: Scope): Promise<LiveOpsResult>;
   businessHealth(scope: Scope): Promise<BusinessHealthResult>;
+  assistantUsage(scope: Scope): Promise<AssistantUsageResult>;
+
+  listIpRules(scope: Scope): Promise<IpRulesResult>;
+  addIpRule(input: AddIpRuleInput): Promise<IpRule>;
+  deleteIpRule(id: string): Promise<void>;
 }

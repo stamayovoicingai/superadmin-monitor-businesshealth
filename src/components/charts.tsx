@@ -118,6 +118,28 @@ export function LatencyTrendChart({
   );
 }
 
+export function CostTrendChart({
+  series,
+  label = "Cost",
+}: {
+  series: { date: string; costMicros: number }[];
+  label?: string;
+}) {
+  const config: ChartConfig = { cost: { label, color: "var(--chart-2)" } };
+  const data = series.map((p) => ({ date: p.date, cost: microsToUsd(p.costMicros) }));
+  return (
+    <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
+      <AreaChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <XAxis dataKey="date" tickFormatter={shortDate} tickLine={false} axisLine={false} minTickGap={24} />
+        <YAxis tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} tickLine={false} axisLine={false} width={48} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Area dataKey="cost" type="monotone" stroke="var(--color-cost)" fill="var(--color-cost)" fillOpacity={0.2} />
+      </AreaChart>
+    </ChartContainer>
+  );
+}
+
 export function ServiceDonut({ service }: { service: ServiceCostBreakdown }) {
   const data = [
     { key: "llm", value: microsToUsd(service.llmMicros) },

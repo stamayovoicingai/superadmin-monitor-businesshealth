@@ -85,9 +85,19 @@ MediCare PH · LTM: Allegiant, LLA, Vega Air. ~30 days of calls, anchored to "no
   **MrrChart, CallersChart, VBarChart**).
 
 ### Pages built & rendering (HTTP 200)
-`/overview` · `/cost` · `/performance` · `/calls` · `/calls/[callId]` · `/live` (20s refetch) ·
-**`/business`** (MRR composition, org growth, new/returning callers, usage KPIs, org leaderboard;
-SuperAdmin-gated with access-denied card for User).
+`/overview` (incl. Assistant Cost KPI) · `/cost` · `/performance` · `/calls` · `/calls/[callId]` ·
+`/live` (20s refetch) · **`/business`** (SuperAdmin-gated) · **`/assistant`** (platform assistant
+subagent usage — cost by subagent/project/day) · **`/controls/access`** (IP whitelist/blacklist,
+allow+block lists, org→project inheritance, add/delete, IP tester; SuperAdmin-gated).
+
+### IP Access Control (PRD/16) & Assistant Usage (PRD/17) — DONE
+- `lib/engine/ip.ts` (IPv4+CIDR matching, `evaluateIp`), `lib/engine/subagents.ts` (catalog),
+  `lib/engine/cost.ts#llmCostMicros`. Seed: `ipRules` + `subagentUsage`.
+- `DataSource`: `listIpRules/addIpRule/deleteIpRule` (in-process mutable store) + `assistantUsage`;
+  `OverviewResult.assistantCostMicros`. API: `/api/access` (GET/POST/DELETE), `/api/assistant` (GET).
+- Hooks: `useIpRules/useAddIpRule/useDeleteIpRule/useAssistant`. Nav: "Assistant Usage" (Observe, both
+  roles), "IP Access" (Controls, SuperAdmin).
+- Note: subagent cost is tracked SEPARATELY from call COGS/margin (per decision) but shown in Overview.
 
 ### Verified behaviors
 - Role switch (View-as) hides revenue/margin/business for `User`.

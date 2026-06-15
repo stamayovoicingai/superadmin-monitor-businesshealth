@@ -24,6 +24,7 @@ export const NAV: NavSection[] = [
       { title: "Cost & Margin", href: "/cost", icon: "DollarSign" },
       { title: "Performance", href: "/performance", icon: "Gauge" },
       { title: "Call Logs", href: "/calls", icon: "PhoneCall" },
+      { title: "Assistant Usage", href: "/assistant", icon: "Bot" },
       { title: "Issues", href: "/issues", icon: "TriangleAlert" },
     ],
   },
@@ -38,6 +39,7 @@ export const NAV: NavSection[] = [
   {
     label: "Controls",
     items: [
+      { title: "IP Access", href: "/controls/access", icon: "ShieldBan", superAdminOnly: true },
       { title: "Fallbacks", href: "/controls/fallbacks", icon: "Shuffle", superAdminOnly: true },
       { title: "Thresholds", href: "/controls/thresholds", icon: "SlidersHorizontal", superAdminOnly: true },
       { title: "Flag Queue", href: "/controls/flags", icon: "Flag", superAdminOnly: true },

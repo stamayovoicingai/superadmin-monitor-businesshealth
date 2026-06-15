@@ -25,10 +25,11 @@ export default function OverviewPage() {
         description={fin ? "Platform health, cost and margin across all scopes." : "Performance and operating cost for your projects."}
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard label="Total Cost" value={t ? formatMicrosCompact(t.costMicros) : "—"} loading={isLoading} accent="orange" sub={t ? `${formatNumber(t.calls)} calls` : undefined} />
         {fin && <KpiCard label="Revenue" value={t ? formatMicrosCompact(t.revenueMicros) : "—"} loading={isLoading} accent="blue" />}
         {fin && <KpiCard label="Gross Margin" value={t ? formatMicrosCompact(t.marginMicros) : "—"} loading={isLoading} accent="green" sub={t ? formatPct(mPct) + " margin" : undefined} />}
+        <KpiCard label="Assistant Cost" value={data ? formatMicrosCompact(data.assistantCostMicros) : "—"} loading={isLoading} accent="violet" sub="platform usage" />
         <KpiCard label="Avg Latency" value={t ? `${formatNumber(t.avgLatencyMs)} ms` : "—"} loading={isLoading} accent="violet" goodDirection="down" />
         <KpiCard label="Active Calls" value={data ? formatNumber(data.activeConcurrency) : "—"} loading={isLoading} accent="green" sub="right now" />
       </div>

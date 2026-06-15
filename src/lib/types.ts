@@ -173,6 +173,37 @@ export interface TimePoint {
   service: ServiceCostBreakdown;
 }
 
+/* ----- IP Access Control (whitelist / blacklist) ----- */
+
+export type IpListType = "allow" | "block";
+export type IpScopeType = "org" | "project";
+
+export interface IpRule {
+  id: string;
+  scopeType: IpScopeType;
+  scopeId: string; // orgId or projectId
+  listType: IpListType;
+  value: string; // single IP (e.g. 198.51.100.23) or CIDR (e.g. 203.0.113.0/24)
+  label: string; // reason / note
+  addedBy: string;
+  createdAt: string; // ISO
+}
+
+/* ----- Platform assistant subagents (platform.voicing.ai) ----- */
+
+export type SubagentKey = "prompt_writer" | "architecture" | "debugging" | "planning" | "general";
+
+export interface SubagentUsageRow {
+  projectId: string;
+  subagent: SubagentKey;
+  model: string;
+  date: string; // YYYY-MM-DD
+  invocations: number;
+  inputTokens: number;
+  outputTokens: number;
+  costMicros: number;
+}
+
 export interface PodLoad {
   hostId: string;
   activeCalls: number;

@@ -14,6 +14,12 @@ import {
 
 const round = Math.round;
 
+/** LLM cost in micro-USD for given token counts and model (shared by calls and subagents). */
+export function llmCostMicros(model: string, inputTokens: number, outputTokens: number): number {
+  const r = LLM_RATES[model];
+  return r ? round(inputTokens * r.inputPer1M + outputTokens * r.outputPer1M) : 0;
+}
+
 /** Per-call cost in micro-USD, decomposed by service. */
 export function computeCallCost(
   usage: CallUsage,

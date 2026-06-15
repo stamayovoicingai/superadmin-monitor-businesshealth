@@ -1,17 +1,20 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useView } from "@/components/view-context";
 import type {
+  AddIpRuleInput,
+  AssistantUsageResult,
   BusinessHealthResult,
   CallDetail,
   CallPage,
   CostResult,
+  IpRulesResult,
   LiveOpsResult,
   OverviewResult,
   PerformanceResult,
 } from "@/lib/data/source";
-import type { Agent, Organization, Project } from "@/lib/types";
+import type { Agent, IpRule, Organization, Project } from "@/lib/types";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -79,6 +82,49 @@ export function useBusiness() {
   return useQuery({
     queryKey: ["business", query],
     queryFn: () => fetchJson<BusinessHealthResult>(`/api/business?${query}`),
+  });
+}
+
+export function useAssistant() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["assistant", query],
+    queryFn: () => fetchJson<AssistantUsageResult>(`/api/assistant?${query}`),
+  });
+}
+
+export function useIpRules() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["access", query],
+    queryFn: () => fetchJson<IpRulesResult>(`/api/access?${query}`),
+  });
+}
+
+export function useAddIpRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: AddIpRuleInput) => {
+      const res = await fetch("/api/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "request_failed");
+      return res.json() as Promise<IpRule>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["access"] }),
+  });
+}
+
+export function useDeleteIpRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/access?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["access"] }),
   });
 }
 

@@ -9,12 +9,15 @@ import type {
   CallEndReason,
   CallStatus,
   Disposition,
+  IpRule,
   Organization,
   OrgContract,
   Project,
+  SubagentUsageRow,
 } from "@/lib/types";
 import { usdToMicros } from "@/lib/money";
-import { computeCallCost } from "@/lib/engine/cost";
+import { computeCallCost, llmCostMicros } from "@/lib/engine/cost";
+import { SUBAGENTS } from "@/lib/engine/subagents";
 import { Rng } from "./rng";
 
 const SEED = 0x5a17c0de;
@@ -93,6 +96,23 @@ const PROJECTS: ProjectSeed[] = [
   { id: "prj-vega-air", orgId: "org-ltm", name: "Vega Air", namespace: "vega-air-bot-orchestration", llmModel: "gpt-4o-mini", sttModel: "deepgram-nova", ttsModel: "cartesia", dailyBase: 35, durMeanSecs: 170, pods: 3 },
 ];
 
+const IP_RULES_SEED: IpRule[] = [
+  { id: "ip-1", scopeType: "org", scopeId: "org-tp-latam", listType: "block", value: "203.0.113.0/24", label: "TP request — fraud range", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(20)) },
+  { id: "ip-2", scopeType: "org", scopeId: "org-tp-latam", listType: "block", value: "198.51.100.23", label: "Abuse report", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(12)) },
+  { id: "ip-3", scopeType: "project", scopeId: "prj-telmex", listType: "allow", value: "190.85.0.0/16", label: "Telmex corporate egress only", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(9)) },
+  { id: "ip-4", scopeType: "project", scopeId: "prj-telmex", listType: "allow", value: "181.49.10.5", label: "QA tester", addedBy: "qa@voicing.ai", createdAt: iso(daysAgo(4)) },
+  { id: "ip-5", scopeType: "org", scopeId: "org-ltm", listType: "block", value: "45.146.0.0/16", label: "Geo block per LTM", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(7)) },
+  { id: "ip-6", scopeType: "project", scopeId: "prj-allegiant", listType: "block", value: "102.129.0.0/16", label: "Bot traffic", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(3)) },
+];
+
+const SUBAGENT_WEIGHT: Record<string, number> = {
+  prompt_writer: 1.4,
+  general: 1.3,
+  debugging: 1.1,
+  architecture: 0.9,
+  planning: 0.8,
+};
+
 const END_REASONS: { value: CallEndReason; weight: number }[] = [
   { value: "USER_DISCONNECTED", weight: 0.34 },
   { value: "CALL_END_PHRASE_TRIGGERED", weight: 0.3 },
@@ -124,6 +144,8 @@ export interface Dataset {
   agents: Agent[];
   contracts: OrgContract[];
   calls: Call[];
+  ipRules: IpRule[];
+  subagentUsage: SubagentUsageRow[];
 }
 
 export function buildDataset(): Dataset {
@@ -242,6 +264,34 @@ export function buildDataset(): Dataset {
     }
   }
 
+  // Platform assistant subagent usage (per project, per subagent, daily).
+  const subagentUsage: SubagentUsageRow[] = [];
+  for (const ps of PROJECTS) {
+    for (const sa of SUBAGENTS) {
+      const weight = SUBAGENT_WEIGHT[sa.key] ?? 1;
+      const base = Math.max(1, (ps.dailyBase / 12) * weight); // invocations/day baseline
+      for (let d = DAYS - 1; d >= 0; d--) {
+        const day = new Date(now.getTime() - d * 86400000);
+        const dow = day.getDay();
+        const weekend = dow === 0 || dow === 6 ? 0.3 : 1;
+        const invocations = Math.max(0, Math.round(rng.gaussian(base * weekend, base * 0.5, 0, base * 3)));
+        if (invocations === 0) continue;
+        const inputTokens = invocations * Math.round(rng.float(1800, 4200));
+        const outputTokens = invocations * Math.round(rng.float(500, 1600));
+        subagentUsage.push({
+          projectId: ps.id,
+          subagent: sa.key,
+          model: sa.model,
+          date: day.toISOString().slice(0, 10),
+          invocations,
+          inputTokens,
+          outputTokens,
+          costMicros: llmCostMicros(sa.model, inputTokens, outputTokens),
+        });
+      }
+    }
+  }
+
   return {
     generatedAt: iso(now),
     orgs: ORGS,
@@ -249,6 +299,8 @@ export function buildDataset(): Dataset {
     agents,
     contracts: CONTRACTS,
     calls,
+    ipRules: IP_RULES_SEED,
+    subagentUsage,
   };
 }
 
