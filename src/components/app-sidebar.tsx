@@ -13,6 +13,7 @@ import {
   HeartPulse,
   LayoutDashboard,
   Network,
+  Palette,
   PhoneCall,
   ShieldBan,
   Shuffle,
@@ -54,6 +55,7 @@ const ICONS: Record<string, LucideIcon> = {
   Flag,
   TrendingUp,
   ClipboardCheck,
+  Palette,
 };
 
 export function AppSidebar() {

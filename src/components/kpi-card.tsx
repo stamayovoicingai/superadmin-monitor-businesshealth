@@ -53,7 +53,7 @@ export function KpiCard({
         {loading ? (
           <Skeleton className="mt-2 h-7 w-24" />
         ) : (
-          <div className={cn("mt-1 text-2xl font-extrabold tabular-nums", accentClass)}>{value}</div>
+          <div className={cn("mt-1 font-display text-3xl font-normal tabular-nums", accentClass)}>{value}</div>
         )}
         {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
       </CardContent>

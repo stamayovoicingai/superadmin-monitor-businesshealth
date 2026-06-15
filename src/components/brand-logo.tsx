@@ -37,8 +37,8 @@ export function BrandLockup({ collapsed }: { collapsed?: boolean }) {
       <BrandMark className="size-8" />
       {!collapsed && (
         <div className="leading-tight">
-          <div className="text-sm font-extrabold tracking-tight">Voicing AI</div>
-          <div className="text-[10px] font-medium text-muted-foreground">SuperAdmin</div>
+          <div className="font-display text-base text-sidebar-foreground">Voicing AI</div>
+          <div className="text-[10px] font-medium tracking-wide text-sidebar-foreground/60">SuperAdmin</div>
         </div>
       )}
     </div>

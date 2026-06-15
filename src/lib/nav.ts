@@ -54,6 +54,10 @@ export const NAV: NavSection[] = [
     label: "QA Bench",
     items: [{ title: "Evals", href: "/qa-bench", icon: "ClipboardCheck", badge: "phase2" }],
   },
+  {
+    label: "System",
+    items: [{ title: "Design System", href: "/design", icon: "Palette" }],
+  },
 ];
 
 export function visibleNav(role: Role): NavSection[] {

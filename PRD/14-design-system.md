@@ -1,52 +1,50 @@
 # 14 · Design System
 
-Based on the official **Voicing AI Brand Kit (2024)**. The SuperAdmin is a **platform** product, so
-it uses the **Platform brand** (`platform.voicing.ai`) — Indigo Blue + Violet on cool light gray —
-**not** the marketing orange/cream identity.
+**Extracted from the live site [voicing.ai](https://www.voicing.ai/)** (Marketing brand): warm cream
+backgrounds, a vivid orange accent, near-black ink, and **Inter** (UI) + **Instrument Serif** (display).
+Implemented as tokens in `src/app/globals.css`; a live reference renders at **`/design`** (the Design
+System showcase) so frontend devs reuse primitives instead of hardcoding.
 
-> Brand name: **Voicing AI** · Platform: "Agent for Agent · AI Agent Platform" · Tagline:
-> "AI where it scales. Humans where it matters." · Logo: waveform/equalizer mark.
+> Logo: waveform/equalizer mark. Tagline: "AI where it scales. Humans where it matters."
 
 ---
 
-## 1. Color tokens (Platform)
+## 1. Color tokens (from voicing.ai)
 
-| Token | Hex | Use |
+| Token | Hex (light) | Use |
 |-------|-----|-----|
-| `--primary` | `#3B5BDB` | Primary actions, links, key data series, active nav |
-| `--accent` | `#7C3AED` | Secondary emphasis, highlights, secondary series |
-| `--bg-app` | `#F4F5FA` | App background (cool light gray) |
-| `--bg-card` | `#FFFFFF` | Cards, panels, tables |
-| `--text` | `#1E2060` | Headings / primary text (dark indigo) |
-| `--text-muted` | `#667099` | Secondary text, captions, axis labels |
-| `--border` | `#CDD0E0` | Borders, dividers, input outlines |
-| `--success` | `#22C55E` | Live/online, healthy, positive margin |
-
-**Semantic (derived for dashboards):**
-| Token | Hex | Use |
-|-------|-----|-----|
-| `--warning` | `#DA5326` | Warning severity, Paused chip (reuses marketing orange) |
+| `--primary` | `#DA5326` | Primary actions, active nav, key series (site `--color-accent`) |
+| `--background` | `#F9F7F4` | App background (warm cream, site `--color-bg`) |
+| `--card` | `#FFFFFF` | Cards, panels, tables |
+| `--foreground` | `#1B1714` | Headings / primary text (warm near-black) |
+| `--muted-foreground` | `#6F6A63` | Secondary text, captions, axis labels |
+| `--accent` | `#F7E7DF` | Subtle peach hover surfaces |
+| `--border` | `#E6DFD2` | Borders, dividers, inputs |
+| `--success` | `#16A34A` | Live/healthy, positive margin |
+| `--warning` | `#C2700A` | Warning severity (amber — distinct from primary orange) |
 | `--critical` | `#DC2626` | Critical severity, errors, breached thresholds |
-| `--info` | `#3B5BDB` | Informational |
 
-**Chart series order:** Blue `#3B5BDB` → Violet `#7C3AED` → Green `#22C55E` → Orange `#DA5326` →
-Muted `#667099`. Cost-by-service uses fixed hues per service for consistency across screens.
+**Chart palette (distinguishable on cream):** orange `--chart-1 #DA5326` · blue `#2F6DF0` ·
+green `#16A34A` · ink `#3A352F` · tan `#B08968`. Cost-by-service uses fixed hues per service.
 
-**Dark mode:** invert surfaces (`#0F1130`-ish app bg, `#1A1C3A` cards) keeping Blue/Violet/Green
-accents; tokens defined in `/lib/design`.
+**Sidebar** is **dark** (`#1B1714`, cream text) — echoing the site's dark sections — for contrast
+against the cream content area.
+
+**Dark mode:** warm near-black surfaces (`#17150F` bg, `#201D16` cards), cream text, brighter orange
+(`#E2683C`). All tokens in `globals.css` (`:root` + `.dark`).
 
 ---
 
 ## 2. Typography
 
-| Role | Font | Spec |
-|------|------|------|
-| UI / body / labels | **Plus Jakarta Sans** | primary platform font |
-| Fallback | **Inter** | secondary |
-| Editorial only | Instrument Serif | rarely in-app (marketing) |
+| Role | Font | Usage |
+|------|------|-------|
+| Display | **Instrument Serif** (`font-display`) | page titles + KPI numbers (the brand "hero" feel) |
+| UI / body / labels | **Inter** (`font-sans`) | everything else; weights 300–700 |
+| Code / IDs | **Geist Mono** (`font-mono`) | call ids, hosts, JSON |
 
-Scale (platform): Display 30px/800 · H1 24px/700 · H2 20px/700 · Body 13–14px/400 ·
-Label 12px/600 (uppercase tracking) · Caption 10–11px/400.
+Scale (site-derived): xs `.75rem` · sm `.875rem` · base `1rem` · lg `1.125rem` · 2xl `1.5rem` ·
+display `1.75–2.5rem` (Instrument Serif). Tracking normal/wide/wider; leading tight/snug/normal/relaxed.
 
 ---
 
@@ -54,10 +52,10 @@ Label 12px/600 (uppercase tracking) · Caption 10–11px/400.
 
 | Element | Radius |
 |---------|--------|
-| Card | **10px** (0.625rem) |
+| Card | **12px** (0.75rem) |
 | Button | **pill** (9999px) |
-| Badge / chip | 6px |
-| Input | 8px |
+| Badge / chip | ~7px |
+| Input | ~9px |
 
 Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. Cards: white, 10px radius, subtle border (`--border`),
 soft shadow. Grid: 12-col responsive; dense data tables.

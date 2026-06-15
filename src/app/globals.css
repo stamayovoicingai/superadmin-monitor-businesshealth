@@ -6,26 +6,29 @@
 
 /*
  * Voicing AI — SuperAdmin Platform
- * Design tokens based on the official Voicing AI Brand Kit (2024), Platform brand
- * (platform.voicing.ai): Indigo Blue + Violet on cool light gray.
- * See PRD/14-design-system.md
+ * Design tokens extracted from the live site voicing.ai (Marketing brand):
+ * warm cream backgrounds, vivid orange accent, near-black ink, Inter (UI) + Instrument Serif (display).
+ * See PRD/14-design-system.md and the /design showcase.
  */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-jakarta);
-  --font-heading: var(--font-jakarta);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
+  --font-display: var(--font-instrument-serif);
   --font-serif: var(--font-instrument-serif);
   --font-mono: var(--font-geist-mono);
 
-  /* Brand semantic extras (usable as text-success, bg-warning, etc.) */
+  /* Brand semantic extras (usable as text-success, bg-warning, text-brand-orange, etc.) */
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-critical: var(--critical);
   --color-critical-foreground: var(--critical-foreground);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-cream: var(--brand-cream);
   --color-brand-blue: var(--brand-blue);
   --color-brand-violet: var(--brand-violet);
 
@@ -65,112 +68,117 @@
   --radius-xl: calc(var(--radius) * 1.4);
 }
 
-/* ---------- LIGHT (default) ---------- */
+/* ---------- LIGHT (default) — cream + orange ---------- */
 :root {
-  --radius: 0.625rem; /* 10px cards (brand) */
+  --radius: 0.75rem; /* 12px — softer, brand-aligned (site uses .5–1.5rem) */
 
-  --background: #f4f5fa; /* App Background — cool light gray */
-  --foreground: #1e2060; /* Dark Text — deep indigo */
+  --background: #f9f7f4; /* warm cream (site --color-bg) */
+  --foreground: #1b1714; /* warm near-black ink */
 
   --card: #ffffff;
-  --card-foreground: #1e2060;
+  --card-foreground: #1b1714;
   --popover: #ffffff;
-  --popover-foreground: #1e2060;
+  --popover-foreground: #1b1714;
 
-  --primary: #3b5bdb; /* Primary Blue */
+  --primary: #da5326; /* site --color-accent (orange) */
   --primary-foreground: #ffffff;
 
-  --secondary: #e8ebf7;
-  --secondary-foreground: #1e2060;
+  --secondary: #efe9df; /* cream tint */
+  --secondary-foreground: #1b1714;
 
-  --muted: #eef0f6;
-  --muted-foreground: #667099; /* Muted Text */
+  --muted: #f1ece3;
+  --muted-foreground: #6f6a63; /* warm gray (AA on cream) */
 
-  --accent: #ece9fb; /* subtle violet tint for hovers */
-  --accent-foreground: #4b2f9e;
+  --accent: #f7e7df; /* peach tint for hovers */
+  --accent-foreground: #b8431f;
 
   --destructive: #dc2626;
-  --border: #cdd0e0; /* Border */
-  --input: #cdd0e0;
-  --ring: #3b5bdb;
+  --border: #e6dfd2; /* warm border */
+  --input: #e6dfd2;
+  --ring: #da5326;
 
   /* Brand extras */
-  --brand-blue: #3b5bdb;
-  --brand-violet: #7c3aed; /* Accent Violet */
-  --success: #22c55e; /* Success / Live */
+  --brand-orange: #da5326;
+  --brand-cream: #f9f7f4;
+  --brand-blue: #2f6df0; /* cool accent for variety/charts */
+  --brand-violet: #31302f; /* warm ink (neutral KPI accent) */
+  --success: #16a34a;
   --success-foreground: #ffffff;
-  --warning: #da5326; /* Warning (marketing orange) */
+  --warning: #c2700a; /* amber, distinct from primary orange */
   --warning-foreground: #ffffff;
   --critical: #dc2626;
   --critical-foreground: #ffffff;
 
-  /* Chart palette — fixed brand hues (blue, violet, green, orange, muted) */
-  --chart-1: #3b5bdb;
-  --chart-2: #7c3aed;
-  --chart-3: #22c55e;
-  --chart-4: #da5326;
-  --chart-5: #667099;
+  /* Chart palette — distinguishable on cream: orange · blue · green · ink · tan */
+  --chart-1: #da5326;
+  --chart-2: #2f6df0;
+  --chart-3: #16a34a;
+  --chart-4: #3a352f;
+  --chart-5: #b08968;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1e2060;
-  --sidebar-primary: #3b5bdb;
+  /* Dark sidebar (echoes the site's dark sections) */
+  --sidebar: #1b1714;
+  --sidebar-foreground: #e9e3d8;
+  --sidebar-primary: #da5326;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef0f8;
-  --sidebar-accent-foreground: #1e2060;
-  --sidebar-border: #e2e5f0;
-  --sidebar-ring: #3b5bdb;
+  --sidebar-accent: #2a2521;
+  --sidebar-accent-foreground: #f4f0e9;
+  --sidebar-border: #2e2925;
+  --sidebar-ring: #da5326;
 }
 
-/* ---------- DARK ---------- */
+/* ---------- DARK — warm near-black + orange ---------- */
 .dark {
-  --background: #0f1130;
-  --foreground: #e8eaf6;
+  --background: #17150f;
+  --foreground: #f4f0e9;
 
-  --card: #1a1c3a;
-  --card-foreground: #e8eaf6;
-  --popover: #1a1c3a;
-  --popover-foreground: #e8eaf6;
+  --card: #201d16;
+  --card-foreground: #f4f0e9;
+  --popover: #201d16;
+  --popover-foreground: #f4f0e9;
 
-  --primary: #6e8aed;
-  --primary-foreground: #0f1130;
+  --primary: #e2683c;
+  --primary-foreground: #1a120c;
 
-  --secondary: #242747;
-  --secondary-foreground: #e8eaf6;
+  --secondary: #2a261d;
+  --secondary-foreground: #f4f0e9;
 
-  --muted: #242747;
-  --muted-foreground: #9aa3c7;
+  --muted: #2a261d;
+  --muted-foreground: #b7afa1;
 
-  --accent: #2a2456;
-  --accent-foreground: #e8eaf6;
+  --accent: #33291f;
+  --accent-foreground: #f7e7df;
 
   --destructive: #f0616d;
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: #6e8aed;
+  --ring: #e2683c;
 
-  --brand-blue: #6e8aed;
-  --brand-violet: #9b6bf0;
+  --brand-orange: #e2683c;
+  --brand-cream: #f4f0e9;
+  --brand-blue: #6e9bff;
+  --brand-violet: #c9c1b3;
   --success: #34d27b;
   --success-foreground: #06231a;
-  --warning: #f0814f;
-  --warning-foreground: #2a0f06;
+  --warning: #e0a13d;
+  --warning-foreground: #2a1c06;
   --critical: #f0616d;
   --critical-foreground: #2a0608;
 
-  --chart-1: #6e8aed;
-  --chart-2: #9b6bf0;
+  --chart-1: #e2683c;
+  --chart-2: #6e9bff;
   --chart-3: #34d27b;
-  --chart-4: #e8734a;
-  --chart-5: #9aa3c7;
+  --chart-4: #cabfa9;
+  --chart-5: #c79f73;
 
-  --sidebar: #141631;
-  --sidebar-foreground: #e8eaf6;
-  --sidebar-primary: #6e8aed;
-  --sidebar-primary-foreground: #0f1130;
-  --sidebar-accent: #242747;
-  --sidebar-accent-foreground: #e8eaf6;
+  --sidebar: #110f0a;
+  --sidebar-foreground: #e9e3d8;
+  --sidebar-primary: #e2683c;
+  --sidebar-primary-foreground: #1a120c;
+  --sidebar-accent: #241f17;
+  --sidebar-accent-foreground: #f4f0e9;
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #6e8aed;
+  --sidebar-ring: #e2683c;
 }
 
 @layer base {
