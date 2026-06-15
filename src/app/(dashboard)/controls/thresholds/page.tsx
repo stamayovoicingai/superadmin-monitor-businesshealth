@@ -133,7 +133,7 @@ export default function ThresholdsPage() {
           </div>
           <div>
             <div className="mb-1 text-xs text-muted-foreground">Category</div>
-            <Select value={newCat || categories[0]?.id} onValueChange={(v) => v && setNewCat(v)}>
+            <Select value={newCat || categories[0]?.id || ""} onValueChange={(v) => v && setNewCat(v)}>
               <SelectTrigger size="sm" className="w-44"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 {categories.map((c) => (
