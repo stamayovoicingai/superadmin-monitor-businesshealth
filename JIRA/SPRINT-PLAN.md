@@ -26,12 +26,12 @@ So plan as a **single generalist squad**, not three lanes.
 
 | Bucket | SP | Notes |
 |--------|----|-------|
-| Backend | 156 | the critical path |
-| Frontend | 58 | one dev + Claude Code (incl. `PLAT-FE1` design system, 5) |
-| QA | 43 | shift-left, absorbed by the 3 devs |
-| **Total** | **257** | |
+| Backend | 174 | the critical path (incl. `TEL-BE1..3`, 18) |
+| Frontend | 66 | one dev + Claude Code (incl. `PLAT-FE1` design system, 5; `TEL-FE1/2`, 8) |
+| QA | 46 | shift-left, absorbed by the 3 devs (incl. `TEL-QA1`, 3) |
+| **Total** | **286** | |
 
-**~257 SP ÷ ~33 SP/sprint ≈ 8 sprints.** Realistic **v1 ≈ 8–9 two-week sprints (~16–18 weeks)**.
+**~286 SP ÷ ~33 SP/sprint ≈ 8.7 sprints.** Realistic **v1 ≈ 9–10 two-week sprints (~18–20 weeks)**.
 Backend remains the gate; the FE dev rides alongside (Claude Code keeps FE off the critical path).
 
 ## Sprint sequence (single squad, ~30–33 SP/sprint)
@@ -46,12 +46,15 @@ Dependency-ordered; each sprint mixes BE + FE + QA for the epics in play.
 | **S4** | Calls finish + Performance + Live + Thresholds | CALLS-FE2, QA1 (8) · PERF (10) · LIVE-BE1, FE1 (8) · THRESH-BE1, FE1 (6) — **32** |
 | **S5** | Issues + Flagging | LIVE-QA1, THRESH-QA1 (4) · ISSUE-BE1, FE1, QA1 (14) · FLAG-BE1, FE1, QA1 (10) — **28** |
 | **S6** | Service Health + Kubernetes | HEALTH (19) · K8S (13) — **32** |
-| **S7** | ELB + Assistant + Business | ELB (9) · ASST (9) · BIZ (13) — **31** |
-| **S8** | Overview + Fallbacks | OVW (10) · FALLB (17) — **27** |
-| **S9** | IP Access + stabilization | IPACC (16) + regression/hardening/perf pass — **~16+** |
+| **S7** | Telephony (SIP/RTP) | TEL-BE1, BE2, BE3, FE1, FE2, QA1 (29) — **29** |
+| **S8** | ELB + Assistant + Business | ELB (9) · ASST (9) · BIZ (13) — **31** |
+| **S9** | Overview + Fallbacks | OVW (10) · FALLB (17) — **27** |
+| **S10** | IP Access + stabilization | IPACC (16) + regression/hardening/perf pass — **~16+** |
 
-- **v1 lands ~S8–S9 (~16–18 weeks).** S9 doubles as the **stabilization sprint** (the "QA pass" you'd
-  otherwise give a dedicated tester).
+- **v1 lands ~S9–S10 (~18–20 weeks).** S10 doubles as the **stabilization sprint** (the "QA pass"
+  you'd otherwise give a dedicated tester).
+- `TEL` (S7) is the one epic gated on an **external decision** (capture topology, `PRD/19` §8) as much
+  as on engineering time — if that decision slips, resequence `TEL` later without blocking S8+.
 - Want it sooner? The only real lever with 3 people is **more backend hands** or **descoping** (e.g.,
   defer Infra k8s/ELB or Fallbacks/IP-Access to a fast-follow).
 

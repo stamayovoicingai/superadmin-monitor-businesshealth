@@ -26,6 +26,7 @@
 | 16 | [Module: IP Access Control (whitelist/blacklist)](./16-ip-access-control.md) | ✅ built |
 | 17 | [Module: Assistant / Subagent Usage](./17-assistant-subagent-usage.md) | ✅ built |
 | 18 | [Module: Service Health (Uptime-Kuma style)](./18-service-health.md) | ✅ built |
+| 19 | [Module: Telephony Observability (SIP/RTP)](./19-module-telephony-observability.md) | 🔵 design |
 
 ## Key decisions (discovery session, Jun 2026)
 

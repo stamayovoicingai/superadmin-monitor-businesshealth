@@ -34,6 +34,9 @@ import type {
   RollupTotals,
   ServiceNotifyOverride,
   ServiceStatus,
+  SipCallDetail,
+  SipCallStatus,
+  SipCallSummary,
   StatusCount,
   SubagentKey,
   TimePoint,
@@ -264,6 +267,30 @@ export interface CreateFlagInput {
   comment: string;
 }
 
+/* ----- Infra: Telephony Observability (SIP/RTP) ----- */
+
+export interface SipCallFilter {
+  origin?: string;
+  destination?: string;
+  sipCallId?: string;
+  status?: SipCallStatus;
+}
+
+export interface SipCallStats {
+  totalCalls: number;
+  failureRate: number; // 0-100
+  avgSetupMs: number;
+  topFailureCodes: { code: number; count: number }[];
+}
+
+export interface SipCallPage {
+  rows: (SipCallSummary & { projectName: string; orgName: string })[];
+  total: number;
+  page: number;
+  pageSize: number;
+  stats: SipCallStats;
+}
+
 export interface CreateThresholdInput {
   metric: ThresholdMetric;
   scopeType: ThresholdScopeType;
@@ -313,6 +340,9 @@ export interface DataSource {
 
   infraK8s(scope: Scope): Promise<K8sResult>;
   infraElb(scope: Scope): Promise<ElbResult>;
+
+  listSipCalls(scope: Scope, filter: SipCallFilter, page: number, pageSize: number): Promise<SipCallPage>;
+  getSipCallDetail(sipCallId: string): Promise<SipCallDetail | null>;
 
   getIssues(scope: Scope): Promise<IssuesResult>;
   listThresholds(): Promise<Threshold[]>;

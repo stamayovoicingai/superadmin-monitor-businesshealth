@@ -35,6 +35,7 @@ export const NAV: NavSection[] = [
       { title: "Service Health", href: "/health", icon: "HeartPulse" },
       { title: "Kubernetes", href: "/infra/kubernetes", icon: "Boxes", superAdminOnly: true },
       { title: "AWS ELB", href: "/infra/elb", icon: "Network", superAdminOnly: true },
+      { title: "Telephony", href: "/infra/telephony", icon: "Waypoints", superAdminOnly: true },
     ],
   },
   {

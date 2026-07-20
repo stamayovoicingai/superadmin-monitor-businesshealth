@@ -22,6 +22,7 @@ import type {
   Threshold,
 } from "@/lib/types";
 import { getDataset } from "@/lib/seed";
+import { buildSipCallDetail, buildSipSummary } from "@/lib/telephony";
 import { SUBAGENTS, SUBAGENT_LABEL } from "@/lib/engine/subagents";
 import { evaluateIssues, formatMetric } from "@/lib/engine/issues";
 import { Rng } from "@/lib/seed/rng";
@@ -65,7 +66,10 @@ import type {
   CreateThresholdInput,
   UpdateThresholdPatch,
   CreateFlagInput,
+  SipCallFilter,
+  SipCallPage,
 } from "./source";
+import type { SipCallDetail } from "@/lib/types";
 
 /* ----- Infra mock generators (deterministic per scope) ----- */
 function hashSeed(s: string): number {
@@ -964,5 +968,64 @@ export class MockAdapter implements DataSource {
   async addFlagComment(id: string, body: string): Promise<void> {
     const f = flagStore().find((x) => x.id === id);
     if (f && body.trim()) f.comments.push({ author: "you@voicing.ai", body: body.trim(), createdAt: new Date().toISOString() });
+  }
+
+  async listSipCalls(scope: Scope, filter: SipCallFilter, page: number, pageSize: number): Promise<SipCallPage> {
+    const { projects, orgs } = getDataset();
+    const projName = (id: string) => projects.find((p) => p.id === id)?.name ?? id;
+    const orgName = (id: string) => orgs.find((o) => o.id === id)?.name ?? id;
+
+    let rows = scopedCalls(scope).map((c) => ({
+      call: c,
+      summary: buildSipSummary(c, projects.find((p) => p.id === c.projectId)!),
+    }));
+
+    if (filter.origin) rows = rows.filter((r) => r.summary.origin.includes(filter.origin!));
+    if (filter.destination) rows = rows.filter((r) => r.summary.destination.includes(filter.destination!));
+    if (filter.sipCallId) {
+      const q = filter.sipCallId.toLowerCase();
+      rows = rows.filter((r) => r.summary.sipCallId.toLowerCase().includes(q) || (r.summary.linkedCallId ?? "").toLowerCase().includes(q));
+    }
+    if (filter.status) rows = rows.filter((r) => r.summary.status === filter.status);
+    rows.sort((a, b) => b.summary.startTime.localeCompare(a.summary.startTime));
+
+    const total = rows.length;
+    const failed = rows.filter((r) => r.summary.status === "fallida" || r.summary.status === "no_contesto");
+    const answered = rows.filter((r) => r.summary.status === "finalizada" || r.summary.status === "activa");
+    const failureRate = total > 0 ? +((failed.length / total) * 100).toFixed(1) : 0;
+    const avgSetupMs = answered.length > 0 ? Math.round(answered.reduce((sum, r) => sum + r.call.latency.telephonyMs, 0) / answered.length) : 0;
+    const codeCounts = new Map<number, number>();
+    for (const r of failed) {
+      if (r.summary.finalStatusCode != null) codeCounts.set(r.summary.finalStatusCode, (codeCounts.get(r.summary.finalStatusCode) ?? 0) + 1);
+    }
+    const topFailureCodes = Array.from(codeCounts.entries())
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const start = (page - 1) * pageSize;
+    const slice = rows.slice(start, start + pageSize);
+
+    return {
+      rows: slice.map((r) => ({ ...r.summary, projectName: projName(r.summary.projectId), orgName: orgName(r.summary.orgId) })),
+      total,
+      page,
+      pageSize,
+      stats: { totalCalls: total, failureRate, avgSetupMs, topFailureCodes },
+    };
+  }
+
+  async getSipCallDetail(sipCallId: string): Promise<SipCallDetail | null> {
+    const { calls, projects, orgs } = getDataset();
+    const call = calls.find((c) => c.callId === sipCallId || c.id === sipCallId || `sip-${c.id}` === sipCallId);
+    if (!call) return null;
+    const project = projects.find((p) => p.id === call.projectId)!;
+    const summary = buildSipSummary(call, project);
+    const linkedCall = {
+      callId: call.callId,
+      projectName: project.name,
+      orgName: orgs.find((o) => o.id === call.orgId)?.name ?? call.orgId,
+    };
+    return buildSipCallDetail(call, summary, linkedCall);
   }
 }

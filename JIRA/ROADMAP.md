@@ -42,8 +42,8 @@ COST engine (cost_per_call) ─> ISSUE (cost_per_call metric)
 - `THRESH` then `ISSUE` (Issues evaluates thresholds), then `FLAG` (auto-flags from Issues).
 
 **Wave 2 — High-value (P2):**
-- `HEALTH` (Service Health), `K8S` + `ELB` (Infra), `BIZ` (Business Health), `ASST` (Assistant Usage),
-  `OVW` (Overview — aggregates the others, so it lands after them).
+- `HEALTH` (Service Health), `K8S` + `ELB` + `TEL` (Infra), `BIZ` (Business Health), `ASST` (Assistant
+  Usage), `OVW` (Overview — aggregates the others, so it lands after them).
 
 **Wave 3 — Controls (P3):** `FALLB` (Fallbacks), `IPACC` (IP Access). (Config surfaces; lower urgency.)
 
@@ -65,6 +65,7 @@ remain in `qa-bench/` (designed) for a later, separate effort; excluded from the
 | HEALTH — Service Health | P2 | PLAT-BE1 |
 | K8S — Infra Kubernetes | P2 | PLAT-BE1 (+ Prometheus source) |
 | ELB — Infra AWS ELB | P2 | PLAT-BE1 (+ CloudWatch source) |
+| TEL — Infra Telephony (SIP/RTP) | P2 | PLAT-BE1, CALLS (Call-ID correlation) (+ HEP source) |
 | BIZ — Business Health | P2 | COST (contracts/MRR), PLAT-BE2 |
 | ASST — Assistant Usage | P2 | PLAT-BE1 (+ assistant usage source) |
 | OVW — Overview | P2 | COST, PERF, LIVE, ASST, ISSUE |

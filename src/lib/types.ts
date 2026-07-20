@@ -390,3 +390,64 @@ export interface StatusCount {
   status: CallStatus;
   count: number;
 }
+
+/* ----- Telephony Observability (SIP/RTP) — PRD/19 ----- */
+
+export type SipCallStatus = "activa" | "finalizada" | "fallida" | "no_contesto";
+export type SipDirection = "inbound" | "outbound";
+export type SipTransport = "UDP" | "TCP" | "TLS";
+
+export interface SipCallSummary {
+  id: string; // internal id, e.g. sip-<call.id>
+  sipCallId: string; // SIP "Call-ID" header value
+  linkedCallId: string | null; // app-level Call.callId when correlatable
+  orgId: string;
+  projectId: string;
+  direction: SipDirection;
+  origin: string; // ANI
+  destination: string; // DNIS
+  startTime: string; // ISO
+  endTime: string | null;
+  durationSecs: number;
+  status: SipCallStatus;
+  finalStatusCode: number | null;
+  finalReason: string | null;
+  trunkHops: string[];
+  methodsSequence: string[]; // compact chip sequence, e.g. ["100","INVITE","200","ACK"]
+  retransmissions: number;
+  codec: string;
+}
+
+export interface SipMessage {
+  seq: number;
+  ts: string; // ISO
+  deltaMs: number; // offset from message #1
+  method: string; // INVITE | 100 | 180 | 200 | ACK | BYE | 486 | ...
+  sizeBytes: number;
+  src: string; // ip:port
+  dst: string; // ip:port
+  transport: SipTransport;
+  raw: string; // full raw SIP text (headers + body)
+  headers: Record<string, string>;
+  sdp: string | null;
+}
+
+export interface SipQualitySample {
+  ts: string; // ISO
+  direction: "caller" | "callee";
+  jitterMs: number;
+  packetLossPct: number;
+  mos: number;
+  rttMs: number;
+  codec: string;
+}
+
+export type SipQualityVerdict = "pass" | "warn" | "fail";
+
+export interface SipCallDetail {
+  summary: SipCallSummary;
+  linkedCall: { callId: string; projectName: string; orgName: string } | null;
+  messages: SipMessage[];
+  quality: SipQualitySample[];
+  qualityVerdict: SipQualityVerdict;
+}

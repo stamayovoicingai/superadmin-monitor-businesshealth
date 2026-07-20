@@ -791,7 +791,8 @@ SuperAdmins must tune detection rules without code changes.
 ## Acceptance Criteria
 - [ ] All CRUD works against the real API; changes reflect in Issues on next eval.
 - [ ] Abandonment reason multiselect persists; per-metric units/comparators shown correctly.
-- [ ] SuperAdmin-only; `User` cannot reach the page or mutate; responsive; a11y clean."
+- [ ] SuperAdmin-only; `User` cannot reach the page or mutate; responsive; a11y clean.
+- [ ] All form `Select`s are controlled from first render (default to a defined value/`""""` while data loads) — no Base UI uncontrolled→controlled console warnings, especially the Category select before categories load."
 "Task","[QA] Thresholds · QA · Threshold config scenarios","","Thresholds","High","2","qa rbac thresh","THRESH-QA1","THRESH-FE1","","**ID:** THRESH-QA1 · **Priority:** P1 · **Estimate:** 2
 **Blocked by:** THRESH-FE1 · **Blocks:** —
 **MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth — PRD/05 §5, CreateThresholdInput / UpdateThresholdPatch in src/lib/data/source.ts, src/lib/engine/issues.ts (metric catalog / comparator semantics)
@@ -1243,6 +1244,264 @@ Validate parity with Grafana/CloudWatch, region/LB and time scoping.
 - [ ] Each panel matches CloudWatch/Grafana for the same metric/statistic/window.
 - [ ] Region + load balancer + date-range selection changes data correctly.
 - [ ] SuperAdmin-only; loading/empty/error states; no refetch loop."
+"Epic","Infra: Telephony Observability","Infra: Telephony Observability","","Medium","","epic tel","TEL","PLAT-BE1; CALLS-BE1","","## Goal
+Give telephony/NOC engineers a server-level view of the SIP trunk (Asterisk, optionally an SBC in
+front of it) independent of application-level Call Logs: every call as a searchable SIP dialog, a
+full message-by-message flow (INVITE/1xx/2xx/4xx/ACK/BYE...), a visual call-flow ladder, RTP/RTCP
+call quality (jitter/packet loss/MOS), and a Wireshark-compatible PCAP export.
+
+**Note — no existing MVP screen:** unlike other epics, this module has **no prototype UI yet**. The
+spec is `PRD/19-module-telephony-observability.md` (informed by a reference platform's screenshots).
+Build v1 as a **mock-first demo** (deterministic multi-hop SIP dialogs + synthetic-but-valid PCAP,
+same pattern as every other module) behind a typed `TelephonySource` adapter, swappable later to a
+real HEP/Homer feed — do not wait on real Asterisk/SBC capture access to ship the UI.
+
+## Outcome
+- `sip_call` / `sip_message` / `rtp_quality_sample` schema, correlated to `chat_conversations` by
+  `Call-ID` so this module and Call Detail (`CALLS`) cross-link both ways.
+- Communications list (`/infra/telephony`): filter by origin/destination/Call-ID/time window, live
+  auto-refresh (pausable), List + Statistics views.
+- Call detail (`/infra/telephony/[callId]`): Resumen · Flujo (ladder diagram) · Mensajes (message
+  table + Mensaje/SIP/SDP/Detalles inspector) · Calidad (jitter/loss/MOS) · Exportar (PCAP + plain
+  text), audit-logged.
+- `TelephonySource` adapter: `MockAdapter` today, `HomerAdapter` (real HEP feed) later — config swap.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth (module not yet present)
+- PRD: `PRD/19-module-telephony-observability.md` (architecture, UI spec, data model, open questions)
+- Cross-refs: `PRD/05-module-observability.md` (Call Detail link), `PRD/12-data-model.md`,
+  `PRD/04-data-sources.md` §8b (S8)
+- Pattern to follow for the adapter/mock split: `src/lib/data/source.ts`, `src/lib/data/mock.ts`
+
+## Features
+- F1 — SIP capture schema & adapter (mock + Homer stub) (BE)
+- F2 — Communications list & call detail query API (BE)
+- F3 — PCAP & plain-text export generation (BE)
+- F4 — Communications list UI (FE)
+- F5 — Call detail UI: 5 tabs incl. call-flow ladder (FE)
+- F6 — QA
+
+## Tasks
+- `BE-1-sip-capture-schema-adapter.md` (`TEL-BE1`)
+- `BE-2-comms-list-call-detail-api.md` (`TEL-BE2`)
+- `BE-3-pcap-text-export.md` (`TEL-BE3`)
+- `FE-1-comms-list-ui.md` (`TEL-FE1`)
+- `FE-2-call-detail-ui.md` (`TEL-FE2`)
+- `QA-1-telephony-tests.md` (`TEL-QA1`)
+
+## Open questions (from PRD/19 §8)
+- Capture topology (Asterisk-only vs SBC in front), HEP capture agent/store choice, LiveKit's role
+  in scope, MOS calculation method, PCAP/SIP retention policy, live refresh cadence."
+"Story","[BE] Telephony Observability · SIP capture · Schema + mock/Homer adapter","","Infra: Telephony Observability","Medium","8","backend python postgres hep sip infra telephony tel","TEL-BE1","PLAT-BE1","TEL-BE2; TEL-BE3; TEL-FE1","**ID:** TEL-BE1 · **Priority:** P2 · **Estimate:** 8
+**Blocked by:** PLAT-BE1 · **Blocks:** TEL-BE2; TEL-BE3; TEL-FE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Stand up the foundational schema and the `TelephonySource` typed adapter that every other Telephony
+task builds on: `sip_call` (one row per SIP dialog), `sip_message` (one row per captured SIP
+packet — method/code, timestamp, delta, size, src/dst, transport, raw text, parsed headers, SDP
+body), and `rtp_quality_sample` (periodic jitter/packet-loss/MOS/RTT points). This module has **no
+existing prototype** — this task delivers the v1 **mock** implementation (deterministic multi-hop
+SIP dialog generator, tied to the same seeded calls as `chat_conversations` so `Call-ID` correlates)
+and stubs the production **`HomerAdapter`** interface for later.
+
+## Why
+Every other Telephony feature (list, detail, quality, export) reads through this adapter and schema.
+Getting the shapes right up front — and correlating by `Call-ID` to the existing call data — is what
+lets Call Detail (`CALLS`) and this module cross-link, per PRD/19 §1.
+
+## How (building on the MVP)
+- Implement `sip_call` / `sip_message` / `rtp_quality_sample` tables per `PRD/19` §6. `sip_call.call_id`
+  joins to `chat_conversations.call_id`; allow it to be `null` for pre-answer/unresolvable dialogs.
+- Build `TelephonySource` with methods `listSipCalls`, `getSipCallDetail`, `getSipMessages`,
+  `getQualitySamples` (query methods land fully in `TEL-BE2`; this task defines the interface +
+  the `MockAdapter` implementation).
+- Mock generator: realistic multi-hop dialogs (carrier → SBC → Asterisk when applicable) —
+  INVITE→100→18x→200→ACK...BYE→200 happy path plus 4xx/5xx/timeout failure paths — with matching
+  RTCP quality samples, deterministic per seeded call (same seed as `chat_conversations`).
+- Stub `HomerAdapter`: same interface, reading from a HEP capture store (Homer `heplify-server`/
+  `homer-app` or an equivalent listener) — implementation deferred, but the seam (`DATA_SOURCE=
+  mock|homer`) must exist so swapping is config-only, per platform convention.
+- Document (in code comments / a short ADR) the open capture-topology questions from `PRD/19` §8 —
+  this task does not resolve them, just doesn't block on them.
+
+## Acceptance Criteria
+- [ ] `sip_call` / `sip_message` / `rtp_quality_sample` tables exist and match `PRD/19` §6.
+- [ ] `TelephonySource` interface defined; `MockAdapter` implementation returns deterministic,
+      internally-consistent multi-hop dialogs + quality samples correlated by `Call-ID`.
+- [ ] `HomerAdapter` stub exists behind the same interface; `DATA_SOURCE` config swap works (returns
+      ""not implemented"" gracefully, does not crash the app).
+- [ ] Failure-path dialogs (4xx/5xx/timeout/no-ACK) are represented in the mock, not just happy path."
+"Story","[BE] Telephony Observability · API · Communications list & call detail","","Infra: Telephony Observability","Medium","5","backend python postgres api sip infra telephony rbac tel","TEL-BE2","TEL-BE1; CALLS-BE1","TEL-FE1; TEL-FE2","**ID:** TEL-BE2 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** TEL-BE1; CALLS-BE1 · **Blocks:** TEL-FE1; TEL-FE2
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Query endpoints backing the Communications list and Call Detail screens: `listSipCalls` (filterable
+by origin/destination/Call-ID/time window/status, paginated, List + Statistics aggregate mode),
+`getSipCallDetail` (Resumen tab data incl. linked app `call_id`/project/org), `getSipMessages`
+(ordered message table + parsed SIP/SDP for the row-expand inspector), `getQualitySamples`
+(jitter/packet-loss/MOS/RTT series + threshold pass/fail).
+
+## Why
+This is the read path for both Telephony screens — list and detail — and the join point back to
+Call Detail (`CALLS`) via `Call-ID`.
+
+## How (building on the MVP)
+- Implement against the `TelephonySource` interface from `TEL-BE1`.
+- `listSipCalls`: filters per `PRD/19` §4 (origen, destino, Call-ID, time window presets
+  `5m…2d`, estado); Statistics mode aggregates by trunk/hop and time bucket (volume, failure rate,
+  avg setup time, top failure codes).
+- `getSipCallDetail`: resolve and return the linked app `call_id`/`project_id`/`org_id` when
+  correlatable (nullable otherwise); include trunk/hop labels, final status, retransmission count,
+  negotiated codec.
+- `getQualitySamples`: evaluate against `telephony_quality_threshold` bands (extend the existing
+  Thresholds engine, `PRD/05`) and return a pass/fail badge.
+- Enforce **RBAC server-side**: SuperAdmin sees all trunks/orgs/projects; `User` sees only SIP
+  dialogs whose correlated `call_id` belongs to their assigned project(s) — never trunk/SBC-level
+  aggregates (`PRD/19` §3).
+
+## Acceptance Criteria
+- [ ] `listSipCalls` supports all documented filters + both List and Statistics response shapes.
+- [ ] `getSipCallDetail` / `getSipMessages` / `getQualitySamples` return shapes the FE tasks can
+      render without transformation.
+- [ ] RBAC enforced server-side: `User` requests for out-of-scope calls return empty/403, not raw data.
+- [ ] Quality samples correctly flagged pass/fail against `telephony_quality_threshold`."
+"Story","[BE] Telephony Observability · Export · PCAP & plain-text generation","","Infra: Telephony Observability","Medium","5","backend python pcap sip infra telephony audit tel","TEL-BE3","TEL-BE1","TEL-FE2","**ID:** TEL-BE3 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** TEL-BE1 · **Blocks:** TEL-FE2
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+`exportPcap` and `exportText` endpoints for a given `sip_call`: PCAP reconstructs the stored
+`sip_message` rows (+ RTP headers if captured) into a valid `.pcap`/`.pcapng` file, openable in
+Wireshark; text export renders the Mensajes tab content as flat, grep-friendly text. Every export is
+written to `pcap_export_log` (who/when/format) — matches the reference platform's ""Exportar"" tab
+exactly (Captura PCAP / Texto plano).
+
+## Why
+NOC/telephony engineers need to pull a call into Wireshark for deep analysis, and SIP/PCAP exports
+carry ANI/DNIS (PII-adjacent) so they must be audited like recordings (`PRD/05` S7).
+
+## How (building on the MVP)
+- PCAP generation: reconstruct valid Ethernet/IP/UDP + SIP payload frames from `sip_message` rows
+  (timestamps, src/dst 5-tuple already stored); a standard PCAP-writing library is sufficient — no
+  need to round-trip through a real capture tool.
+- Text export: ordered plain-text rendering of every `sip_message.raw_message` in the dialog.
+- Write a `pcap_export_log` row on every export (`sip_call_id`, `exported_by`, `exported_at`,
+  `format`); this is an **audit log**, not a cache — always log, even on repeated exports of the
+  same call.
+- Enforce the same RBAC as `TEL-BE2`: a `User` can only export calls within their assigned project(s).
+
+## Acceptance Criteria
+- [ ] Downloaded PCAP opens cleanly in Wireshark and shows the correct SIP dialog (correct Call-ID,
+      method sequence, timing).
+- [ ] Text export matches the Mensajes tab content 1:1, in order.
+- [ ] Every export writes a `pcap_export_log` row; log is queryable for audit.
+- [ ] RBAC enforced: `User` cannot export calls outside their project scope."
+"Story","[FE] Telephony Observability · UI · Communications list","","Infra: Telephony Observability","Medium","3","frontend nextjs ui-ux infra telephony rbac tel","TEL-FE1","PLAT-FE1; TEL-BE2","TEL-QA1","**ID:** TEL-FE1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** PLAT-FE1; TEL-BE2 · **Blocks:** TEL-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Build the **Communications list** page (`/infra/telephony`, new sidebar entry under Infra, 🔒-gated
+like Kubernetes/ELB): filters (Origen, Destino, Call-ID, time-window presets `5m…2d`, Todas toggle,
+Pausado/Live toggle), a `Lista` table (Hora/Tipo/Origen/Destino/Duración/Estado/Métodos chips/
+Acciones) and an `Estadísticas` aggregate view, per `PRD/19` §4.
+
+## How (building on the MVP)
+**Design system:** build on `/design` tokens + reusable components (voicing.ai system). Reuse
+`Button`/`Badge`/chips/`Card`/`PageHeader`/`DateRangeControl`/`DataTable`; never hardcode colors,
+fonts, or radii. See `PLAT-FE1`.
+
+- New sidebar entry `Telephony` under **Infra**, gated per `TEL-BE2`'s RBAC response (SuperAdmin
+  full; User sees only own-project calls, no trunk aggregates).
+- Live-leaning refresh (auto-refresh, pausable via the Pausado toggle) — this list is closer to Live
+  Operations (`LIVE`) than the snapshot+manual-refresh pattern used elsewhere; reuse whatever polling
+  primitive `LIVE-FE1` established if available.
+- Método chips render the compact SIP sequence (e.g. `100 INVITE 200 ACK`) per row.
+- Row action → navigate to `TEL-FE2`'s call detail route.
+
+## Why
+The primary NOC entry point into SIP trunk health — search/filter across all dialogs before drilling
+into one.
+
+## Acceptance Criteria
+- [ ] All documented filters work; List and Statistics views both render real data from `TEL-BE2`.
+- [ ] Live/Pausado toggle works; time-window presets change scope correctly.
+- [ ] RBAC: `User` sees only their project(s)' calls, no trunk-level stats section.
+- [ ] Empty/loading/error states; responsive; keyboard-accessible."
+"Story","[FE] Telephony Observability · UI · Call detail (5 tabs + flow ladder)","","Infra: Telephony Observability","Medium","5","frontend nextjs ui-ux infra telephony charts tel","TEL-FE2","TEL-FE1; TEL-BE3","TEL-QA1","**ID:** TEL-FE2 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** TEL-FE1; TEL-BE3 · **Blocks:** TEL-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Build the call-detail view (`/infra/telephony/[callId]`) with the five tabs specified in `PRD/19`
+§5: **Resumen** (at-a-glance summary + link to app Call Detail), **Flujo** (SIP ladder/sequence
+diagram, failure points highlighted red), **Mensajes** (sortable `# / Hora / Delta / Método / Tamaño
+/ Origen→Destino / Proto` table with a row-expand Mensaje/SIP/SDP/Detalles inspector), **Calidad**
+(jitter/packet-loss/MOS/RTT timeseries + pass/fail badge), **Exportar** (Captura PCAP + Texto plano
+downloads, per `TEL-BE3`).
+
+## How (building on the MVP)
+**Design system:** build on `/design` tokens + reusable components; never hardcode colors, fonts, or
+radii. See `PLAT-FE1`.
+
+- Header: monospace `Call-ID` + status badge (Fallida/Activa/Finalizada).
+- **Flujo** is the highest-risk piece of this task: a caller↔SBC↔Asterisk↔callee lane diagram with
+  timestamped arrows per message. Scope it as a purpose-built SVG/canvas component (no off-the-shelf
+  sequence-diagram lib assumed) — keep it declarative from the same `sip_message` array the Mensajes
+  tab renders, so both tabs stay in sync.
+- **Mensajes** row-expand inspector reuses a code/syntax-highlight component for the raw SIP text and
+  a key-value/table renderer for parsed SIP headers and SDP media lines.
+- **Calidad** reuses the platform's Timeseries chart wrapper; threshold pass/fail badge reads
+  `telephony_quality_threshold` evaluation from `TEL-BE2`.
+- **Exportar** matches the reference screenshot layout exactly: two rows (Captura PCAP / Texto plano)
+  each with a short description and a Descargar button hitting `TEL-BE3`.
+- Add the reciprocal link: ""View SIP Trace →"" on the existing app-level Call Detail (`CALLS`,
+  `PRD/05`) pointing here when a `Call-ID` is resolvable — coordinate with `CALLS-FE2` if that task
+  hasn't shipped the link yet (small addition, flag as a follow-up if out of this task's scope).
+
+## Why
+This is where telephony engineers actually diagnose a failed/degraded call — the ladder + raw
+message inspector + quality + PCAP export together replace needing separate sngrep/Wireshark access.
+
+## Acceptance Criteria
+- [ ] All 5 tabs render real data from `TEL-BE2`/`TEL-BE3` for both healthy and failed calls.
+- [ ] Flujo ladder correctly shows multi-hop dialogs and highlights 4xx/5xx/timeout/no-ACK failures.
+- [ ] Mensajes row-expand inspector shows accurate Mensaje/SIP/SDP/Detalles for at least one call with
+      an SDP body.
+- [ ] Exportar downloads a real PCAP (openable in Wireshark) and matching plain text.
+- [ ] Empty/loading/error states; responsive; keyboard-accessible."
+"Task","[QA] Telephony Observability · QA · Comms list, call detail, export scenarios","","Infra: Telephony Observability","Medium","3","qa infra telephony tel","TEL-QA1","TEL-FE1; TEL-FE2","","**ID:** TEL-QA1 · **Priority:** P2 · **Estimate:** 3
+**Blocked by:** TEL-FE1; TEL-FE2 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What / Why
+Validate the Communications list, call detail (all 5 tabs), export, and RBAC scoping — including the
+cross-links to/from the existing Call Logs/Detail module.
+
+## How (building on the MVP)
+- Since there's no pre-existing mock to diff against, define this task's own **golden fixtures**:
+  a happy-path call, a multi-hop call, a 4xx/5xx failure, a timeout/no-ACK failure, and a call with
+  degraded quality (high jitter/loss) — assert list + detail + export are internally consistent for
+  each.
+- Validate responses against the `TelephonySource` shapes from `TEL-BE1`/`TEL-BE2`.
+- Cover RBAC (SuperAdmin sees everything; User scoped to own project(s), no trunk aggregates, cannot
+  export out-of-scope calls) — per `PRD/19` §3.
+- Automate in CI: pytest for backend/adapter logic, Playwright or RTL for the UI flows (list filters,
+  ladder rendering for multi-hop/failure calls, export download).
+
+## Acceptance Criteria (scenarios)
+- [ ] List filters (origen/destino/Call-ID/time window/estado) return correct results for each
+      fixture call.
+- [ ] Call detail Resumen/Flujo/Mensajes/Calidad render correctly for happy-path, multi-hop, and
+      failure fixtures; Flujo highlights failure points.
+- [ ] Exportar downloads a valid PCAP and matching plain text for at least one fixture; export is
+      logged in `pcap_export_log`.
+- [ ] `Call-ID` cross-link works both ways (Call Detail → SIP Trace, SIP call → app Call Detail) when
+      correlatable.
+- [ ] RBAC: User cannot see/export calls outside their project(s); no trunk-level stats visible to User.
+- [ ] Loading/empty/error states correct across both screens."
 "Epic","Business Health","Business Health","","Medium","","epic biz","BIZ","COST-BE3; PLAT-BE2","","## Goal
 Voicing business + platform-usage metrics: MRR composition (committed/usage/expansion), churn, org
 growth, new vs returning callers, minutes/calls, active agents/orgs — SuperAdmin only.

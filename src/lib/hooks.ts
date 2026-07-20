@@ -26,8 +26,10 @@ import type {
   IssuesResult,
   CreateThresholdInput,
   UpdateThresholdPatch,
+  SipCallFilter,
+  SipCallPage,
 } from "@/lib/data/source";
-import type { Agent, CallFlag, FlagStatus, IpRule, IssueCategory, Organization, Project, Threshold } from "@/lib/types";
+import type { Agent, CallFlag, FlagStatus, IpRule, IssueCategory, Organization, Project, SipCallDetail, Threshold } from "@/lib/types";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -338,6 +340,31 @@ export function useInfraElb(range?: RangeState) {
   return useQuery({
     queryKey: ["infra-elb", qs],
     queryFn: () => fetchJson<ElbResult>(`/api/infra/elb?${qs}`),
+  });
+}
+
+export function useTelephonyCalls(params: { page: number; pageSize: number } & SipCallFilter, live = false) {
+  const { query } = useView();
+  const sp = new URLSearchParams(query);
+  sp.set("page", String(params.page));
+  sp.set("pageSize", String(params.pageSize));
+  if (params.origin) sp.set("origin", params.origin);
+  if (params.destination) sp.set("destination", params.destination);
+  if (params.sipCallId) sp.set("sipCallId", params.sipCallId);
+  if (params.status) sp.set("status", params.status);
+  const qs = sp.toString();
+  return useQuery({
+    queryKey: ["telephony", qs],
+    queryFn: () => fetchJson<SipCallPage>(`/api/infra/telephony?${qs}`),
+    refetchInterval: live ? 15_000 : false,
+  });
+}
+
+export function useTelephonyCall(callId: string) {
+  return useQuery({
+    queryKey: ["telephony-call", callId],
+    queryFn: () => fetchJson<SipCallDetail>(`/api/infra/telephony/${callId}`),
+    enabled: !!callId,
   });
 }
 

@@ -19,6 +19,7 @@ A persistent **left sidebar** + a **global top bar**.
 │ • Live Ops    │                                                        │
 │ • Kubernetes  │                                                        │
 │ • AWS ELB     │                                                        │
+│ • Telephony   │                                                        │
 │ ─ CONTROLS    │                                                        │
 │ • Fallbacks   │                                                        │
 │ • Thresholds  │                                                        │
@@ -50,6 +51,8 @@ A persistent **left sidebar** + a **global top bar**.
 | Live Operations | `/live` | 07 | both (scoped) |
 | Kubernetes | `/infra/kubernetes` | 06 | SuperAdmin |
 | AWS ELB | `/infra/elb` | 06 | SuperAdmin |
+| Telephony (SIP/RTP) | `/infra/telephony` | 19 | both (scoped, see 19 §3) |
+| Telephony call detail | `/infra/telephony/[callId]` | 19 | both (scoped) |
 | **Controls** | | | |
 | Fallbacks | `/controls/fallbacks` | 08 | SuperAdmin |
 | Thresholds | `/controls/thresholds` | 05 | SuperAdmin |

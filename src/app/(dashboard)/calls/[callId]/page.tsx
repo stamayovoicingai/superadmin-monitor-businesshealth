@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Flag } from "lucide-react";
+import { ArrowLeft, Flag, Waypoints } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -102,6 +103,9 @@ export default function CallDetailPage() {
           <>
             <Button variant="ghost" size="sm" onClick={() => router.push("/calls")}>
               <ArrowLeft className="size-4" /> Back
+            </Button>
+            <Button variant="outline" size="sm" render={<Link href={`/infra/telephony/${call.callId}`} />}>
+              <Waypoints className="size-4" /> View SIP Trace
             </Button>
             <Popover open={flagOpen} onOpenChange={setFlagOpen}>
               <PopoverTrigger render={<Button variant={call.flagged ? "secondary" : "default"} size="sm" />}>

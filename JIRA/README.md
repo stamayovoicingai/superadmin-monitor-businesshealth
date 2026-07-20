@@ -32,6 +32,7 @@ scope for now** (tickets kept for later).
 | E11 | Service Health | [`service-health/`](./service-health/) | `/health` |
 | E12 | Infra — Kubernetes | [`infra-kubernetes/`](./infra-kubernetes/) | `/infra/kubernetes` |
 | E13 | Infra — AWS ELB | [`infra-elb/`](./infra-elb/) | `/infra/elb` |
+| E17 | Infra — Telephony (SIP/RTP) | [`telephony-observability/`](./telephony-observability/) | `/infra/telephony` |
 | E14 | Assistant Usage (subagents) | [`assistant-usage/`](./assistant-usage/) | `/assistant` |
 | E15 | Business Health | [`business-health/`](./business-health/) | `/business` |
 | E16 | QA Bench / Evals (Phase 2 — **deferred, out of scope for now**) | [`qa-bench/`](./qa-bench/) | `/qa-bench` |
@@ -44,7 +45,7 @@ Each task title follows: **`<Epic> · <Feature> · <Task>`** with a discipline p
 
 ## How to import to Jira
 
-**Fastest: use the generated CSV — [`jira-import.csv`](./jira-import.csv)** (79 rows: 17 epics + 62 tasks).
+**Fastest: use the generated CSV — [`jira-import.csv`](./jira-import.csv)** (87 rows: 18 epics + 69 tasks).
 Regenerate anytime with `node JIRA/generate-csv.mjs`.
 
 Columns: `Issue Type, Summary, Epic Name, Epic Link, Priority, Story Points, Labels, External ID,

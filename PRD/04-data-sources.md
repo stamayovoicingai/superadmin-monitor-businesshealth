@@ -20,6 +20,7 @@ below are what the future backend will implement.
 | S5 | **Provider billing/usage** | Provider APIs/exports | Real per-service cost (LLM/STT/TTS/telephony/cloud) | Pricing tables × usage (doc 03) |
 | S6 | **Finance/Contracts** | Internal (sheet/DB) | Org contracts, MGF, rates → revenue/MRR | Seed `org_contract` table (doc 03) |
 | S7 | **Recordings store** | Object storage (S3/GCS) | Call audio recordings | Mock/sample audio + signed-URL pattern |
+| S8 | **SIP capture (HEP)** | Homer-style HEP feed from Asterisk/SBC (+ RTCP quality) | SIP messages, call flow, PCAP export, jitter/MOS | Mock multi-hop SIP dialog + quality generator (doc 19) |
 
 ---
 
@@ -174,6 +175,18 @@ files + a player in Call Detail; the access pattern (signed URL) mirrors product
 
 ---
 
+## 8b. S8 — SIP Capture (HEP) + RTP Quality
+
+SIP signaling captured via **HEP** from Asterisk (and any SBC, e.g. OpenSIPS/Kamailio, placed in
+front of it); RTP/RTCP call-quality samples (jitter, packet loss, MOS) from Asterisk AMI/ARI and/or
+LiveKit's media stats. Powers the new **Telephony Observability** module (doc 19): SIP message
+sequence, call-flow ladder, PCAP export, and quality tab. Demo: a deterministic mock generator
+produces realistic multi-hop SIP dialogs and matching quality samples, tied to the same seeded calls
+as S1 so `Call-ID` correlates across modules. See doc 19 for full architecture and open questions on
+capture topology.
+
+---
+
 ## 9. Mapping sources → modules
 
 | Module | Sources |
@@ -187,6 +200,7 @@ files + a player in Call Detail; the access pattern (signed URL) mirrors product
 | AWS ELB (06) | S4 |
 | Business Health (09) | S1, S6 |
 | Fallbacks (08) | config store (S1-adjacent) |
+| Telephony Observability (19) | S8, correlated to S1 by `Call-ID` |
 
 ## 10. Notes for engineering
 

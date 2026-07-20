@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { CallEndReason, CallStatus, Disposition, Severity } from "@/lib/types";
+import type { CallEndReason, CallStatus, Disposition, Severity, SipCallStatus } from "@/lib/types";
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
   return severity === "critical" ? (
@@ -55,6 +55,30 @@ export function DispositionBadge({ disposition }: { disposition: Disposition }) 
     failed: "text-critical",
   };
   return <span className={cn("text-xs font-medium capitalize", map[disposition])}>{disposition.replace("_", " ")}</span>;
+}
+
+const SIP_STATUS_LABEL: Record<SipCallStatus, string> = {
+  activa: "Active",
+  finalizada: "Completed",
+  fallida: "Failed",
+  no_contesto: "No answer",
+};
+
+export function SipStatusChip({ status }: { status: SipCallStatus }) {
+  if (status === "activa") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success">
+        <span className="relative flex size-1.5">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
+          <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+        </span>
+        {SIP_STATUS_LABEL[status]}
+      </span>
+    );
+  }
+  if (status === "fallida") return <Badge className="bg-critical/10 text-critical">{SIP_STATUS_LABEL[status]}</Badge>;
+  if (status === "no_contesto") return <Badge className="bg-warning/10 text-warning">{SIP_STATUS_LABEL[status]}</Badge>;
+  return <Badge variant="secondary">{SIP_STATUS_LABEL[status]}</Badge>;
 }
 
 export function LiveDot() {

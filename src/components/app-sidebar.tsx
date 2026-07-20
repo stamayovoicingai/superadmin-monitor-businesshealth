@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   TrendingUp,
   TriangleAlert,
+  Waypoints,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -49,6 +50,7 @@ const ICONS: Record<string, LucideIcon> = {
   HeartPulse,
   Boxes,
   Network,
+  Waypoints,
   ShieldBan,
   Shuffle,
   SlidersHorizontal,
