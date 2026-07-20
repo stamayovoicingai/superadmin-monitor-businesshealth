@@ -12,10 +12,15 @@ Almost every backend task depends on the platform foundation. Build this first.
 - `PLAT-BE2` — **Call/conversation data ingestion** (`chat_conversations`/`conversation_details`/
   `chat_messages`, statuses, closed reasons, durations, usage fields). **Blocks:** every tab that
   reads call data (CALLS, PERF, LIVE, ISSUE, COST usage, BIZ, FLAG).
-- `PLAT-BE3` — **AuthN + RBAC** (real roles/session; server-side financial & SuperAdmin gating).
-  **Blocks:** all FE wiring + every secured endpoint.
+- `PLAT-BE3` — **AuthN + RBAC** (real roles/session). **Blocks:** all FE wiring + every secured
+  endpoint + `ACCESS-BE1` (the 4-role/scope model built on top of this session layer).
 - `PLAT-BE4` — **DataSource→SupabaseAdapter + env + deploy/CI**. **Blocks:** all FE "wire to real API".
 - `PLAT-QA1` — foundation/RBAC/e2e harness.
+
+Immediately after: `ACCESS-BE1..3` (Access Management & RBAC v2 — the 4-role/scoped-grants model,
+see `access-management/EPIC.md`) is a **near-foundation dependency**: `COST`'s financial gating,
+`CALLS`'s cost-hidden-for-Dev, and every other epic's role checks all read through it. Sequence it
+right after `PLAT-BE3`, before the rest of Wave 1.
 
 ## Dependency graph (high level)
 
@@ -25,7 +30,8 @@ PLAT-BE1 (Supabase schema) ─┬─> PLAT-BE2 (call ingestion) ─┬─> CALLS
                             │                              └─> ISSUE ─> FLAG
                             ├─> COST pricing/revenue ─> BIZ (MRR/contracts)
                             └─> HEALTH, K8S, ELB, ASST (own series/ingestion)
-PLAT-BE3 (auth/RBAC) ──────> every FE wiring + secured API (esp. COST, BIZ financial gating)
+PLAT-BE3 (auth/RBAC) ──────> ACCESS-BE1 (4-role/scope model) ──> every module's RBAC gate
+                                                              (esp. COST, CALLS, BIZ, ASST financials)
 PLAT-BE4 (adapter+deploy) ─> every FE "wire to real API"
 THRESH (config) ──────────> ISSUE (evaluates thresholds) ──auto-flag──> FLAG
 COST engine (cost_per_call) ─> ISSUE (cost_per_call metric)
@@ -36,6 +42,7 @@ COST engine (cost_per_call) ─> ISSUE (cost_per_call metric)
 **Wave 0 — Foundation (P0):** `PLAT-BE1..BE4`, `PLAT-QA1`.
 
 **Wave 1 — Core value (P1):**
+- `ACCESS` (Access Management & RBAC v2) — first, everything else's financial/ops gating depends on it.
 - `COST` (Cost & Margin) — #1.
 - `CALLS` (Call Logs & Detail) — needed by drill-downs everywhere.
 - `PERF` (Performance), `LIVE` (Live Operations).
@@ -55,7 +62,8 @@ remain in `qa-bench/` (designed) for a later, separate effort; excluded from the
 | Epic | Priority | Blocked by (key) |
 |------|----------|------------------|
 | PLAT — Platform | P0 | — |
-| COST — Cost & Margin | P1 | PLAT-BE1/BE2/BE3 |
+| ACCESS — Access Management & RBAC v2 | P1 | PLAT-BE1, PLAT-BE3 |
+| COST — Cost & Margin | P1 | PLAT-BE1/BE2/BE3, ACCESS-BE1 |
 | CALLS — Call Logs & Detail | P1 | PLAT-BE1/BE2 |
 | PERF — Performance | P1 | PLAT-BE2 |
 | LIVE — Live Operations | P1 | PLAT-BE2 |

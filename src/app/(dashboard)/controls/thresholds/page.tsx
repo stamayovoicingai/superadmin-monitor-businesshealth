@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCreateCategory, useCreateThreshold, useDeleteThreshold, useMeta, useThresholds, useUpdateThreshold } from "@/lib/hooks";
 import { useView } from "@/components/view-context";
-import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
+import { canSeeOpsModules } from "@/lib/auth/policy";
 import { ABANDONMENT_REASONS, ISSUE_METRICS } from "@/lib/engine/issues";
 import { cn } from "@/lib/utils";
 import type { CallEndReason, IssueCategory, Threshold, ThresholdMetric } from "@/lib/types";
@@ -35,14 +35,14 @@ export default function ThresholdsPage() {
   const [newCat, setNewCat] = React.useState("");
   const [catName, setCatName] = React.useState("");
 
-  if (!canSeeSuperAdminOnly(role)) {
+  if (!canSeeOpsModules(role)) {
     return (
       <div>
         <PageHeader title="Thresholds" description="Configure Critical/Warning thresholds." />
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground"><Lock className="size-6" /></div>
-            <div className="text-lg font-semibold">SuperAdmin only</div>
+            <div className="text-lg font-semibold">Not available for your role</div>
           </CardContent>
         </Card>
       </div>

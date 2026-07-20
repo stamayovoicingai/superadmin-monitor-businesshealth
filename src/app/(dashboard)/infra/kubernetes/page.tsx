@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInfraK8s } from "@/lib/hooks";
 import { useView } from "@/components/view-context";
-import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
+import { canSeeOpsModules } from "@/lib/auth/policy";
 import { formatNumber } from "@/lib/money";
 import { fuzzyMatch } from "@/lib/fuzzy";
 import { cn } from "@/lib/utils";
@@ -51,14 +51,14 @@ export default function KubernetesPage() {
   const [logQuery, setLogQuery] = React.useState("");
   const { data, isLoading } = useInfraK8s(range);
 
-  if (!canSeeSuperAdminOnly(role)) {
+  if (!canSeeOpsModules(role)) {
     return (
       <div>
         <PageHeader title="Kubernetes" description="Cluster, pods and container monitoring." />
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground"><Lock className="size-6" /></div>
-            <div className="text-lg font-semibold">SuperAdmin only</div>
+            <div className="text-lg font-semibold">Not available for your role</div>
           </CardContent>
         </Card>
       </div>

@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   TrendingUp,
   TriangleAlert,
+  Users,
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
@@ -58,6 +59,7 @@ const ICONS: Record<string, LucideIcon> = {
   TrendingUp,
   ClipboardCheck,
   Palette,
+  Users,
 };
 
 export function AppSidebar() {

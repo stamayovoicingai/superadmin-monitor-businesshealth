@@ -127,8 +127,16 @@ caller counts (new/returning) · active_agents.
 
 ## 7. Auth
 ### app_user
-`id` · `email` · `role` (`superadmin`|`user`) · `project_ids` (uuid[]) · `org_id?` · `created_at`.
-Policy module derives visibility (doc 01). RLS-ready: scope by `org_id` / `project_ids`.
+`id` · `email` · `role` (`superadmin`|`pm`|`dev`|`financial`) · `created_at`. SuperAdmin rows carry
+no grants (implicit unrestricted access); `pm`/`dev`/`financial` rows are provisioned via Access
+Management (doc 20) and must have ≥1 `access_grant` row to see any data.
+### access_grant
+`id` · `app_user_id` (fk) · `scope_type` (`org`|`project`) · `scope_id` (uuid) · `created_at`. Same
+scoping/inheritance shape as `IpRule` (doc 16) — an org-level grant covers all its projects.
+
+Policy module derives module visibility (doc 01 §3); scope helpers derive effective org/project ids
+from `access_grant` rows (doc 01 §6, doc 20 §4). RLS-ready: scope by `org_id` / `project_id` joined
+through `access_grant`.
 
 ---
 

@@ -4,7 +4,9 @@
  * See PRD/13-technical-architecture.md §2.
  */
 import type {
+  AccessGrant,
   Agent,
+  AppUser,
   Call,
   CallEndReason,
   CallFlag,
@@ -32,6 +34,7 @@ import type {
   Project,
   ProjectRollup,
   RollupTotals,
+  ScopedRole,
   ServiceNotifyOverride,
   ServiceStatus,
   SipCallDetail,
@@ -291,6 +294,20 @@ export interface SipCallPage {
   stats: SipCallStats;
 }
 
+/* ----- Access Management (User Provisioning) ----- */
+
+export interface CreateAppUserInput {
+  email: string;
+  role: ScopedRole;
+  grants: Omit<AccessGrant, "id">[];
+}
+
+export interface UpdateAppUserInput {
+  id: string;
+  role?: ScopedRole;
+  grants?: Omit<AccessGrant, "id">[];
+}
+
 export interface CreateThresholdInput {
   metric: ThresholdMetric;
   scopeType: ThresholdScopeType;
@@ -343,6 +360,11 @@ export interface DataSource {
 
   listSipCalls(scope: Scope, filter: SipCallFilter, page: number, pageSize: number): Promise<SipCallPage>;
   getSipCallDetail(sipCallId: string): Promise<SipCallDetail | null>;
+
+  listAppUsers(): Promise<AppUser[]>;
+  createAppUser(input: CreateAppUserInput): Promise<AppUser>;
+  updateAppUser(input: UpdateAppUserInput): Promise<void>;
+  deleteAppUser(id: string): Promise<void>;
 
   getIssues(scope: Scope): Promise<IssuesResult>;
   listThresholds(): Promise<Threshold[]>;

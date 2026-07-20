@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInfraElb } from "@/lib/hooks";
 import { useView } from "@/components/view-context";
-import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
+import { canSeeOpsModules } from "@/lib/auth/policy";
 import type { ElbPoint } from "@/lib/data/source";
 import type { RangeState } from "@/lib/period";
 
@@ -49,14 +49,14 @@ export default function ElbPage() {
   const [range, setRange] = React.useState<RangeState>({ preset: "24h" });
   const { data, isLoading } = useInfraElb(range);
 
-  if (!canSeeSuperAdminOnly(role)) {
+  if (!canSeeOpsModules(role)) {
     return (
       <div>
         <PageHeader title="AWS ELB" description="Application Load Balancer metrics." />
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground"><Lock className="size-6" /></div>
-            <div className="text-lg font-semibold">SuperAdmin only</div>
+            <div className="text-lg font-semibold">Not available for your role</div>
           </CardContent>
         </Card>
       </div>

@@ -27,13 +27,16 @@
 | 17 | [Module: Assistant / Subagent Usage](./17-assistant-subagent-usage.md) | ✅ built |
 | 18 | [Module: Service Health (Uptime-Kuma style)](./18-service-health.md) | ✅ built |
 | 19 | [Module: Telephony Observability (SIP/RTP)](./19-module-telephony-observability.md) | 🔵 design |
+| 20 | [Module: Access Management (User Provisioning)](./20-module-access-management.md) | 🔵 design |
 
 ## Key decisions (discovery session, Jun 2026)
 
 - **Type:** Hybrid — navigable prototype with realistic simulated data, **architected** to plug into a real backend (Supabase) without rewriting the frontend.
 - **Audience:** Internal Voicing team (ops / infra / finance). No external customers.
 - **Stack:** Next.js (App Router) + TypeScript + Tailwind + shadcn/ui + Recharts + Supabase.
-- **Roles v1:** `SuperAdmin` (full access) and `User` (project performance only, no financials). Both internal.
+- **Roles v2 (Jul 2026):** `SuperAdmin` (full, unscoped) · `PM` (full, scoped to granted orgs/projects) ·
+  `Dev` (ops-only, zero cost, scoped) · `Financial` (money-only, scoped). All internal; SuperAdmin
+  provisions everyone else's scope via Access Management (doc 20). See doc 01 for the full model.
 - **Priority #1:** Real per-service cost (LLM/STT/TTS/telephony/cloud) → Revenue → **Margin** per project/org.
 - **Real-time:** Mixed. Only "Live Operations" updates live (simulated); everything else is snapshot + manual refresh with a "last updated" timestamp.
 - **Seed scale:** Small and curated — ~3 orgs, ~6 projects.

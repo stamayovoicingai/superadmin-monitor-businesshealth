@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useView } from "@/components/view-context";
 import { useAddIpRule, useDeleteIpRule, useIpRules, useMeta, useSetIpPolicy } from "@/lib/hooks";
-import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
+import { isSuperAdmin } from "@/lib/auth/policy";
 import { evaluateIp, isValidIpOrCidr } from "@/lib/engine/ip";
 import { cn } from "@/lib/utils";
 import type { IpListType, IpRule } from "@/lib/types";
@@ -25,7 +25,7 @@ export default function AccessPage() {
   const setPolicy = useSetIpPolicy();
   const [testIp, setTestIp] = React.useState("");
 
-  if (!canSeeSuperAdminOnly(role)) {
+  if (!isSuperAdmin(role)) {
     return (
       <div>
         <PageHeader title="IP Access Control" description="Whitelist / blacklist IPs for platform.voicing.ai." />

@@ -74,10 +74,17 @@ UI (components) → hooks (useCalls, useCostRollup, useLiveOps, …)
 
 ## 5. AuthZ
 
-- `app_user` carries `role` + `org_id?` + `project_ids[]`.
-- One policy module `can(user, action, resource)` used by UI (hide/disable) and future RLS (enforce).
-- Demo: a **View-as** switcher (doc 01) lets SuperAdmin preview the `User` experience.
-- Backend: Supabase RLS policies mirror `can(...)` by `org_id`/`project_ids`.
+- `app_user` carries `role` (`superadmin`\|`pm`\|`dev`\|`financial`) + `grants[]` (`{scopeType:
+  "org"|"project", scopeId}[]`) — SuperAdmin carries none (implicit `*`). See doc 01, doc 20.
+- Category predicates in `lib/auth/policy.ts` (`canSeeFinancials`, `canSeeOpsModules`,
+  `isSuperAdmin`) plus scope helpers in `lib/auth/scope.ts` (`effectiveOrgIds`,
+  `effectiveProjectIds`) are the single source of truth, used by UI (hide/disable/filter) and future
+  RLS (enforce).
+- Demo: SuperAdmin provisions `PM`/`Dev`/`Financial` identities via Access Management (doc 20), then
+  previews any of them through the **View-as** switcher (doc 01 §2.1) — no real login yet.
+- Backend: Supabase RLS policies mirror the same role + effective-scope logic by `org_id`/`project_id`;
+  real auth (SSO/magic-link) replaces "View-as" preview with each person logging in as themselves
+  (doc 20 §6, open question).
 
 ---
 

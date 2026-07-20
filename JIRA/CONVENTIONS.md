@@ -104,10 +104,17 @@ See `PRD/14-design-system.md` and the `/design` route.
 
 ## Roles & RBAC (applies across tabs)
 
-Two roles (PRD/01): **SuperAdmin** (everything incl. financials) and **User** (project performance +
-cost-to-serve, but never revenue/margin/business). Financial gating and SuperAdmin-only sections must
-be enforced **server-side** in production (the MVP gates client-side via a policy module + a
-"View-as" switcher). See `src/lib/auth/policy.ts`.
+**v2 (see `access-management/` epic, `PRD/01`):** 4 roles — **SuperAdmin** (everything, unscoped),
+**PM** (everything, scoped to granted orgs/projects), **Dev** (ops-only, zero cost, scoped),
+**Financial** (money-only, scoped). SuperAdmin provisions PM/Dev/Financial access via Access
+Management. Module visibility and financial gating must be enforced **server-side** in production
+(the MVP gates client-side via `src/lib/auth/policy.ts` + `src/lib/auth/scope.ts` + a two-step
+"View as" role/identity switcher).
+
+> **Reading older tickets:** every other epic's tasks were written against the **old 2-role model**
+> (`SuperAdmin`/`User`). Read `SuperAdmin-only` as "gated per `PRD/01` §3's module→role table" and
+> `User` as whichever of `PM`/`Dev`/`Financial` actually applies to that module — don't take the old
+> wording literally. `ACCESS-BE3` is where this reconciliation actually gets enforced in code.
 
 ## Definition of Done (global)
 

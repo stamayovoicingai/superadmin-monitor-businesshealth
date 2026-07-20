@@ -3,7 +3,9 @@
  * Money is stored as integer micro-USD (1e-6 USD) to avoid float drift.
  */
 
-export type Role = "superadmin" | "user";
+export type Role = "superadmin" | "pm" | "dev" | "financial";
+/** Roles that must be provisioned with access grants (everything except SuperAdmin). */
+export type ScopedRole = "pm" | "dev" | "financial";
 
 export type ContractType = "pure_usage" | "mgf";
 
@@ -450,4 +452,23 @@ export interface SipCallDetail {
   messages: SipMessage[];
   quality: SipQualitySample[];
   qualityVerdict: SipQualityVerdict;
+}
+
+/* ----- Access Management (User Provisioning) — PRD/20 ----- */
+
+export type AccessScopeType = "org" | "project";
+
+export interface AccessGrant {
+  id: string;
+  scopeType: AccessScopeType;
+  scopeId: string; // orgId or projectId
+}
+
+/** A provisioned non-SuperAdmin identity: role + the orgs/projects they may see. */
+export interface AppUser {
+  id: string;
+  email: string;
+  role: ScopedRole;
+  grants: AccessGrant[];
+  createdAt: string;
 }

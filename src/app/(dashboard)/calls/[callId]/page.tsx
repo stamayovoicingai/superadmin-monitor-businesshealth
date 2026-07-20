@@ -192,36 +192,34 @@ export default function CallDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Cost breakdown</CardTitle>
-              <CardDescription>Per service{fin ? " · with margin" : ""}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1.5">
-              {services.map((s) => (
-                <div key={s.key} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{SERVICE_LABELS[s.key]}</span>
-                  <span className="tabular-nums">{formatMicrosPrecise(s.micros)}</span>
+          {fin && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Cost breakdown</CardTitle>
+                <CardDescription>Per service · with margin</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                {services.map((s) => (
+                  <div key={s.key} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{SERVICE_LABELS[s.key]}</span>
+                    <span className="tabular-nums">{formatMicrosPrecise(s.micros)}</span>
+                  </div>
+                ))}
+                <div className="mt-2 flex items-center justify-between border-t pt-2 text-sm font-semibold">
+                  <span>Total cost</span>
+                  <span className="tabular-nums">{formatMicrosPrecise(call.cost.totalMicros)}</span>
                 </div>
-              ))}
-              <div className="mt-2 flex items-center justify-between border-t pt-2 text-sm font-semibold">
-                <span>Total cost</span>
-                <span className="tabular-nums">{formatMicrosPrecise(call.cost.totalMicros)}</span>
-              </div>
-              {fin && (
-                <>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Revenue</span>
-                    <span className="tabular-nums">{formatMicrosPrecise(call.cost.revenueMicros)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm font-semibold" style={{ color: call.cost.marginMicros >= 0 ? "var(--success)" : "var(--critical)" }}>
-                    <span>Margin</span>
-                    <span className="tabular-nums">{formatMicrosPrecise(call.cost.marginMicros)}</span>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Revenue</span>
+                  <span className="tabular-nums">{formatMicrosPrecise(call.cost.revenueMicros)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm font-semibold" style={{ color: call.cost.marginMicros >= 0 ? "var(--success)" : "var(--critical)" }}>
+                  <span>Margin</span>
+                  <span className="tabular-nums">{formatMicrosPrecise(call.cost.marginMicros)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -265,9 +263,11 @@ export default function CallDetailPage() {
         </Card>
       </div>
 
-      <p className="mt-3 text-right text-xs text-muted-foreground">
-        Cost-to-serve ≈ {formatMicros(call.cost.totalMicros)} (≈ ${microsToUsd(call.cost.totalMicros).toFixed(4)})
-      </p>
+      {fin && (
+        <p className="mt-3 text-right text-xs text-muted-foreground">
+          Cost-to-serve ≈ {formatMicros(call.cost.totalMicros)} (≈ ${microsToUsd(call.cost.totalMicros).toFixed(4)})
+        </p>
+      )}
     </div>
   );
 }

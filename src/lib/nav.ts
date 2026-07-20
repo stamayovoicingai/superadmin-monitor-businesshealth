@@ -1,11 +1,12 @@
-/** Sidebar navigation config. See PRD/02-information-architecture.md §2. */
+/** Sidebar navigation config. See PRD/02-information-architecture.md §2, PRD/01 §3. */
 import type { Role } from "@/lib/types";
 
 export interface NavItem {
   title: string;
   href: string;
   icon: string; // lucide icon name
-  superAdminOnly?: boolean;
+  /** Roles allowed to see this item. Omit = every role. */
+  roles?: Role[];
   badge?: "phase2";
 }
 
@@ -14,6 +15,9 @@ export interface NavSection {
   items: NavItem[];
 }
 
+const FINANCIAL_ROLES: Role[] = ["superadmin", "pm", "financial"];
+const OPS_ROLES: Role[] = ["superadmin", "pm", "dev"];
+
 export const NAV: NavSection[] = [
   {
     items: [{ title: "Overview", href: "/overview", icon: "LayoutDashboard" }],
@@ -21,39 +25,47 @@ export const NAV: NavSection[] = [
   {
     label: "Observe",
     items: [
-      { title: "Cost & Margin", href: "/cost", icon: "DollarSign" },
-      { title: "Performance", href: "/performance", icon: "Gauge" },
-      { title: "Call Logs", href: "/calls", icon: "PhoneCall" },
-      { title: "Assistant Usage", href: "/assistant", icon: "Bot" },
-      { title: "Issues", href: "/issues", icon: "TriangleAlert" },
+      { title: "Cost & Margin", href: "/cost", icon: "DollarSign", roles: FINANCIAL_ROLES },
+      { title: "Performance", href: "/performance", icon: "Gauge", roles: OPS_ROLES },
+      { title: "Call Logs", href: "/calls", icon: "PhoneCall", roles: OPS_ROLES },
+      { title: "Assistant Usage", href: "/assistant", icon: "Bot", roles: FINANCIAL_ROLES },
+      { title: "Issues", href: "/issues", icon: "TriangleAlert", roles: OPS_ROLES },
     ],
   },
   {
     label: "Infra",
     items: [
-      { title: "Live Operations", href: "/live", icon: "Activity" },
-      { title: "Service Health", href: "/health", icon: "HeartPulse" },
-      { title: "Kubernetes", href: "/infra/kubernetes", icon: "Boxes", superAdminOnly: true },
-      { title: "AWS ELB", href: "/infra/elb", icon: "Network", superAdminOnly: true },
-      { title: "Telephony", href: "/infra/telephony", icon: "Waypoints", superAdminOnly: true },
+      { title: "Live Operations", href: "/live", icon: "Activity", roles: OPS_ROLES },
+      { title: "Service Health", href: "/health", icon: "HeartPulse", roles: OPS_ROLES },
+      { title: "Kubernetes", href: "/infra/kubernetes", icon: "Boxes", roles: OPS_ROLES },
+      { title: "AWS ELB", href: "/infra/elb", icon: "Network", roles: OPS_ROLES },
+      { title: "Telephony", href: "/infra/telephony", icon: "Waypoints", roles: OPS_ROLES },
     ],
   },
   {
     label: "Controls",
     items: [
-      { title: "IP Access", href: "/controls/access", icon: "ShieldBan", superAdminOnly: true },
-      { title: "Fallbacks", href: "/controls/fallbacks", icon: "Shuffle", superAdminOnly: true },
-      { title: "Thresholds", href: "/controls/thresholds", icon: "SlidersHorizontal", superAdminOnly: true },
-      { title: "Flag Queue", href: "/controls/flags", icon: "Flag", superAdminOnly: true },
+      { title: "Fallbacks", href: "/controls/fallbacks", icon: "Shuffle", roles: OPS_ROLES },
+      { title: "Thresholds", href: "/controls/thresholds", icon: "SlidersHorizontal", roles: OPS_ROLES },
+      { title: "Flag Queue", href: "/controls/flags", icon: "Flag", roles: OPS_ROLES },
     ],
   },
   {
     label: "Business",
-    items: [{ title: "Business Health", href: "/business", icon: "TrendingUp", superAdminOnly: true }],
+    items: [
+      { title: "Business Health", href: "/business", icon: "TrendingUp", roles: FINANCIAL_ROLES },
+    ],
   },
   {
     label: "QA Bench",
-    items: [{ title: "Evals", href: "/qa-bench", icon: "ClipboardCheck", badge: "phase2" }],
+    items: [{ title: "Evals", href: "/qa-bench", icon: "ClipboardCheck", roles: OPS_ROLES, badge: "phase2" }],
+  },
+  {
+    label: "Admin",
+    items: [
+      { title: "IP Access", href: "/controls/access", icon: "ShieldBan", roles: ["superadmin"] },
+      { title: "Access Management", href: "/controls/access-management", icon: "Users", roles: ["superadmin"] },
+    ],
   },
   {
     label: "System",
@@ -64,6 +76,6 @@ export const NAV: NavSection[] = [
 export function visibleNav(role: Role): NavSection[] {
   return NAV.map((section) => ({
     ...section,
-    items: section.items.filter((i) => !i.superAdminOnly || role === "superadmin"),
+    items: section.items.filter((i) => !i.roles || i.roles.includes(role)),
   })).filter((s) => s.items.length > 0);
 }

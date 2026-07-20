@@ -22,53 +22,75 @@ export default function OverviewPage() {
     <div>
       <PageHeader
         title="Overview"
-        description={fin ? "Platform health, cost and margin across all scopes." : "Performance and operating cost for your projects."}
+        description={fin ? "Platform health, cost and margin across all scopes." : "Service health and performance for your projects — no financial data."}
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="Total Cost" value={t ? formatMicrosCompact(t.costMicros) : "—"} loading={isLoading} accent="orange" sub={t ? `${formatNumber(t.calls)} calls` : undefined} />
-        {fin && <KpiCard label="Revenue" value={t ? formatMicrosCompact(t.revenueMicros) : "—"} loading={isLoading} accent="blue" />}
-        {fin && <KpiCard label="Gross Margin" value={t ? formatMicrosCompact(t.marginMicros) : "—"} loading={isLoading} accent="green" sub={t ? formatPct(mPct) + " margin" : undefined} />}
-        <KpiCard label="Assistant Cost" value={data ? formatMicrosCompact(data.assistantCostMicros) : "—"} loading={isLoading} accent="violet" sub="platform usage" />
-        <KpiCard label="Avg Latency" value={t ? `${formatNumber(t.avgLatencyMs)} ms` : "—"} loading={isLoading} accent="violet" goodDirection="down" />
-        <KpiCard label="Active Calls" value={data ? formatNumber(data.activeConcurrency) : "—"} loading={isLoading} accent="green" sub="right now" />
+        {fin ? (
+          <>
+            <KpiCard label="Total Cost" value={t ? formatMicrosCompact(t.costMicros) : "—"} loading={isLoading} accent="orange" sub={t ? `${formatNumber(t.calls)} calls` : undefined} />
+            <KpiCard label="Revenue" value={t ? formatMicrosCompact(t.revenueMicros) : "—"} loading={isLoading} accent="blue" />
+            <KpiCard label="Gross Margin" value={t ? formatMicrosCompact(t.marginMicros) : "—"} loading={isLoading} accent="green" sub={t ? formatPct(mPct) + " margin" : undefined} />
+            <KpiCard label="Assistant Cost" value={data ? formatMicrosCompact(data.assistantCostMicros) : "—"} loading={isLoading} accent="violet" sub="platform usage" />
+            <KpiCard label="Avg Latency" value={t ? `${formatNumber(t.avgLatencyMs)} ms` : "—"} loading={isLoading} accent="violet" goodDirection="down" />
+            <KpiCard label="Active Calls" value={data ? formatNumber(data.activeConcurrency) : "—"} loading={isLoading} accent="green" sub="right now" />
+          </>
+        ) : (
+          <>
+            <KpiCard label="Total Calls" value={t ? formatNumber(t.calls) : "—"} loading={isLoading} accent="blue" />
+            <KpiCard label="Avg Latency" value={t ? `${formatNumber(t.avgLatencyMs)} ms` : "—"} loading={isLoading} accent="violet" goodDirection="down" />
+            <KpiCard label="Error Rate" value={t ? formatPct(t.errorRate) : "—"} loading={isLoading} accent="orange" goodDirection="down" />
+            <KpiCard label="Active Calls" value={data ? formatNumber(data.activeConcurrency) : "—"} loading={isLoading} accent="green" sub="right now" />
+          </>
+        )}
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cost by service</CardTitle>
-            <CardDescription>LLM · STT · TTS · Telephony · Cloud over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-[260px] w-full" /> : <CostByServiceChart series={data!.costSeries} />}
-          </CardContent>
-        </Card>
+      {fin ? (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost by service</CardTitle>
+              <CardDescription>LLM · STT · TTS · Telephony · Cloud over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? <Skeleton className="h-[260px] w-full" /> : <CostByServiceChart series={data!.costSeries} />}
+            </CardContent>
+          </Card>
 
-        <Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Margin by organization</CardTitle>
+              <CardDescription>Gross margin per org (period)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-[260px] w-full" />
+              ) : (
+                <HBarChart data={(data?.orgs ?? []).map((o) => ({ label: o.name, value: microsToUsd(o.marginMicros) }))} />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Card className="mt-4">
           <CardHeader>
-            <CardTitle>{fin ? "Margin by organization" : "Cost by organization"}</CardTitle>
-            <CardDescription>{fin ? "Gross margin per org (period)" : "Operating cost per org (period)"}</CardDescription>
+            <CardTitle>Calls by organization</CardTitle>
+            <CardDescription>Call volume per org (period)</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[260px] w-full" />
             ) : (
-              <HBarChart
-                data={(data?.orgs ?? []).map((o) => ({
-                  label: o.name,
-                  value: microsToUsd(fin ? o.marginMicros : o.costMicros),
-                }))}
-              />
+              <HBarChart data={(data?.orgs ?? []).map((o) => ({ label: o.name, value: o.calls }))} />
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
 
       <Card className="mt-4">
         <CardHeader>
           <CardTitle>Projects</CardTitle>
-          <CardDescription>Ranked by cost{fin ? " · margin shown" : ""}</CardDescription>
+          <CardDescription>{fin ? "Ranked by cost · margin shown" : "Ranked by call volume"}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -78,9 +100,15 @@ export default function OverviewPage() {
                 <TableHead>Organization</TableHead>
                 <TableHead className="text-right">Calls</TableHead>
                 <TableHead className="text-right">Avg latency</TableHead>
-                <TableHead className="text-right">Cost</TableHead>
-                {fin && <TableHead className="text-right">Revenue</TableHead>}
-                {fin && <TableHead className="text-right">Margin %</TableHead>}
+                {fin ? (
+                  <>
+                    <TableHead className="text-right">Cost</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">Margin %</TableHead>
+                  </>
+                ) : (
+                  <TableHead className="text-right">Error rate</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -104,12 +132,16 @@ export default function OverviewPage() {
                         <TableCell className="text-muted-foreground">{p.orgName}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatNumber(p.calls)}</TableCell>
                         <TableCell className="text-right tabular-nums">{formatNumber(p.avgLatencyMs)} ms</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatMicros(p.costMicros)}</TableCell>
-                        {fin && <TableCell className="text-right tabular-nums">{formatMicros(p.revenueMicros)}</TableCell>}
-                        {fin && (
-                          <TableCell className="text-right tabular-nums font-semibold" style={{ color: pm >= 0 ? "var(--success)" : "var(--critical)" }}>
-                            {formatPct(pm)}
-                          </TableCell>
+                        {fin ? (
+                          <>
+                            <TableCell className="text-right tabular-nums">{formatMicros(p.costMicros)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{formatMicros(p.revenueMicros)}</TableCell>
+                            <TableCell className="text-right tabular-nums font-semibold" style={{ color: pm >= 0 ? "var(--success)" : "var(--critical)" }}>
+                              {formatPct(pm)}
+                            </TableCell>
+                          </>
+                        ) : (
+                          <TableCell className="text-right tabular-nums">{formatPct(p.errorRate)}</TableCell>
                         )}
                       </TableRow>
                     );

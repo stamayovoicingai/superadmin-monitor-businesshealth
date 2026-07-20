@@ -108,7 +108,7 @@ export default function CallsPage() {
                 <TableHead>End reason</TableHead>
                 <TableHead>Disposition</TableHead>
                 <TableHead className="text-right">Latency</TableHead>
-                <TableHead className="text-right">Cost</TableHead>
+                {fin && <TableHead className="text-right">Cost</TableHead>}
                 {fin && <TableHead className="text-right">Margin</TableHead>}
               </TableRow>
             </TableHeader>
@@ -116,7 +116,7 @@ export default function CallsPage() {
               {isLoading
                 ? Array.from({ length: 12 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={fin ? 11 : 10}>
+                      <TableCell colSpan={fin ? 11 : 9}>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
                     </TableRow>
@@ -137,7 +137,7 @@ export default function CallsPage() {
                       <TableCell><EndReasonChip reason={c.closedReason} /></TableCell>
                       <TableCell><DispositionBadge disposition={c.disposition} /></TableCell>
                       <TableCell className="text-right tabular-nums">{formatNumber(c.latency.totalMs)} ms</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatMicrosPrecise(c.cost.totalMicros)}</TableCell>
+                      {fin && <TableCell className="text-right tabular-nums">{formatMicrosPrecise(c.cost.totalMicros)}</TableCell>}
                       {fin && (
                         <TableCell className="text-right tabular-nums" style={{ color: c.cost.marginMicros >= 0 ? "var(--success)" : "var(--critical)" }}>
                           {formatMicros(c.cost.marginMicros)}

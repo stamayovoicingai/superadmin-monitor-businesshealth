@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFallbacks, useUpdateFallback } from "@/lib/hooks";
 import { useView } from "@/components/view-context";
-import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
+import { canSeeOpsModules } from "@/lib/auth/policy";
 import { FALLBACK_OPTIONS, FALLBACK_PRIMARY, FALLBACK_SERVICE_LABEL, llmCostLabel } from "@/lib/engine/fallbacks";
 import type { FallbackScopeType, FallbackService } from "@/lib/types";
 import type { ServiceFallback } from "@/lib/data/source";
@@ -23,7 +23,7 @@ export default function FallbacksPage() {
   const { data, isLoading } = useFallbacks();
   const update = useUpdateFallback();
 
-  if (!canSeeSuperAdminOnly(role)) {
+  if (!canSeeOpsModules(role)) {
     return (
       <div>
         <PageHeader title="Fallback Controls" description="Provider fallback for STT / TTS / LLM." />
@@ -32,7 +32,7 @@ export default function FallbacksPage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
               <Lock className="size-6" />
             </div>
-            <div className="text-lg font-semibold">SuperAdmin only</div>
+            <div className="text-lg font-semibold">Not available for your role</div>
           </CardContent>
         </Card>
       </div>

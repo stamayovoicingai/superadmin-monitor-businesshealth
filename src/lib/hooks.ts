@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useView } from "@/components/view-context";
 import { resolveRangeState, type RangeState } from "@/lib/period";
+import { effectiveOrgIds, effectiveProjectIds } from "@/lib/auth/scope";
 import type {
   AddIpRuleInput,
   AssistantUsageResult,
@@ -28,8 +29,10 @@ import type {
   UpdateThresholdPatch,
   SipCallFilter,
   SipCallPage,
+  CreateAppUserInput,
+  UpdateAppUserInput,
 } from "@/lib/data/source";
-import type { Agent, CallFlag, FlagStatus, IpRule, IssueCategory, Organization, Project, SipCallDetail, Threshold } from "@/lib/types";
+import type { Agent, AppUser, CallFlag, FlagStatus, IpRule, IssueCategory, Organization, Project, SipCallDetail, Threshold } from "@/lib/types";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -45,6 +48,23 @@ export interface Meta {
 
 export function useMeta() {
   return useQuery({ queryKey: ["meta"], queryFn: () => fetchJson<Meta>("/api/meta"), staleTime: Infinity });
+}
+
+/**
+ * Resolves the active "View as" role into a concrete provisioned identity (PRD/01 §2.1, PRD/20 §4)
+ * and its effective org/project scope. `user` is null for SuperAdmin (unrestricted) and for a
+ * scoped role with no identity picked yet (orgIds/projectIds are then `[]`, i.e. "sees nothing" —
+ * the role-switcher forces picking an identity before that state is reachable in practice).
+ */
+export function useCurrentIdentity() {
+  const { role, simulatedUserId } = useView();
+  const { data: users } = useAppUsers();
+  const { data: meta } = useMeta();
+  const projects = meta?.projects ?? [];
+  const user = role === "superadmin" ? null : (users?.find((u) => u.id === simulatedUserId) ?? null);
+  const orgIds = user ? effectiveOrgIds(user, projects) : role === "superadmin" ? null : [];
+  const projectIds = user ? effectiveProjectIds(user, projects) : role === "superadmin" ? null : [];
+  return { user, orgIds, projectIds };
 }
 
 export function useOverview() {
@@ -374,5 +394,43 @@ export function useLiveOps(enabled = true) {
     queryKey: ["live", query],
     queryFn: () => fetchJson<LiveOpsResult>(`/api/live?${query}`),
     refetchInterval: enabled ? 20_000 : false,
+  });
+}
+
+export function useAppUsers() {
+  return useQuery({ queryKey: ["app-users"], queryFn: () => fetchJson<AppUser[]>("/api/access-management") });
+}
+
+export function useCreateAppUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateAppUserInput) => {
+      const res = await fetch("/api/access-management", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "request_failed");
+      return res.json() as Promise<AppUser>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["app-users"] }),
+  });
+}
+
+export function useUpdateAppUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateAppUserInput) => {
+      const res = await fetch("/api/access-management", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["app-users"] }),
+  });
+}
+
+export function useDeleteAppUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/access-management?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["app-users"] }),
   });
 }

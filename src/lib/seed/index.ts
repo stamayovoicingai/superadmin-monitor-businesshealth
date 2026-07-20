@@ -5,6 +5,7 @@
  */
 import type {
   Agent,
+  AppUser,
   Call,
   CallEndReason,
   CallStatus,
@@ -114,6 +115,54 @@ const IP_RULES_SEED: IpRule[] = [
   { id: "ip-4", scopeType: "project", scopeId: "prj-telmex", listType: "allow", value: "181.49.10.5", label: "QA tester", addedBy: "qa@voicing.ai", createdAt: iso(daysAgo(4)) },
   { id: "ip-5", scopeType: "org", scopeId: "org-ltm", listType: "block", value: "45.146.0.0/16", label: "Geo block per LTM", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(7)) },
   { id: "ip-6", scopeType: "project", scopeId: "prj-allegiant", listType: "block", value: "102.129.0.0/16", label: "Bot traffic", addedBy: "ops@voicing.ai", createdAt: iso(daysAgo(3)) },
+];
+
+/** Provisioned PM/Dev/Financial identities (PRD/20). SuperAdmin isn't provisioned here (unscoped). */
+const APP_USERS_SEED: AppUser[] = [
+  {
+    id: "appuser-1",
+    email: "maria.pm@voicing.ai",
+    role: "pm",
+    grants: [{ id: "grant-1", scopeType: "org", scopeId: "org-tp-latam" }],
+    createdAt: iso(daysAgo(60)),
+  },
+  {
+    id: "appuser-2",
+    email: "carlos.pm@voicing.ai",
+    role: "pm",
+    grants: [
+      { id: "grant-2", scopeType: "project", scopeId: "prj-allegiant" },
+      { id: "grant-3", scopeType: "project", scopeId: "prj-vega-air" },
+    ],
+    createdAt: iso(daysAgo(45)),
+  },
+  {
+    id: "appuser-3",
+    email: "ana.dev@voicing.ai",
+    role: "dev",
+    grants: [{ id: "grant-4", scopeType: "org", scopeId: "org-tp-ph" }],
+    createdAt: iso(daysAgo(90)),
+  },
+  {
+    id: "appuser-4",
+    email: "luis.dev@voicing.ai",
+    role: "dev",
+    grants: [
+      { id: "grant-5", scopeType: "project", scopeId: "prj-telmex" },
+      { id: "grant-6", scopeType: "project", scopeId: "prj-sura-eps" },
+    ],
+    createdAt: iso(daysAgo(30)),
+  },
+  {
+    id: "appuser-5",
+    email: "jorge.financial@voicing.ai",
+    role: "financial",
+    grants: [
+      { id: "grant-7", scopeType: "org", scopeId: "org-tp-latam" },
+      { id: "grant-8", scopeType: "org", scopeId: "org-ltm" },
+    ],
+    createdAt: iso(daysAgo(75)),
+  },
 ];
 
 const IP_POLICIES_SEED: IpScopePolicy[] = [
@@ -231,6 +280,7 @@ export interface Dataset {
   serviceNotifyOverrides: ServiceNotifyOverride[];
   issueCategories: IssueCategory[];
   thresholds: Threshold[];
+  appUsers: AppUser[];
 }
 
 export function buildDataset(): Dataset {
@@ -491,6 +541,7 @@ export function buildDataset(): Dataset {
     serviceNotifyOverrides: SERVICE_OVERRIDE_SEED,
     issueCategories: ISSUE_CATEGORIES_SEED,
     thresholds: THRESHOLDS_SEED,
+    appUsers: APP_USERS_SEED,
   };
 }
 

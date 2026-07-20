@@ -24,59 +24,69 @@ A persistent **left sidebar** + a **global top bar**.
 │ • Fallbacks   │                                                        │
 │ • Thresholds  │                                                        │
 │ • Flag Queue  │                                                        │
-│ ─ BUSINESS 🔒 │                                                        │
+│ ─ BUSINESS 💰 │                                                        │
 │ • Health/MRR  │                                                        │
 │ ─ QA Bench(P2)│                                                        │
+│ ─ ADMIN 🔒    │                                                        │
+│ • IP Access   │                                                        │
+│ • Access Mgmt │                                                        │
 └───────────────┴──────────────────────────────────────────────────────┘
 ```
 
-- 🔒 = SuperAdmin-only sections (hidden entirely for `User`).
-- **Global filters** (Org / Project / Time-range) live in the top bar and apply across modules.
-  `User` sees only their assigned project(s) and no Org switcher.
-- **View-as** switcher (SuperAdmin only) toggles the SuperAdmin/User experience for the demo.
+- 🔒 = SuperAdmin-only. 💰 = money-visibility gated (SuperAdmin/PM/Financial). Everything else is
+  gated per-module by role (doc 01 §3) — sections are hidden entirely for roles that can't see them.
+- **Global filters** (Org / Project / Time-range) live in the top bar. For `PM`/`Dev`/`Financial`,
+  Org/Project are **constrained to that identity's provisioned grants** (doc 20 §3) — no "All orgs."
+- **View-as** switcher (SuperAdmin only) picks a role, then — for PM/Dev/Financial — which
+  **provisioned identity** to preview (doc 01 §2.1).
 - **◐** = light/dark theme toggle. **⚙︎** = settings.
 
 ## 2. Sitemap & routes
 
 | Section | Route | Module doc | Role |
 |---------|-------|-----------|------|
-| Overview | `/` | 05 | both |
+| Overview | `/` | 05 | all 4 (financial view: SuperAdmin/PM/Financial · ops view: Dev) |
 | **Observe** | | | |
-| Cost & Margin | `/cost` | 03, 05 | SuperAdmin (User: see 01 §4) |
-| Performance | `/performance` | 05 | both |
-| Call Logs | `/calls` | 05 | both |
-| Call detail | `/calls/[callId]` | 05, 06 | both |
-| Issues | `/issues` | 05 | both (config: SuperAdmin) |
+| Cost & Margin | `/cost` | 03, 05 | SuperAdmin / PM / Financial (scoped for PM/Financial) |
+| Performance | `/performance` | 05 | SuperAdmin / PM / Dev (scoped for PM/Dev) |
+| Call Logs | `/calls` | 05 | SuperAdmin / PM / Dev (scoped; cost hidden for Dev) |
+| Call detail | `/calls/[callId]` | 05, 06 | SuperAdmin / PM / Dev (scoped; cost hidden for Dev) |
+| Issues | `/issues` | 05 | SuperAdmin / PM / Dev (scoped) |
 | **Infra** | | | |
-| Live Operations | `/live` | 07 | both (scoped) |
-| Kubernetes | `/infra/kubernetes` | 06 | SuperAdmin |
-| AWS ELB | `/infra/elb` | 06 | SuperAdmin |
-| Telephony (SIP/RTP) | `/infra/telephony` | 19 | both (scoped, see 19 §3) |
-| Telephony call detail | `/infra/telephony/[callId]` | 19 | both (scoped) |
+| Live Operations | `/live` | 07 | SuperAdmin / PM / Dev (scoped) |
+| Kubernetes | `/infra/kubernetes` | 06 | SuperAdmin / PM / Dev (scoped) |
+| AWS ELB | `/infra/elb` | 06 | SuperAdmin / PM / Dev (scoped) |
+| Telephony (SIP/RTP) | `/infra/telephony` | 19 | SuperAdmin / PM / Dev (scoped) |
+| Telephony call detail | `/infra/telephony/[callId]` | 19 | SuperAdmin / PM / Dev (scoped) |
+| Service Health | `/health` | 18 | SuperAdmin / PM / Dev (scoped) |
 | **Controls** | | | |
-| Fallbacks | `/controls/fallbacks` | 08 | SuperAdmin |
-| Thresholds | `/controls/thresholds` | 05 | SuperAdmin |
-| Flag Queue | `/controls/flags` | 10 | SuperAdmin |
+| Fallbacks | `/controls/fallbacks` | 08 | SuperAdmin / PM / Dev (scoped) |
+| Thresholds | `/controls/thresholds` | 05 | SuperAdmin / PM / Dev (scoped) |
+| Flag Queue | `/controls/flags` | 10 | SuperAdmin / PM / Dev (scoped) |
 | **Business** | | | |
-| Business Health | `/business` | 09 | SuperAdmin |
+| Business Health | `/business` | 09 | SuperAdmin / PM / Financial (scoped for PM/Financial) |
+| Assistant Usage | `/assistant` | 17 | SuperAdmin / PM / Financial (scoped for PM/Financial) |
 | **QA Bench** | | | |
-| Evals | `/qa-bench` | 11 | both (Phase 2) |
+| Evals | `/qa-bench` | 11 | SuperAdmin / PM / Dev (scoped, Phase 2) |
+| **Admin** | | | |
+| IP Access Control | `/controls/access` | 16 | SuperAdmin only |
+| Access Management | `/controls/access-management` | 20 | SuperAdmin only |
 
 ## 3. The "Overview" landing page
 
-Role-aware home that answers the most important question first.
+Role-aware home that answers the most important question first (doc 01 §4).
 
-**SuperAdmin Overview** (cost-first, per principle G1):
-1. **KPI strip:** Total Cost (period) · Total Revenue · **Blended Margin %** · Active Calls (now) · Active Issues.
+**Financial view** (SuperAdmin / PM / Financial — cost-first, per principle G1):
+1. **KPI strip:** Total Cost (period) · Total Revenue · **Blended Margin %** · Assistant Cost · Active Calls (now).
 2. **Margin by org** (bar) + **Cost by service** (stacked area: LLM/STT/TTS/telephony/cloud).
-3. **Projects table:** project · org · calls · avg latency · cost · revenue · **margin %** · health.
-4. **Active issues** (critical first) + **Flag queue** count.
-5. **Live snippet:** concurrent calls + a link into Live Operations.
+3. **Projects table:** project · org · calls · avg latency · cost · revenue · **margin %**.
+4. PM/Financial: pre-filtered to their granted orgs/projects; SuperAdmin: everything.
 
-**User Overview** (performance-first, financials removed):
-1. KPI strip: Calls (period) · Avg latency · Error rate · Active calls (now).
-2. Performance trend + call end reason donut.
-3. Their projects' call logs + recent error logs.
+**Ops-only view** (Dev — performance-first, zero cost):
+1. KPI strip: Total Calls (period) · Avg latency · Error rate · Active calls (now).
+2. Calls-by-project chart.
+3. Projects table: project · org · calls · avg latency · error rate — **no cost/revenue/margin column**.
+4. Scoped to Dev's granted projects.
 
 ## 4. Cross-module interaction patterns
 

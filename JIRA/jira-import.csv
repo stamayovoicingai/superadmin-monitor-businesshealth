@@ -196,6 +196,269 @@ live on real data.
 - [ ] RBAC matrix from `PRD/01` is fully automated and green.
 - [ ] Adapter parity suite passes (mock vs Postgres) on the shared dataset.
 - [ ] Suite runs in CI and gates deploys."
+"Epic","Access Management & RBAC v2","Access Management & RBAC v2","","High","","epic access","ACCESS","PLAT-BE1; PLAT-BE3","","## Goal
+Replace the old 2-role model (`SuperAdmin`/`User`) with **4 roles** — `SuperAdmin` (unscoped, full),
+`PM` (full, scoped to granted orgs/projects), `Dev` (ops-only, zero cost, scoped), `Financial`
+(money-only, scoped) — and let SuperAdmin **explicitly provision** which orgs/projects each
+non-SuperAdmin email may see. See `PRD/01-roles-permissions.md` (v2) and
+`PRD/20-module-access-management.md` for the full model.
+
+## Outcome (already built in the MVP, client-side — this epic productionizes it)
+- `AppUser`/`AccessGrant` schema: org-level or project-level grants, with org→project inheritance
+  (same shape as IP Access Control).
+- Access Management screen: provision/edit/revoke PM/Dev/Financial identities.
+- `lib/auth/policy.ts` (`isSuperAdmin`, `canSeeFinancials`, `canSeeOpsModules`) and
+  `lib/auth/scope.ts` (`effectiveOrgIds`, `effectiveProjectIds`, `orgRequiresProjectPick`) as the
+  single source of truth, consumed by every module's nav visibility, in-page guard, and
+  Org/Project picker constraint.
+- ""View as"" now picks a role **and** which provisioned identity to preview.
+- Overview has two variants: financial (SuperAdmin/PM/Financial) and ops-only (Dev, zero cost).
+- Call Logs/Call Detail: cost now hidden for Dev (previously all non-SuperAdmin saw cost-to-serve —
+  that middle tier no longer exists, see PRD/01 §1).
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- Types: `src/lib/types.ts` (`Role`, `ScopedRole`, `AppUser`, `AccessGrant`)
+- Policy/scope: `src/lib/auth/policy.ts`, `src/lib/auth/scope.ts`
+- Seed: `src/lib/seed/index.ts` (`APP_USERS_SEED`) · Mock: `src/lib/data/mock.ts` (`appUserStore`,
+  `listAppUsers`/`createAppUser`/`updateAppUser`/`deleteAppUser`)
+- API: `src/app/api/access-management/route.ts`
+- FE: `src/app/(dashboard)/controls/access-management/page.tsx`,
+  `src/components/role-switcher.tsx`, `src/components/scope-filters.tsx`,
+  `src/app/(dashboard)/overview/page.tsx` (dual variant), `src/lib/nav.ts` (roles-based visibility)
+- PRD: `PRD/01-roles-permissions.md`, `PRD/20-module-access-management.md`, `PRD/12` §7
+
+## Features
+- F1 — `app_user`/`access_grant` schema + policy/scope engine (BE)
+- F2 — Access Management API (BE)
+- F3 — Server-side scope enforcement across module APIs (BE)
+- F4 — Access Management UI (FE)
+- F5 — Role-switcher, scope-filters, nav, Overview dual-view (FE)
+- F6 — QA
+
+## Tasks
+- `BE-1-schema-policy-scope-engine.md` (`ACCESS-BE1`)
+- `BE-2-access-management-api.md` (`ACCESS-BE2`)
+- `BE-3-server-side-scope-enforcement.md` (`ACCESS-BE3`)
+- `FE-1-access-management-ui.md` (`ACCESS-FE1`)
+- `FE-2-role-switcher-scope-filters-overview.md` (`ACCESS-FE2`)
+- `QA-1-rbac-scenarios.md` (`ACCESS-QA1`)
+
+## Ripple effect on other epics — read this
+Every other epic's tasks were written against the **old 2-role model**; their ""RBAC"" bullets
+(`""User sees cost-to-serve""`, `""SuperAdmin-only""`, etc.) are **superseded** by `PRD/01` v2 — read
+`SuperAdmin-only` as ""gated per the module→role table in `PRD/01` §3"" and `User` as whichever of
+`PM`/`Dev`/`Financial` actually applies to that module. This epic does **not** rewrite every other
+ticket's text; `ACCESS-BE3` and each epic's own FE/BE work should reconcile against `PRD/01` §3 at
+build time, not against the stale wording in older tickets."
+"Story","[BE] Access Management · Schema · app_user/access_grant + policy/scope engine","","Access Management & RBAC v2","High","8","backend python postgres rbac auth foundation access","ACCESS-BE1","PLAT-BE1","ACCESS-BE2; ACCESS-BE3; ACCESS-FE2","**ID:** ACCESS-BE1 · **Priority:** P1 · **Estimate:** 8
+**Blocked by:** PLAT-BE1 · **Blocks:** ACCESS-BE2; ACCESS-BE3; ACCESS-FE2
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+Port the MVP's 4-role model to production: `app_user` (`role`: `superadmin`/`pm`/`dev`/`financial`)
+and `access_grant` (`scope_type`: `org`/`project`, `scope_id`) tables, plus the two policy modules the
+MVP already ships as the reference implementation: `policy.ts` (`isSuperAdmin`, `canSeeFinancials`,
+`canSeeOpsModules` — module-category predicates) and `scope.ts` (`effectiveOrgIds`,
+`effectiveProjectIds`, `canAccessOrg`, `canAccessProject`, `orgRequiresProjectPick` — org→project
+inheritance, same semantics as `IpRule`/doc 16).
+
+## Why
+Every other module's RBAC (client-side today) and this epic's server-side enforcement (`ACCESS-BE3`)
+both read through these two modules — get the scope math right once, here, instead of re-deriving it
+per module. The MVP's `lib/auth/scope.ts` is already the reference: it correctly resolves both
+org-level grants (inherit all projects) and project-level-only grants (no ""all projects"" for that
+org) — verified against the seeded fixtures during MVP development.
+
+## How (building on the MVP)
+- Tables per `PRD/12` §7: `app_user(id, email, role, created_at)`,
+  `access_grant(id, app_user_id fk, scope_type, scope_id, created_at)`. SuperAdmin rows carry no
+  grants (implicit unrestricted).
+- Port `canSeeFinancials`/`canSeeOpsModules`/`isSuperAdmin` verbatim (pure functions, trivial port).
+- Port `effectiveOrgIds`/`effectiveProjectIds`/`orgRequiresProjectPick` verbatim — these are pure
+  functions over `(app_user, projects)`, no framework dependency, straightforward Python port.
+- Real auth: this task does **not** build login — it's the data model + pure policy functions only.
+  Wiring real identity (SSO/magic-link) to an `app_user` row is a separate, currently-unscoped effort
+  (`PRD/20` §6 open question) — flag if prioritized.
+
+## Acceptance Criteria
+- [ ] `app_user`/`access_grant` tables exist, matching `PRD/12` §7.
+- [ ] Policy predicates match the MVP's role→capability table (`PRD/01` §3) exactly.
+- [ ] Scope functions produce identical output to the MVP for the seeded fixtures (org-level grant →
+      all projects inherited; project-level-only grant → that org's ""all projects"" is NOT implied).
+- [ ] Unit tests cover: SuperAdmin (unrestricted), org-level grant, project-level grant, mixed grants
+      across multiple orgs, zero grants (sees nothing)."
+"Story","[BE] Access Management · API · Provision/edit/revoke users","","Access Management & RBAC v2","High","3","backend python postgres api rbac auth access","ACCESS-BE2","ACCESS-BE1","ACCESS-FE1; ACCESS-BE3","**ID:** ACCESS-BE2 · **Priority:** P1 · **Estimate:** 3
+**Blocked by:** ACCESS-BE1 · **Blocks:** ACCESS-FE1; ACCESS-BE3
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+CRUD endpoints for provisioned users: list, create (email + role + grants, ≥1 grant required),
+update (role and/or grants), delete (revoke all access). Matches the MVP's
+`listAppUsers`/`createAppUser`/`updateAppUser`/`deleteAppUser` shapes.
+
+## Why
+This is the read/write path behind the Access Management screen (`ACCESS-FE1`) and the source of
+truth `ACCESS-BE3` reads to enforce scope on every other module's API.
+
+## How (building on the MVP)
+- Validate email shape and role (`pm`/`dev`/`financial` only — SuperAdmin isn't provisioned here).
+- Require ≥1 grant on create (matches MVP's `at_least_one_grant_required` validation).
+- Update replaces the full `grants` array when provided (not a partial patch) — matches MVP behavior.
+- **SuperAdmin-only endpoint** — enforce server-side, not just via the FE guard.
+
+## Acceptance Criteria
+- [ ] `GET/POST/PATCH/DELETE` match the MVP's request/response shapes.
+- [ ] Invalid email / invalid role / zero grants on create are rejected with clear error codes.
+- [ ] Only SuperAdmin callers can reach this endpoint (401/403 otherwise).
+- [ ] Deleting a user immediately revokes their effective scope for subsequent requests."
+"Story","[BE] Access Management · Enforcement · Server-side scope on every module API","","Access Management & RBAC v2","High","13","backend python rbac auth security cross-cutting access","ACCESS-BE3","ACCESS-BE1; ACCESS-BE2; PLAT-BE3","ACCESS-QA1","**ID:** ACCESS-BE3 · **Priority:** P1 · **Estimate:** 13
+**Blocked by:** ACCESS-BE1; ACCESS-BE2; PLAT-BE3 · **Blocks:** ACCESS-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+The MVP enforces the 4-role model **client-side only**: `nav.ts` hides sections, each page has an
+in-page guard (`canSeeFinancials`/`canSeeOpsModules`/`isSuperAdmin`), and `scope-filters.tsx`
+constrains which org/project can be selected — but nothing stops a authenticated-but-out-of-scope
+request from hitting an API route directly. This task adds the real gate: every module endpoint
+must resolve the caller's `app_user` (once real auth exists, `PLAT-BE3`) and (a) reject requests for
+modules their role can't see, (b) filter/reject results outside their effective org/project scope.
+
+## Why
+Client-side gating is a UX nicety, not security. Financial data reaching a Dev browser tab (even if
+the UI never renders it) is the exact leak `PRD/01`'s role split exists to prevent — this task is
+where that actually gets enforced.
+
+## How (building on the MVP)
+- Every module API handler: resolve caller → `app_user` (or SuperAdmin) → apply the same
+  `canSeeFinancials`/`canSeeOpsModules` predicate (`ACCESS-BE1`) the module's nav entry uses
+  (`PRD/01` §3) — reject (403) if the role can't see this module at all.
+- For allowed-but-scoped roles: intersect the request's `org_id`/`project_id` filters against
+  `effectiveOrgIds`/`effectiveProjectIds` (`ACCESS-BE1`) — reject or silently narrow (pick one
+  consistently and document it) if the caller asks for something outside their grant.
+- This is the same shape as Supabase RLS policies would enforce — if RLS is used, this task may
+  largely become ""write the RLS policies"" instead of per-endpoint checks; pick whichever the team's
+  Supabase setup makes more maintainable, but the *outcome* (no cross-scope leakage) is what's graded.
+- Financial-only fields (cost/revenue/margin/MRR) must never appear in a Dev-role response body, not
+  just be hidden by the FE — this is the concrete leak this task closes.
+
+## Acceptance Criteria
+- [ ] A Dev-role request to `/cost` (or any Financial-only endpoint) is rejected server-side.
+- [ ] A Financial-role request to `/calls` (or any ops-only endpoint) is rejected server-side.
+- [ ] A PM/Dev/Financial request with an out-of-scope `org_id`/`project_id` is rejected or narrowed
+      (not silently ignored in a way that leaks other orgs' data).
+- [ ] Call Logs/Call Detail responses omit `cost`/`revenue`/`margin` fields entirely for Dev callers
+      (not just null — omitted, so no shape hints leak).
+- [ ] SuperAdmin is unaffected (no regression)."
+"Story","[FE] Access Management · UI · Provision/edit/revoke screen","","Access Management & RBAC v2","High","5","frontend nextjs ui-ux rbac admin access","ACCESS-FE1","PLAT-FE1; ACCESS-BE2","ACCESS-QA1","**ID:** ACCESS-FE1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** PLAT-FE1; ACCESS-BE2 · **Blocks:** ACCESS-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+`/controls/access-management` (SuperAdmin-only, nav under ""Admin""): a table of provisioned
+PM/Dev/Financial users (email, role badge, granted-scope chips, edit/remove), and an add/edit form
+(email, role select, an org/project scope picker — checking a whole org, or individual projects
+within it).
+
+## How (building on the MVP)
+**Design system:** build on `/design` tokens + reusable components; never hardcode colors, fonts, or
+radii. See `PLAT-FE1`.
+
+- Port the MVP page structure: provisioned-users list + inline `UserForm` (email/role/scope picker).
+  The scope picker renders one row per org with a checkbox (""whole org""), and — only when that org's
+  checkbox is unchecked — a row of per-project checkboxes underneath (this hide/show is what
+  communicates ""org grant supersedes project grants"" without extra copy).
+- Grant chips distinguish org-level vs project-level visually (the MVP uses two badge colors) so
+  admins can scan a user's access at a glance.
+- Client-side guard mirrors the MVP: non-SuperAdmin sees a ""SuperAdmin only"" locked state, not the
+  form (defense in depth alongside `ACCESS-BE2`'s server check).
+
+## Why
+This is the only place access gets granted — it needs to be legible enough that a SuperAdmin doesn't
+accidentally over- or under-scope someone.
+
+## Acceptance Criteria
+- [ ] List, add, edit, and remove all work against the real API (`ACCESS-BE2`).
+- [ ] Org-level vs project-level grants are visually distinguishable in both the table and the form.
+- [ ] Selecting ""whole org"" hides that org's individual project checkboxes (and clears any that were
+      set, to avoid a confusing mixed state).
+- [ ] Non-SuperAdmin roles see a locked state, not the form; empty/loading/error states covered."
+"Story","[FE] Access Management · UI · Role switcher, scope filters, nav, Overview dual-view","","Access Management & RBAC v2","High","8","frontend nextjs ui-ux rbac cross-cutting access","ACCESS-FE2","ACCESS-BE1; ACCESS-FE1","ACCESS-QA1","**ID:** ACCESS-FE2 · **Priority:** P1 · **Estimate:** 8
+**Blocked by:** ACCESS-BE1; ACCESS-FE1 · **Blocks:** ACCESS-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+The cross-cutting pieces every other module leans on: a two-step ""View as"" (role → provisioned
+identity, since PM/Dev/Financial grants differ per person), Org/Project top-bar pickers constrained
+to the active identity's granted scope, a `roles`-based nav config (replacing the old boolean
+`superAdminOnly` flag), and the Overview page's two variants (financial vs ops-only).
+
+## How (building on the MVP)
+**Design system:** build on `/design` tokens + reusable components. See `PLAT-FE1`.
+
+- **Role switcher:** dropdown lists all 4 roles; picking PM/Dev/Financial reveals a second list of
+  that role's provisioned identities (email) to preview. Auto-selects the first provisioned identity
+  of a role when none is chosen yet.
+- **Scope filters:** Org dropdown lists only the active identity's granted orgs (no ""All orgs"" when
+  scoped); Project dropdown additionally hides ""All projects"" for an org where the identity's grant
+  is project-level only (`orgRequiresProjectPick`). Auto-corrects the selection via effect when
+  switching identity to something no longer valid for the new scope.
+- **Nav:** `NavItem.roles?: Role[]` allow-list (undefined = every role) replaces `superAdminOnly`;
+  reassign every existing item per `PRD/01` §3's module→role table.
+- **Overview:** branch on `canSeeFinancials(role)` — financial variant (cost/revenue/margin KPIs +
+  charts + table columns, same as the old SuperAdmin view) vs ops variant (calls/latency/error-rate
+  KPIs, calls-by-org chart, no cost column). Both scoped automatically since they read through the
+  same Org/Project-filtered query.
+- **`useCurrentIdentity()`** hook resolves `{user, orgIds, projectIds}` from the active role +
+  simulated identity — the one place this resolution happens, consumed by scope-filters and any
+  page needing to know ""am I scoped, and to what.""
+
+## Why
+Every module's RBAC ultimately routes through these four pieces — get them right once here instead
+of every module re-deriving ""what can I show, and to whom.""
+
+## Acceptance Criteria
+- [ ] Switching role updates nav, Overview variant, and available Org/Project options correctly.
+- [ ] Switching identity within a scoped role updates the effective scope and resets an
+      out-of-scope Org/Project selection.
+- [ ] A project-level-only grant correctly hides ""All projects"" for that org; an org-level grant
+      correctly shows it.
+- [ ] SuperAdmin is unaffected (unrestricted Org/Project pickers, no identity step).
+- [ ] Every existing nav item is correctly reassigned per `PRD/01` §3 (spot-check each role sees
+      exactly the modules the table says)."
+"Task","[QA] Access Management · QA · Role × module × scope matrix","","Access Management & RBAC v2","High","5","qa rbac security access","ACCESS-QA1","ACCESS-BE3; ACCESS-FE1; ACCESS-FE2","","**ID:** ACCESS-QA1 · **Priority:** P1 · **Estimate:** 5
+**Blocked by:** ACCESS-BE3; ACCESS-FE1; ACCESS-FE2 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What / Why
+This is the highest-leverage QA task in the backlog: a wrong RBAC boundary here means real financial
+or operational data reaching the wrong role. Validate the full **role × module** visibility matrix
+(`PRD/01` §3) and the **scope** boundary (a PM/Dev/Financial identity never sees data outside their
+grants) — both client-side (nav/guards) and server-side (`ACCESS-BE3`).
+
+## How (building on the MVP)
+- Treat `PRD/01` §3's module→role table as the golden fixture: for each of the 4 roles × ~18 modules,
+  assert visible/hidden matches the table exactly (nav entry present/absent AND direct-URL navigation
+  blocked/allowed).
+- Scope tests: using the seeded `AppUser` fixtures (org-level grant, project-level-only grant,
+  multi-org grant), assert data returned is limited to the granted scope — especially the
+  project-level-only case, where ""All projects"" must not silently include ungranted projects in that
+  org.
+- Cost-leak tests: for Dev-role requests, assert `cost`/`revenue`/`margin` fields are **absent** from
+  API responses (Call Logs, Call Detail, Overview) — not just hidden in the UI.
+- Automate in CI: pytest for the server-side enforcement (`ACCESS-BE3`), Playwright/RTL for nav
+  visibility + scope-filter constraints + the role-switcher's two-step flow.
+
+## Acceptance Criteria (scenarios)
+- [ ] Each of the 4 roles sees exactly the nav items `PRD/01` §3 says, no more/no less.
+- [ ] Direct URL navigation to a role-inaccessible module is blocked (not just hidden from nav).
+- [ ] An org-level-grant identity sees all of that org's projects; a project-level-only identity does
+      not get ""All projects"" for that org and cannot see ungranted projects in it.
+- [ ] Dev-role API responses never contain cost/revenue/margin fields, in any module.
+- [ ] Financial-role API responses never contain operational-only data (call transcripts, error
+      logs, infra metrics) outside Cost & Margin / Business Health.
+- [ ] Access Management CRUD (provision/edit/revoke) correctly changes what the affected identity can
+      see on the next request."
 "Epic","Cost & Margin","Cost & Margin","","High","","epic cost","COST","","","## Goal
 Give the Voicing team an accurate, real-time view of **what each call/project/org costs us**, **what
 we charge**, and **the margin** — broken down by service (LLM / STT / TTS / telephony / cloud). This

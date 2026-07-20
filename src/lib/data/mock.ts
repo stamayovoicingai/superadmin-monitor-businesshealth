@@ -1,5 +1,6 @@
 /** MockAdapter — implements DataSource from the deterministic seed dataset. */
 import type {
+  AppUser,
   Call,
   CallFlag,
   FlagStatus,
@@ -68,6 +69,8 @@ import type {
   CreateFlagInput,
   SipCallFilter,
   SipCallPage,
+  CreateAppUserInput,
+  UpdateAppUserInput,
 } from "./source";
 import type { SipCallDetail } from "@/lib/types";
 
@@ -140,6 +143,12 @@ let _categories: IssueCategory[] | null = null;
 function categoryStore(): IssueCategory[] {
   if (!_categories) _categories = getDataset().issueCategories.map((c) => ({ ...c }));
   return _categories;
+}
+/** Mutable provisioned-user store (seeded copy) — PRD/20. */
+let _appUsers: AppUser[] | null = null;
+function appUserStore(): AppUser[] {
+  if (!_appUsers) _appUsers = getDataset().appUsers.map((u) => ({ ...u, grants: u.grants.map((g) => ({ ...g })) }));
+  return _appUsers;
 }
 let _flags: CallFlag[] | null = null;
 function flagStore(): CallFlag[] {
@@ -1027,5 +1036,32 @@ export class MockAdapter implements DataSource {
       orgName: orgs.find((o) => o.id === call.orgId)?.name ?? call.orgId,
     };
     return buildSipCallDetail(call, summary, linkedCall);
+  }
+
+  async listAppUsers(): Promise<AppUser[]> {
+    return [...appUserStore()].sort((a, b) => a.email.localeCompare(b.email));
+  }
+
+  async createAppUser(input: CreateAppUserInput): Promise<AppUser> {
+    const user: AppUser = {
+      id: `appuser-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
+      email: input.email.trim().toLowerCase(),
+      role: input.role,
+      grants: input.grants.map((g, i) => ({ id: `grant-${Date.now()}-${i}`, ...g })),
+      createdAt: new Date().toISOString(),
+    };
+    appUserStore().push(user);
+    return user;
+  }
+
+  async updateAppUser(input: UpdateAppUserInput): Promise<void> {
+    const user = appUserStore().find((u) => u.id === input.id);
+    if (!user) return;
+    if (input.role) user.role = input.role;
+    if (input.grants) user.grants = input.grants.map((g, i) => ({ id: `grant-${Date.now()}-${i}`, ...g }));
+  }
+
+  async deleteAppUser(id: string): Promise<void> {
+    _appUsers = appUserStore().filter((u) => u.id !== id);
   }
 }

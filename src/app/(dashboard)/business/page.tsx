@@ -10,14 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useBusiness } from "@/lib/hooks";
 import { useView } from "@/components/view-context";
-import { canSeeSuperAdminOnly } from "@/lib/auth/policy";
+import { canSeeFinancials } from "@/lib/auth/policy";
 import { formatMicros, formatMicrosCompact, formatNumber, formatPct } from "@/lib/money";
 
 export default function BusinessPage() {
   const { role } = useView();
   const { data, isLoading } = useBusiness();
 
-  if (!canSeeSuperAdminOnly(role)) {
+  if (!canSeeFinancials(role)) {
     return (
       <div>
         <PageHeader title="Business Health" description="Voicing AI business & platform usage metrics." />
@@ -26,7 +26,7 @@ export default function BusinessPage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
               <Lock className="size-6" />
             </div>
-            <div className="text-lg font-semibold">SuperAdmin only</div>
+            <div className="text-lg font-semibold">Not available for your role</div>
             <p className="max-w-md text-sm text-muted-foreground">
               Business & financial metrics (MRR, churn, growth) are restricted to the SuperAdmin role.
               Switch role with the “View as” control to preview.
