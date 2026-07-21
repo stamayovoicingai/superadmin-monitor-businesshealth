@@ -1924,6 +1924,293 @@ Validate per-project/per-subagent usage and cost correctness, and the Overview K
 - [ ] By-subagent and by-project totals reconcile with the grand total.
 - [ ] Cost uses correct LLM pricing per subagent model.
 - [ ] Scope/date filters change results; Overview ""Assistant Cost"" matches this tab for the same scope."
+"Epic","Invoicing (Automated Client Invoice Export)","Invoicing (Automated Client Invoice Export)","","Medium","","epic invoice","INVOICE","ACCESS-BE1","","## Goal
+Replace the manual, per-client, per-month Grafana export (`session_id, call_id, start_time,
+end_time, call_duration_secs, user_id`, pulled by hand across LatAm/India time zones, then
+hand-stripped of test traffic and downtime) with a configured, repeatable invoicing module. See
+`PRD/21-module-invoicing.md` for the full spec.
+
+## Outcome (already built in the MVP)
+- `InvoiceConfig` scoped **org or project**, with org→project inheritance (same shape as IP Access
+  Control/Access Management — reused deliberately, not reinvented).
+- Timezone-aware period computation (IANA zones, `Intl.DateTimeFormat`-based, no external tz lib)
+  for weekly/biweekly/monthly/custom-day schedules — verified in the MVP against real calendar-month
+  boundaries in `America/Bogota` and `Asia/Manila`.
+- Two independent exclusion mechanisms: test caller-ID/call-ID lists, and scoped downtime windows
+  (dropped from both the row set and the minutes total).
+- Preview & Send: real CSV generation from the existing `Call` fields (no new call-level data
+  needed — the six Grafana columns already map 1:1) + a merged email template preview.
+- **""Send"" is simulated** (writes an `InvoiceRun` history record, no email leaves the system) —
+  this is a deliberate, documented boundary (`PRD/21` §6–7), not a gap discovered late. Real
+  delivery + real scheduling are separate tasks below.
+
+## MVP reference
+Repo: https://github.com/stamayovoicingai/superadmin-monitor-businesshealth
+- Engine: `src/lib/invoicing.ts` (period math, filtering, CSV/template building — pure, unit-testable)
+- Types: `src/lib/types.ts` (`InvoiceConfig`, `InvoiceDowntimeExclusion`, `InvoiceRun`)
+- Mock/API: `src/lib/data/mock.ts`, `src/app/api/invoicing/*`
+- FE: `src/app/(dashboard)/invoicing/page.tsx`
+- PRD: `PRD/21-module-invoicing.md`, `PRD/12` §6b
+
+## Features
+- F1 — `invoice_config`/`invoice_downtime_exclusion`/`invoice_run` schema + engine port (BE)
+- F2 — Config & downtime-exclusion API (BE)
+- F3 — Preview/export/send API (BE)
+- F4 — Real email delivery + scheduling (BE, production-only — flagged, not built in MVP)
+- F5 — Config & exclusions UI (FE)
+- F6 — Preview/send & history UI (FE)
+- F7 — QA
+
+## Tasks
+- `BE-1-schema-engine.md` (`INVOICE-BE1`)
+- `BE-2-config-downtime-api.md` (`INVOICE-BE2`)
+- `BE-3-preview-export-send-api.md` (`INVOICE-BE3`)
+- `BE-4-real-email-scheduling.md` (`INVOICE-BE4`)
+- `FE-1-config-exclusions-ui.md` (`INVOICE-FE1`)
+- `FE-2-preview-send-history-ui.md` (`INVOICE-FE2`)
+- `QA-1-invoicing-scenarios.md` (`INVOICE-QA1`)"
+"Story","[BE] Invoicing · Schema · Config/downtime/run tables + engine port","","Invoicing (Automated Client Invoice Export)","Medium","8","backend python postgres billing foundation invoice","INVOICE-BE1","PLAT-BE1; ACCESS-BE1","INVOICE-BE2; INVOICE-BE3","**ID:** INVOICE-BE1 · **Priority:** P2 · **Estimate:** 8
+**Blocked by:** PLAT-BE1; ACCESS-BE1 · **Blocks:** INVOICE-BE2; INVOICE-BE3
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+`invoice_config`, `invoice_downtime_exclusion`, `invoice_run` tables (PRD/12 §6b), plus a Python
+port of `lib/invoicing.ts`'s pure functions: `defaultPeriodFor` (timezone-aware calendar period
+boundaries), `computeNextRun`, `filterInvoiceCalls` (period + test-exclusion + downtime-exclusion),
+`buildInvoiceCsv`, `mergeTemplate`.
+
+## Why
+Every other Invoicing task reads through this schema and engine. The MVP's `lib/invoicing.ts` is
+already the reference implementation, verified against the seeded fixtures (org-level vs
+project-level config resolution, calendar-month boundaries in `America/Bogota`/`Asia/Manila`,
+downtime windows correctly dropping both row count and minutes).
+
+## How (building on the MVP)
+- Tables per `PRD/12` §6b. `invoice_config`/`invoice_downtime_exclusion` scope by `org` or
+  `project` with org→project inheritance (identical resolution logic to `access_grant`/`IpRule` —
+  reuse that pattern's implementation if `ACCESS-BE1` already built a shared scope-resolution
+  helper).
+- Timezone math: use a real Python tz library (`zoneinfo`/`pytz`) rather than porting the MVP's
+  `Intl.DateTimeFormat`-offset trick verbatim — the *behavior* to match is ""calendar period
+  boundaries computed in the config's IANA timezone,"" not the specific JS technique.
+- `filterInvoiceCalls` must apply test-caller/call-ID exclusion and downtime-window exclusion
+  independently, both against the same period-filtered call set, matching the MVP's
+  `excludedTestCalls`/`excludedDowntimeCalls` counters (these appear in the UI and matter for
+  audit — don't collapse them into one ""excluded"" count).
+- `invoice_run` does **not** store a CSV blob — it stores period bounds + a snapshot of recipients;
+  the CSV is regenerated on demand from the stored period + the (possibly since-changed) config,
+  matching the MVP's approach. Flag if the team wants immutable historical exports instead
+  (would require snapshotting rows/config at send time — a real tradeoff, not just an oversight).
+
+## Acceptance Criteria
+- [ ] Schema matches `PRD/12` §6b.
+- [ ] `defaultPeriodFor(""monthly"", tz, now)` returns the correct previous calendar month boundary
+      for at least one non-UTC timezone (e.g. `America/Bogota`), verified against a known date.
+- [ ] Org-level config inherited correctly by a project with no override; project-level override
+      takes precedence when present.
+- [ ] `filterInvoiceCalls` correctly separates test-exclusion count from downtime-exclusion count.
+- [ ] Unit tests port the MVP's verified scenarios (own vs inherited resolution, period math,
+      downtime drop)."
+"Story","[BE] Invoicing · API · Config & downtime-exclusion CRUD","","Invoicing (Automated Client Invoice Export)","Medium","5","backend python postgres api billing invoice","INVOICE-BE2","INVOICE-BE1","INVOICE-FE1","**ID:** INVOICE-BE2 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** INVOICE-BE1 · **Blocks:** INVOICE-FE1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+`GET/POST /api/invoicing/config` (fetch own+inherited config+downtime for the current scope, upsert
+a config for an exact org/project scope) and `POST/DELETE /api/invoicing/downtime` (add/remove a
+downtime exclusion window, scoped org or project).
+
+## Why
+This is the read/write path behind the config screen (`INVOICE-FE1`) — everything else (preview,
+export, send) reads the config this produces.
+
+## How (building on the MVP)
+- `GET config` returns `{own, inherited, downtimeOwn, downtimeInherited}` — `inherited` populated
+  only when the scope is a project without its own override (org config bubbles down).
+- `POST config` upserts by exact `(scopeType, scopeId)` — matches the MVP's ""save = create if none
+  exists at this exact scope, else update"" behavior (no separate create/update endpoints).
+- Validate: ≥1 recipient, ≥1 column selected, `to > from` for downtime windows.
+- Enforce role/scope: only SuperAdmin/PM/Financial, and PM/Financial only within their granted
+  scope (`ACCESS-BE3`'s enforcement layer applies here too — this endpoint isn't exempt).
+
+## Acceptance Criteria
+- [ ] `GET` correctly resolves own vs inherited per `PRD/21` §3.
+- [ ] `POST config` upserts (not duplicates) when called again for the same scope.
+- [ ] Downtime `POST`/`DELETE` work; invalid ranges (`to <= from`) rejected.
+- [ ] A Financial/PM identity without a grant for the requested org/project is rejected server-side."
+"Story","[BE] Invoicing · API · Preview, CSV export, simulated send","","Invoicing (Automated Client Invoice Export)","Medium","8","backend python api billing csv invoice","INVOICE-BE3","INVOICE-BE1","INVOICE-FE2","**ID:** INVOICE-BE3 · **Priority:** P2 · **Estimate:** 8
+**Blocked by:** INVOICE-BE1 · **Blocks:** INVOICE-FE2
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+`GET /preview` (period defaults to last-completed per the config's frequency, overridable), `GET
+/export` (real CSV download, same headers/attachment pattern as the Telephony PCAP export), `POST
+/send` (writes an `InvoiceRun` row, status `simulated` — **no real email sent**, see `INVOICE-BE4`),
+`GET /runs` (history for the current scope).
+
+## Why
+This is the actual value of the module: turning a config into a real filtered dataset, a real
+downloadable file, and an auditable run record — replacing the manual Grafana pull.
+
+## How (building on the MVP)
+- `preview` returns merged email subject/body (template vars: `org_name`, `project_name`,
+  `period_start`, `period_end`, `call_count`, `total_minutes`), a row preview (MVP caps at 200 rows
+  in the JSON response — export is uncapped), and totals including both exclusion counts.
+- `export` regenerates the full CSV from `(scope, period)` — no row cap, matches what a real send
+  would attach.
+- `send` is explicitly a **simulation** in this task's scope: it computes the same preview data,
+  persists an `InvoiceRun`, and returns it — it does not call any email provider. That's
+  `INVOICE-BE4`.
+- `runs` returns history for the scope, newest first.
+
+## Acceptance Criteria
+- [ ] `preview` and `export` agree on totals/row content for the same scope+period (no drift
+      between what's shown and what's downloaded).
+- [ ] `export` CSV opens cleanly and matches the config's selected columns exactly.
+- [ ] `send` persists a correct `InvoiceRun` (period, recipients snapshot, totals, exclusion
+      counts) and updates the config's `last_sent_at`.
+- [ ] `runs` is scope-correct (a project's history doesn't leak sibling projects' runs)."
+"Story","[BE] Invoicing · Production · Real email delivery + scheduling","","Invoicing (Automated Client Invoice Export)","Low","8","backend python email scheduler billing production-only invoice","INVOICE-BE4","INVOICE-BE3","","**ID:** INVOICE-BE4 · **Priority:** P3 · **Estimate:** 8
+**Blocked by:** INVOICE-BE3 · **Blocks:** —
+**MVP ref:** No MVP code — this is deliberately unbuilt in the MVP (PRD/21 §6–7 flags it
+
+## What
+Two things the MVP intentionally simulates instead of building: (1) an actual email provider
+integration (SES/SendGrid/Postmark — pick one) that sends the real email with the real CSV
+attached, replacing the `simulated` status with `sent`/`failed`; (2) a real scheduler (cron job or a
+Supabase Edge Function on a timer) that calls the same preview→build→send path **on its own**, on
+each config's computed `next_run`, instead of requiring a human to click ""Send now.""
+
+## Why
+Without this, ""automate"" is still a person remembering to open the page and click a button — it
+removes the manual Grafana pull, but not the manual trigger. This task is what makes the schedule
+configured in `INVOICE-BE1` actually fire.
+
+## How (building on the MVP)
+- Provider choice and sender domain/DKIM setup: open question, `PRD/21` §10 — needs a decision before
+  this task can start for real (flag to the team).
+- Scheduler: iterate all `active=true` configs whose `next_run <= now`, run the same
+  filter→build→merge logic as `INVOICE-BE3`'s `send`, attach the CSV, send via the provider, write
+  the `InvoiceRun` with real `status` (`sent` or `failed` with an error reason).
+- Failure handling: decide (per `PRD/21` §10) whether a failed send auto-retries or just surfaces in
+  the history table for a human to re-trigger — don't silently drop it either way.
+- Keep `INVOICE-BE3`'s manual ""Send now"" working as a manual override/testing path even once this
+  ships — useful for ad-hoc sends outside the schedule (e.g., a client requests an early invoice).
+
+## Acceptance Criteria
+- [ ] A config's scheduled run fires automatically at its computed `next_run`, no human action
+      required.
+- [ ] The recipient actually receives an email with the correct CSV attached, matching what
+      `INVOICE-BE3`'s `/export` would produce for the same period.
+- [ ] A failed send is visible in the history table with a clear reason, not silently lost.
+- [ ] Manual ""Send now"" (`INVOICE-BE3`) still works unchanged."
+"Story","[FE] Invoicing · UI · Config & exclusions","","Invoicing (Automated Client Invoice Export)","Medium","5","frontend nextjs ui-ux billing invoice","INVOICE-FE1","PLAT-FE1; INVOICE-BE2","INVOICE-FE2; INVOICE-QA1","**ID:** INVOICE-FE1 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** PLAT-FE1; INVOICE-BE2 · **Blocks:** INVOICE-FE2; INVOICE-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+`/invoicing` (SuperAdmin/PM/Financial, nav under Business): scope banner (reuses the Org/Project top
+bar + IP-Access-Control-style own/inherited messaging), a config form (recipients, frequency +
+timezone, email subject/body with variable hints, attachment column checkboxes, active toggle), and
+an exclusions panel (test caller-ID/call-ID lists, downtime windows with reason).
+
+## How (building on the MVP)
+**Design system:** build on `/design` tokens + reusable components. See `PLAT-FE1`.
+
+- Port `ConfigCard`: when the scope is a project with no own config, pre-fill the form from the
+  inherited org config and label the save action ""Override the organization's default"" (matches the
+  MVP's exact copy — this distinction matters, don't let it read as ""editing the org's config"").
+- Port `ExclusionsCard`: only usable once an own config exists for the exact scope (matches the MVP —
+  you can't attach test/downtime exclusions to an inherited config without first creating your own
+  override, since exclusions are stored per config row).
+- Downtime list shows inherited (org-level, read-only, dashed border) separately from own
+  (project-level, deletable) — same visual distinction as IP Access Control's inherited rules panel.
+
+## Why
+This is where a SuperAdmin/PM/Financial actually sets up a client's invoicing — needs to make the
+org-vs-project override behavior legible, since getting it wrong means the wrong people get billed
+data.
+
+## Acceptance Criteria
+- [ ] Save/load round-trips correctly for both org- and project-scoped configs.
+- [ ] Project scope with no override clearly shows it's using the inherited org config, and saving
+      creates a project-level override (doesn't silently edit the org's own config).
+- [ ] Test caller-ID/call-ID add/remove and downtime window add/remove all work against the real
+      API.
+- [ ] Empty/loading/error states; responsive."
+"Story","[FE] Invoicing · UI · Preview, send, and history","","Invoicing (Automated Client Invoice Export)","Medium","5","frontend nextjs ui-ux billing invoice","INVOICE-FE2","INVOICE-FE1; INVOICE-BE3","INVOICE-QA1","**ID:** INVOICE-FE2 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** INVOICE-FE1; INVOICE-BE3 · **Blocks:** INVOICE-QA1
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What
+A period picker (defaults to the last completed period for the config's schedule, overridable),
+computed totals (calls/minutes/excluded-test/excluded-downtime), a merged email preview (subject +
+body), a row preview table, ""Download CSV,"" ""Send now"" (simulated — see `INVOICE-BE4` for the real
+version), and a history table of past runs each re-downloadable.
+
+## How (building on the MVP)
+**Design system:** build on `/design` tokens + reusable components. See `PLAT-FE1`.
+
+- Port `PreviewSendCard`: date-range override resets to the computed default when cleared; row table
+  caps its on-screen preview (MVP shows 10) with a note pointing at the CSV for the full set.
+- ""Send now"" success toast must be honest about the simulation boundary (the MVP's copy: ""Invoice
+  sent (simulated — no real email provider wired up yet)"") — don't let this read as a real send
+  until `INVOICE-BE4` ships; update the copy at that point.
+- Port `HistoryCard`: each row's download re-hits `/export` with that run's stored period + the
+  current scope — regenerates from live data, not a stored blob (matches `INVOICE-BE1`'s schema
+  decision).
+
+## Why
+This is the actual replacement for the manual Grafana pull — a NOC/finance person should be able to
+get the exact same file they used to build by hand, in a few clicks, with the exclusions already
+applied.
+
+## Acceptance Criteria
+- [ ] Default period matches the config's frequency (e.g. previous calendar month for `monthly`);
+      manual override works and resets cleanly.
+- [ ] Preview totals match what `/export`'s CSV actually contains (no drift).
+- [ ] ""Send now"" creates a history row visible immediately without a page reload.
+- [ ] History rows are re-downloadable and reflect the *current* config's columns, not a frozen
+      snapshot (documented behavior, not a bug — see `INVOICE-BE1`).
+- [ ] Empty/loading/error states; responsive."
+"Task","[QA] Invoicing · QA · Scoping, timezone, and exclusion scenarios","","Invoicing (Automated Client Invoice Export)","Medium","5","qa billing invoice","INVOICE-QA1","INVOICE-FE1; INVOICE-FE2","","**ID:** INVOICE-QA1 · **Priority:** P2 · **Estimate:** 5
+**Blocked by:** INVOICE-FE1; INVOICE-FE2 · **Blocks:** —
+**MVP ref:** https://github.com/stamayovoicingai/superadmin-monitor-businesshealth —
+
+## What / Why
+Getting a client's bill wrong — including calls that should've been excluded, or missing calls due
+to a timezone boundary error — is exactly the kind of error this module exists to prevent. This is
+the highest-stakes QA task in the epic.
+
+## How (building on the MVP)
+- Timezone tests: for a `monthly` config in a non-UTC zone (e.g. `America/Bogota`, UTC-5), assert
+  the computed period boundary is midnight *in that zone*, not midnight UTC — a naive
+  implementation will be off by the zone's offset and either include/exclude a day's worth of calls
+  at the edge.
+- Scoping tests: assert an org-level config is correctly inherited by a project with no override,
+  and a project-level override correctly takes precedence — using the MVP's exact fixture shape
+  (org-level `org-tp-latam`/`org-tp-ph`, project-level `prj-telmex` override) as golden cases.
+- Exclusion tests: a call matching an excluded caller ID or call ID is dropped and counted in
+  `excludedTestCalls`; a call whose `start_time` falls inside a downtime window is dropped and
+  counted in `excludedDowntimeCalls`, **and** its duration doesn't contribute to `total_minutes`.
+- Consistency test: `/preview`'s totals must exactly match what `/export`'s CSV row count/sum
+  produces for the same scope+period — no drift between what's shown and what's downloaded.
+- RBAC test: a Dev-role request to any `/invoicing` endpoint is rejected (this module is
+  Financial-adjacent, not ops); a PM/Financial identity without a grant for the requested
+  org/project is rejected.
+- Automate in CI: pytest for the engine (period math, filtering) and API; Playwright/RTL for the
+  config/exclusions/preview/send UI flow.
+
+## Acceptance Criteria (scenarios)
+- [ ] Monthly period boundary is correct in at least 2 different non-UTC timezones, verified against
+      known dates (including a date near a DST transition, to document — not necessarily fix — any
+      edge-case behavior).
+- [ ] Org-level inheritance and project-level override both resolve correctly.
+- [ ] Test-caller/call-ID exclusion and downtime exclusion each work independently and together,
+      with correct separate counts.
+- [ ] `/preview` and `/export` never disagree on totals for the same request.
+- [ ] Dev role is blocked from all `/invoicing` surfaces; PM/Financial scope enforcement matches
+      `ACCESS-BE3`."
 "Epic","Overview","Overview","","Medium","","epic ovw","OVW","","","## Goal
 Role-aware landing page that answers the most important question first: KPI strip (cost, revenue,
 margin %, assistant cost, latency, active calls), cost-by-service, margin/cost by org, projects table,

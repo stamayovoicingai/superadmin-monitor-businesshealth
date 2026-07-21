@@ -50,7 +50,8 @@ COST engine (cost_per_call) ─> ISSUE (cost_per_call metric)
 
 **Wave 2 — High-value (P2):**
 - `HEALTH` (Service Health), `K8S` + `ELB` + `TEL` (Infra), `BIZ` (Business Health), `ASST` (Assistant
-  Usage), `OVW` (Overview — aggregates the others, so it lands after them).
+  Usage), `INVOICE` (Invoicing — needs `COST` for the billing/org_contract concepts it sits next to),
+  `OVW` (Overview — aggregates the others, so it lands after them).
 
 **Wave 3 — Controls (P3):** `FALLB` (Fallbacks), `IPACC` (IP Access). (Config surfaces; lower urgency.)
 
@@ -76,6 +77,7 @@ remain in `qa-bench/` (designed) for a later, separate effort; excluded from the
 | TEL — Infra Telephony (SIP/RTP) | P2 | PLAT-BE1, CALLS (Call-ID correlation) (+ HEP source) |
 | BIZ — Business Health | P2 | COST (contracts/MRR), PLAT-BE2 |
 | ASST — Assistant Usage | P2 | PLAT-BE1 (+ assistant usage source) |
+| INVOICE — Invoicing | P2 (P3 for real email/scheduling, `INVOICE-BE4`) | PLAT-BE1/BE2, ACCESS-BE1, COST-BE1 |
 | OVW — Overview | P2 | COST, PERF, LIVE, ASST, ISSUE |
 | FALLB — Fallbacks | P3 | PLAT-BE1/BE3 |
 | IPACC — IP Access | P3 | PLAT-BE1/BE3 |

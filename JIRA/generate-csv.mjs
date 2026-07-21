@@ -80,7 +80,7 @@ for (const dir of readdirSync(ROOT).filter((d) => statSync(join(ROOT, d)).isDire
 }
 
 // Sort: epics first by key, then tasks
-const order = ["PLAT", "ACCESS", "COST", "CALLS", "PERF", "LIVE", "THRESH", "ISSUE", "FLAG", "HEALTH", "K8S", "ELB", "TEL", "BIZ", "ASST", "OVW", "FALLB", "IPACC", "QABENCH"];
+const order = ["PLAT", "ACCESS", "COST", "CALLS", "PERF", "LIVE", "THRESH", "ISSUE", "FLAG", "HEALTH", "K8S", "ELB", "TEL", "BIZ", "ASST", "INVOICE", "OVW", "FALLB", "IPACC", "QABENCH"];
 const keyOf = (r) => (r["External ID"].split("-")[0]);
 rows.sort((a, b) => {
   const ka = order.indexOf(keyOf(a)), kb = order.indexOf(keyOf(b));
