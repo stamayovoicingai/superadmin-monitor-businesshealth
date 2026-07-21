@@ -472,3 +472,58 @@ export interface AppUser {
   grants: AccessGrant[];
   createdAt: string;
 }
+
+/* ----- Invoicing (Automated Client Invoice Export) — PRD/21 ----- */
+
+export type InvoiceScopeType = "org" | "project";
+export type InvoiceFrequency = "weekly" | "biweekly" | "monthly" | "custom_days";
+export type InvoiceColumnKey = "session_id" | "call_id" | "start_time" | "end_time" | "duration_secs" | "caller_id";
+export type InvoiceRunStatus = "sent" | "simulated" | "failed";
+
+export interface InvoiceConfig {
+  id: string;
+  scopeType: InvoiceScopeType;
+  scopeId: string;
+  recipients: string[];
+  frequency: InvoiceFrequency;
+  frequencyDays?: number; // only meaningful when frequency === "custom_days"
+  timezone: string; // IANA
+  emailSubject: string;
+  emailBody: string;
+  columns: InvoiceColumnKey[];
+  excludeCallerIds: string[]; // known test caller hashes
+  excludeCallIds: string[]; // specific call_id exclusions
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastSentAt: string | null;
+}
+
+export interface InvoiceDowntimeExclusion {
+  id: string;
+  scopeType: InvoiceScopeType;
+  scopeId: string;
+  from: string; // ISO
+  to: string; // ISO
+  reason: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface InvoiceRun {
+  id: string;
+  configId: string;
+  scopeType: InvoiceScopeType;
+  scopeId: string;
+  periodFrom: string;
+  periodTo: string;
+  timezone: string;
+  recipients: string[];
+  callCount: number;
+  totalMinutes: number;
+  excludedTestCalls: number;
+  excludedDowntimeCalls: number;
+  status: InvoiceRunStatus;
+  sentAt: string;
+  triggeredBy: string;
+}

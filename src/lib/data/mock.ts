@@ -9,6 +9,10 @@ import type {
   FallbackService,
   HealthIncident,
   HealthService,
+  InvoiceConfig,
+  InvoiceDowntimeExclusion,
+  InvoiceRun,
+  InvoiceScopeType,
   IpDefaultPolicy,
   IpRule,
   IpScopePolicy,
@@ -24,6 +28,15 @@ import type {
 } from "@/lib/types";
 import { getDataset } from "@/lib/seed";
 import { buildSipCallDetail, buildSipSummary } from "@/lib/telephony";
+import {
+  INVOICE_COLUMNS,
+  buildInvoiceCsv,
+  computeNextRun,
+  defaultPeriodFor,
+  filterInvoiceCalls,
+  invoiceTemplateVars,
+  mergeTemplate,
+} from "@/lib/invoicing";
 import { SUBAGENTS, SUBAGENT_LABEL } from "@/lib/engine/subagents";
 import { evaluateIssues, formatMetric } from "@/lib/engine/issues";
 import { Rng } from "@/lib/seed/rng";
@@ -71,6 +84,10 @@ import type {
   SipCallPage,
   CreateAppUserInput,
   UpdateAppUserInput,
+  SaveInvoiceConfigInput,
+  AddDowntimeExclusionInput,
+  InvoiceScopeState,
+  InvoicePreviewResult,
 } from "./source";
 import type { SipCallDetail } from "@/lib/types";
 
@@ -150,6 +167,63 @@ function appUserStore(): AppUser[] {
   if (!_appUsers) _appUsers = getDataset().appUsers.map((u) => ({ ...u, grants: u.grants.map((g) => ({ ...g })) }));
   return _appUsers;
 }
+
+/** Mutable invoicing stores (seeded copy) — PRD/21. */
+let _invoiceConfigs: InvoiceConfig[] | null = null;
+function invoiceConfigStore(): InvoiceConfig[] {
+  if (!_invoiceConfigs) {
+    _invoiceConfigs = getDataset().invoiceConfigs.map((c) => ({
+      ...c,
+      recipients: [...c.recipients],
+      columns: [...c.columns],
+      excludeCallerIds: [...c.excludeCallerIds],
+      excludeCallIds: [...c.excludeCallIds],
+    }));
+  }
+  return _invoiceConfigs;
+}
+let _invoiceDowntime: InvoiceDowntimeExclusion[] | null = null;
+function invoiceDowntimeStore(): InvoiceDowntimeExclusion[] {
+  if (!_invoiceDowntime) _invoiceDowntime = getDataset().invoiceDowntimeExclusions.map((d) => ({ ...d }));
+  return _invoiceDowntime;
+}
+let _invoiceRuns: InvoiceRun[] = [];
+function invoiceRunStore(): InvoiceRun[] {
+  return _invoiceRuns;
+}
+
+function resolveInvoiceScope(scope: Scope): { scopeType: InvoiceScopeType; scopeId: string } | null {
+  if (scope.projectId) return { scopeType: "project", scopeId: scope.projectId };
+  if (scope.orgId) return { scopeType: "org", scopeId: scope.orgId };
+  return null;
+}
+
+function invoiceScopeCalls(scopeType: InvoiceScopeType, scopeId: string): Call[] {
+  const { calls } = getDataset();
+  return scopeType === "project" ? calls.filter((c) => c.projectId === scopeId) : calls.filter((c) => c.orgId === scopeId);
+}
+
+function effectiveInvoiceConfig(scopeType: InvoiceScopeType, scopeId: string): InvoiceConfig | null {
+  const configs = invoiceConfigStore();
+  const own = configs.find((c) => c.scopeType === scopeType && c.scopeId === scopeId);
+  if (own) return own;
+  if (scopeType === "project") {
+    const orgId = getDataset().projects.find((p) => p.id === scopeId)?.orgId;
+    if (orgId) return configs.find((c) => c.scopeType === "org" && c.scopeId === orgId) ?? null;
+  }
+  return null;
+}
+
+function effectiveDowntimeExclusions(scopeType: InvoiceScopeType, scopeId: string): InvoiceDowntimeExclusion[] {
+  const downtime = invoiceDowntimeStore();
+  const own = downtime.filter((d) => d.scopeType === scopeType && d.scopeId === scopeId);
+  if (scopeType === "project") {
+    const orgId = getDataset().projects.find((p) => p.id === scopeId)?.orgId;
+    if (orgId) return [...own, ...downtime.filter((d) => d.scopeType === "org" && d.scopeId === orgId)];
+  }
+  return own;
+}
+
 let _flags: CallFlag[] | null = null;
 function flagStore(): CallFlag[] {
   if (!_flags) {
@@ -1063,5 +1137,150 @@ export class MockAdapter implements DataSource {
 
   async deleteAppUser(id: string): Promise<void> {
     _appUsers = appUserStore().filter((u) => u.id !== id);
+  }
+
+  async getInvoiceScopeState(scope: Scope): Promise<InvoiceScopeState> {
+    const resolved = resolveInvoiceScope(scope);
+    if (!resolved) return { own: null, inherited: null, downtimeOwn: [], downtimeInherited: [] };
+    const configs = invoiceConfigStore();
+    const downtime = invoiceDowntimeStore();
+    const own = configs.find((c) => c.scopeType === resolved.scopeType && c.scopeId === resolved.scopeId) ?? null;
+    let inherited: InvoiceConfig | null = null;
+    let downtimeInherited: InvoiceDowntimeExclusion[] = [];
+    if (resolved.scopeType === "project") {
+      const orgId = getDataset().projects.find((p) => p.id === resolved.scopeId)?.orgId;
+      if (orgId) {
+        inherited = configs.find((c) => c.scopeType === "org" && c.scopeId === orgId) ?? null;
+        downtimeInherited = downtime.filter((d) => d.scopeType === "org" && d.scopeId === orgId);
+      }
+    }
+    const downtimeOwn = downtime.filter((d) => d.scopeType === resolved.scopeType && d.scopeId === resolved.scopeId);
+    return { own, inherited, downtimeOwn, downtimeInherited };
+  }
+
+  async saveInvoiceConfig(input: SaveInvoiceConfigInput): Promise<InvoiceConfig> {
+    const store = invoiceConfigStore();
+    const existing = store.find((c) => c.scopeType === input.scopeType && c.scopeId === input.scopeId);
+    const now = new Date().toISOString();
+    if (existing) {
+      Object.assign(existing, input, { updatedAt: now });
+      return existing;
+    }
+    const created: InvoiceConfig = { id: `invcfg-${Date.now()}`, ...input, createdAt: now, updatedAt: now, lastSentAt: null };
+    store.push(created);
+    return created;
+  }
+
+  async addDowntimeExclusion(input: AddDowntimeExclusionInput): Promise<InvoiceDowntimeExclusion> {
+    const row: InvoiceDowntimeExclusion = {
+      id: `invdt-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
+      ...input,
+      createdBy: "you@voicing.ai",
+      createdAt: new Date().toISOString(),
+    };
+    invoiceDowntimeStore().push(row);
+    return row;
+  }
+
+  async deleteDowntimeExclusion(id: string): Promise<void> {
+    _invoiceDowntime = invoiceDowntimeStore().filter((d) => d.id !== id);
+  }
+
+  async previewInvoice(scope: Scope, periodFrom?: string, periodTo?: string): Promise<InvoicePreviewResult | null> {
+    const resolved = resolveInvoiceScope(scope);
+    if (!resolved) return null;
+    const config = effectiveInvoiceConfig(resolved.scopeType, resolved.scopeId);
+    if (!config) return null;
+
+    const period = periodFrom && periodTo ? { from: periodFrom, to: periodTo } : defaultPeriodFor(config, config.timezone, new Date());
+    const calls = invoiceScopeCalls(resolved.scopeType, resolved.scopeId);
+    const downtime = effectiveDowntimeExclusions(resolved.scopeType, resolved.scopeId);
+    const { included, excludedTestCalls, excludedDowntimeCalls } = filterInvoiceCalls(calls, config, downtime, period.from, period.to);
+    const totalMinutes = Math.round(included.reduce((s, c) => s + c.durationSecs, 0) / 60);
+
+    const { projects, orgs } = getDataset();
+    const project = resolved.scopeType === "project" ? projects.find((p) => p.id === resolved.scopeId) : undefined;
+    const orgId = project?.orgId ?? (resolved.scopeType === "org" ? resolved.scopeId : undefined);
+    const org = orgs.find((o) => o.id === orgId);
+    const vars = invoiceTemplateVars({
+      orgName: org?.name ?? "—",
+      projectName: project?.name ?? "All projects",
+      periodFrom: period.from,
+      periodTo: period.to,
+      timezone: config.timezone,
+      callCount: included.length,
+      totalMinutes,
+    });
+
+    const cols = INVOICE_COLUMNS.filter((c) => config.columns.includes(c.key));
+    const rows = included.slice(0, 200).map((c) => Object.fromEntries(cols.map((col) => [col.key, col.extract(c)])));
+
+    return {
+      periodFrom: period.from,
+      periodTo: period.to,
+      timezone: config.timezone,
+      columns: cols.map((c) => ({ key: c.key, label: c.label })),
+      rows,
+      totalCalls: included.length,
+      totalMinutes,
+      excludedTestCalls,
+      excludedDowntimeCalls,
+      emailSubject: mergeTemplate(config.emailSubject, vars),
+      emailBody: mergeTemplate(config.emailBody, vars),
+      recipients: config.recipients,
+      nextRun: computeNextRun(config, new Date()),
+    };
+  }
+
+  async sendInvoiceNow(scope: Scope, periodFrom?: string, periodTo?: string): Promise<InvoiceRun | null> {
+    const resolved = resolveInvoiceScope(scope);
+    if (!resolved) return null;
+    const preview = await this.previewInvoice(scope, periodFrom, periodTo);
+    if (!preview) return null;
+    const config = effectiveInvoiceConfig(resolved.scopeType, resolved.scopeId);
+    if (config) config.lastSentAt = new Date().toISOString();
+
+    const run: InvoiceRun = {
+      id: `invrun-${Date.now()}`,
+      configId: config?.id ?? "",
+      scopeType: resolved.scopeType,
+      scopeId: resolved.scopeId,
+      periodFrom: preview.periodFrom,
+      periodTo: preview.periodTo,
+      timezone: preview.timezone,
+      recipients: preview.recipients,
+      callCount: preview.totalCalls,
+      totalMinutes: preview.totalMinutes,
+      excludedTestCalls: preview.excludedTestCalls,
+      excludedDowntimeCalls: preview.excludedDowntimeCalls,
+      status: "simulated",
+      sentAt: new Date().toISOString(),
+      triggeredBy: "manual",
+    };
+    invoiceRunStore().push(run);
+    return run;
+  }
+
+  async listInvoiceRuns(scope: Scope): Promise<InvoiceRun[]> {
+    const resolved = resolveInvoiceScope(scope);
+    if (!resolved) return [];
+    return invoiceRunStore()
+      .filter((r) => r.scopeType === resolved.scopeType && r.scopeId === resolved.scopeId)
+      .sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+  }
+
+  async exportInvoiceCsv(scope: Scope, periodFrom?: string, periodTo?: string): Promise<{ filename: string; csv: string } | null> {
+    const resolved = resolveInvoiceScope(scope);
+    if (!resolved) return null;
+    const config = effectiveInvoiceConfig(resolved.scopeType, resolved.scopeId);
+    if (!config) return null;
+    const period = periodFrom && periodTo ? { from: periodFrom, to: periodTo } : defaultPeriodFor(config, config.timezone, new Date());
+    const calls = invoiceScopeCalls(resolved.scopeType, resolved.scopeId);
+    const downtime = effectiveDowntimeExclusions(resolved.scopeType, resolved.scopeId);
+    const { included } = filterInvoiceCalls(calls, config, downtime, period.from, period.to);
+    const csv = buildInvoiceCsv(included, config.columns);
+    const label = resolved.scopeId.replace(/[^a-z0-9-]/gi, "");
+    const filename = `invoice-${label}-${period.from.slice(0, 10)}-to-${period.to.slice(0, 10)}.csv`;
+    return { filename, csv };
   }
 }

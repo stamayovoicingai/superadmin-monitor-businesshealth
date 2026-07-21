@@ -31,8 +31,12 @@ import type {
   SipCallPage,
   CreateAppUserInput,
   UpdateAppUserInput,
+  SaveInvoiceConfigInput,
+  AddDowntimeExclusionInput,
+  InvoiceScopeState,
+  InvoicePreviewResult,
 } from "@/lib/data/source";
-import type { Agent, AppUser, CallFlag, FlagStatus, IpRule, IssueCategory, Organization, Project, SipCallDetail, Threshold } from "@/lib/types";
+import type { Agent, AppUser, CallFlag, FlagStatus, InvoiceRun, IpRule, IssueCategory, Organization, Project, SipCallDetail, Threshold } from "@/lib/types";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -432,5 +436,89 @@ export function useDeleteAppUser() {
       if (!res.ok) throw new Error("request_failed");
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["app-users"] }),
+  });
+}
+
+export function useInvoiceScopeState() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["invoice-config", query],
+    queryFn: () => fetchJson<InvoiceScopeState>(`/api/invoicing/config?${query}`),
+  });
+}
+
+export function useSaveInvoiceConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SaveInvoiceConfigInput) => {
+      const res = await fetch("/api/invoicing/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "request_failed");
+      return res.json() as Promise<SaveInvoiceConfigInput>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice-config"] }),
+  });
+}
+
+export function useAddDowntimeExclusion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: AddDowntimeExclusionInput) => {
+      const res = await fetch("/api/invoicing/downtime", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice-config"] }),
+  });
+}
+
+export function useDeleteDowntimeExclusion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/invoicing/downtime?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("request_failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice-config"] }),
+  });
+}
+
+export function useInvoicePreview(period?: { from: string; to: string }) {
+  const { query } = useView();
+  const sp = new URLSearchParams(query);
+  sp.delete("from");
+  sp.delete("to");
+  if (period) {
+    sp.set("from", period.from);
+    sp.set("to", period.to);
+  }
+  const qs = sp.toString();
+  return useQuery({
+    queryKey: ["invoice-preview", qs],
+    queryFn: () => fetchJson<InvoicePreviewResult>(`/api/invoicing/preview?${qs}`),
+    retry: false,
+  });
+}
+
+export function useSendInvoiceNow() {
+  const qc = useQueryClient();
+  const { orgId, projectId } = useView();
+  return useMutation({
+    mutationFn: async (period?: { from: string; to: string }) => {
+      const res = await fetch("/api/invoicing/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId, projectId, ...period }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "request_failed");
+      return res.json() as Promise<InvoiceRun>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoice-runs"] }),
+  });
+}
+
+export function useInvoiceRuns() {
+  const { query } = useView();
+  return useQuery({
+    queryKey: ["invoice-runs", query],
+    queryFn: () => fetchJson<InvoiceRun[]>(`/api/invoicing/runs?${query}`),
   });
 }

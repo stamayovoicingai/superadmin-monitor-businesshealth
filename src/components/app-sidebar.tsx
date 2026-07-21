@@ -15,6 +15,7 @@ import {
   Network,
   Palette,
   PhoneCall,
+  Receipt,
   ShieldBan,
   Shuffle,
   SlidersHorizontal,
@@ -60,6 +61,7 @@ const ICONS: Record<string, LucideIcon> = {
   ClipboardCheck,
   Palette,
   Users,
+  Receipt,
 };
 
 export function AppSidebar() {

@@ -28,6 +28,7 @@
 | 18 | [Module: Service Health (Uptime-Kuma style)](./18-service-health.md) | ✅ built |
 | 19 | [Module: Telephony Observability (SIP/RTP)](./19-module-telephony-observability.md) | 🔵 design |
 | 20 | [Module: Access Management (User Provisioning)](./20-module-access-management.md) | 🔵 design |
+| 21 | [Module: Invoicing (Automated Client Invoice Export)](./21-module-invoicing.md) | 🔵 design |
 
 ## Key decisions (discovery session, Jun 2026)
 

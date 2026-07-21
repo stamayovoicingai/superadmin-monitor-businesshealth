@@ -125,6 +125,24 @@ caller counts (new/returning) · active_agents.
 
 ---
 
+## 6b. Invoicing (doc 21)
+### invoice_config
+`id` · `scope_type` (`org`|`project`) · `scope_id` · `recipients` (text[]) · `frequency`
+(`weekly`|`biweekly`|`monthly`|`custom_days`) · `frequency_days?` · `timezone` (IANA) ·
+`email_subject` · `email_body` · `columns` (jsonb, subset of the 6 in doc 21 §2) ·
+`exclude_caller_ids` (text[]) · `exclude_call_ids` (text[]) · `active` · `created_at` · `updated_at` ·
+`last_sent_at?`.
+### invoice_downtime_exclusion
+`id` · `scope_type`/`scope_id` · `from` · `to` · `reason` · `created_by` · `created_at`. A call whose
+`start_time` falls inside is dropped from the run and its minutes total.
+### invoice_run
+`id` · `config_id` (fk) · `scope_type`/`scope_id` · `period_from` · `period_to` · `timezone` ·
+`recipients` (text[] snapshot) · `call_count` · `total_minutes` · `excluded_test_calls` ·
+`excluded_downtime_calls` · `status` (`sent`|`simulated`|`failed`) · `sent_at` · `triggered_by`.
+No blob stored — CSV is regenerated on demand from `period_from`/`period_to` + the config.
+
+---
+
 ## 7. Auth
 ### app_user
 `id` · `email` · `role` (`superadmin`|`pm`|`dev`|`financial`) · `created_at`. SuperAdmin rows carry

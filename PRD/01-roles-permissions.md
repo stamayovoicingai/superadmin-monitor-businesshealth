@@ -70,6 +70,7 @@ no second step. Switching identity:
 | Thresholds | ✅ | ✅ scoped | ✅ scoped | ❌ |
 | Flag Queue / Call Flagging | ✅ | ✅ scoped | ✅ scoped | ❌ |
 | Assistant Usage (subagent cost) | ✅ | ✅ scoped | ❌ | ✅ scoped |
+| Invoicing (doc 21) | ✅ | ✅ scoped | ❌ | ✅ scoped |
 | IP Access Control | ✅ | ❌ | ❌ | ❌ |
 | Access Management (doc 20) | ✅ | ❌ | ❌ | ❌ |
 | QA Bench (Phase 2) | ✅ | ✅ scoped | ✅ scoped | ❌ |

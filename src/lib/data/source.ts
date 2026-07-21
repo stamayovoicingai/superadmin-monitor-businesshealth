@@ -27,6 +27,12 @@ import type {
   IpListType,
   IpRule,
   IpScopeType,
+  InvoiceColumnKey,
+  InvoiceConfig,
+  InvoiceDowntimeExclusion,
+  InvoiceFrequency,
+  InvoiceRun,
+  InvoiceScopeType,
   Organization,
   OrgContract,
   OrgRollup,
@@ -294,6 +300,54 @@ export interface SipCallPage {
   stats: SipCallStats;
 }
 
+/* ----- Invoicing (Automated Client Invoice Export) ----- */
+
+export interface InvoiceScopeState {
+  own: InvoiceConfig | null;
+  inherited: InvoiceConfig | null; // org-level config, present only when scope is a project without its own override
+  downtimeOwn: InvoiceDowntimeExclusion[];
+  downtimeInherited: InvoiceDowntimeExclusion[];
+}
+
+export interface SaveInvoiceConfigInput {
+  scopeType: InvoiceScopeType;
+  scopeId: string;
+  recipients: string[];
+  frequency: InvoiceFrequency;
+  frequencyDays?: number;
+  timezone: string;
+  emailSubject: string;
+  emailBody: string;
+  columns: InvoiceColumnKey[];
+  excludeCallerIds: string[];
+  excludeCallIds: string[];
+  active: boolean;
+}
+
+export interface AddDowntimeExclusionInput {
+  scopeType: InvoiceScopeType;
+  scopeId: string;
+  from: string;
+  to: string;
+  reason: string;
+}
+
+export interface InvoicePreviewResult {
+  periodFrom: string;
+  periodTo: string;
+  timezone: string;
+  columns: { key: InvoiceColumnKey; label: string }[];
+  rows: Record<string, string | number>[];
+  totalCalls: number;
+  totalMinutes: number;
+  excludedTestCalls: number;
+  excludedDowntimeCalls: number;
+  emailSubject: string;
+  emailBody: string;
+  recipients: string[];
+  nextRun: string;
+}
+
 /* ----- Access Management (User Provisioning) ----- */
 
 export interface CreateAppUserInput {
@@ -365,6 +419,15 @@ export interface DataSource {
   createAppUser(input: CreateAppUserInput): Promise<AppUser>;
   updateAppUser(input: UpdateAppUserInput): Promise<void>;
   deleteAppUser(id: string): Promise<void>;
+
+  getInvoiceScopeState(scope: Scope): Promise<InvoiceScopeState>;
+  saveInvoiceConfig(input: SaveInvoiceConfigInput): Promise<InvoiceConfig>;
+  addDowntimeExclusion(input: AddDowntimeExclusionInput): Promise<InvoiceDowntimeExclusion>;
+  deleteDowntimeExclusion(id: string): Promise<void>;
+  previewInvoice(scope: Scope, periodFrom?: string, periodTo?: string): Promise<InvoicePreviewResult | null>;
+  sendInvoiceNow(scope: Scope, periodFrom?: string, periodTo?: string): Promise<InvoiceRun | null>;
+  listInvoiceRuns(scope: Scope): Promise<InvoiceRun[]>;
+  exportInvoiceCsv(scope: Scope, periodFrom?: string, periodTo?: string): Promise<{ filename: string; csv: string } | null>;
 
   getIssues(scope: Scope): Promise<IssuesResult>;
   listThresholds(): Promise<Threshold[]>;

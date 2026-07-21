@@ -66,6 +66,7 @@ A persistent **left sidebar** + a **global top bar**.
 | **Business** | | | |
 | Business Health | `/business` | 09 | SuperAdmin / PM / Financial (scoped for PM/Financial) |
 | Assistant Usage | `/assistant` | 17 | SuperAdmin / PM / Financial (scoped for PM/Financial) |
+| Invoicing | `/invoicing` | 21 | SuperAdmin / PM / Financial (scoped for PM/Financial) |
 | **QA Bench** | | | |
 | Evals | `/qa-bench` | 11 | SuperAdmin / PM / Dev (scoped, Phase 2) |
 | **Admin** | | | |

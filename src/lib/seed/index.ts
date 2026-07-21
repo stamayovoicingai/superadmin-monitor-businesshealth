@@ -7,6 +7,8 @@ import type {
   Agent,
   AppUser,
   Call,
+  InvoiceConfig,
+  InvoiceDowntimeExclusion,
   CallEndReason,
   CallStatus,
   Disposition,
@@ -165,6 +167,77 @@ const APP_USERS_SEED: AppUser[] = [
   },
 ];
 
+/** Invoicing configs (PRD/21) — org-level defaults + one project-level override. */
+const INVOICE_CONFIGS_SEED: InvoiceConfig[] = [
+  {
+    id: "invcfg-1",
+    scopeType: "org",
+    scopeId: "org-tp-latam",
+    recipients: ["billing@tplatam.example.com", "ops-latam@voicing.ai"],
+    frequency: "monthly",
+    timezone: "America/Bogota",
+    emailSubject: "Voicing AI — Usage report for {{project_name}} ({{period_start}} – {{period_end}})",
+    emailBody:
+      "Hi,\n\nAttached is the call usage report for {{org_name}} / {{project_name}} covering {{period_start}} to {{period_end}}.\n\nTotal calls: {{call_count}}\nTotal minutes: {{total_minutes}}\n\nBest,\nVoicing AI",
+    columns: ["call_id", "start_time", "end_time", "duration_secs", "caller_id"],
+    excludeCallerIds: [],
+    excludeCallIds: [],
+    active: true,
+    createdAt: iso(daysAgo(70)),
+    updatedAt: iso(daysAgo(10)),
+    lastSentAt: iso(daysAgo(10)),
+  },
+  {
+    id: "invcfg-2",
+    scopeType: "org",
+    scopeId: "org-tp-ph",
+    recipients: ["finance@tpph.example.com"],
+    frequency: "monthly",
+    timezone: "Asia/Manila",
+    emailSubject: "Voicing AI — Usage report for {{project_name}} ({{period_start}} – {{period_end}})",
+    emailBody:
+      "Hi,\n\nAttached is the call usage report for {{org_name}} / {{project_name}} covering {{period_start}} to {{period_end}}.\n\nTotal calls: {{call_count}}\nTotal minutes: {{total_minutes}}\n\nBest,\nVoicing AI",
+    columns: ["session_id", "call_id", "start_time", "end_time", "duration_secs", "caller_id"],
+    excludeCallerIds: [],
+    excludeCallIds: [],
+    active: true,
+    createdAt: iso(daysAgo(50)),
+    updatedAt: iso(daysAgo(50)),
+    lastSentAt: null,
+  },
+  {
+    id: "invcfg-3",
+    scopeType: "project",
+    scopeId: "prj-telmex",
+    recipients: ["ap@telmex.example.com", "billing@tplatam.example.com"],
+    frequency: "weekly",
+    timezone: "America/Bogota",
+    emailSubject: "Voicing AI — Weekly usage for Telmex ({{period_start}} – {{period_end}})",
+    emailBody:
+      "Hi,\n\nWeekly call usage for Telmex, {{period_start}} to {{period_end}}: {{call_count}} calls, {{total_minutes}} minutes. File attached.\n\nBest,\nVoicing AI",
+    columns: ["call_id", "start_time", "end_time", "duration_secs"],
+    excludeCallerIds: [],
+    excludeCallIds: [],
+    active: true,
+    createdAt: iso(daysAgo(40)),
+    updatedAt: iso(daysAgo(5)),
+    lastSentAt: iso(daysAgo(5)),
+  },
+];
+
+const INVOICE_DOWNTIME_SEED: InvoiceDowntimeExclusion[] = [
+  {
+    id: "invdt-1",
+    scopeType: "org",
+    scopeId: "org-tp-latam",
+    from: iso(daysAgo(22)),
+    to: iso(new Date(daysAgo(22).getTime() + 3 * 3600_000)),
+    reason: "STT provider outage — platform-wide degraded audio, excluded from billing",
+    createdBy: "ops@voicing.ai",
+    createdAt: iso(daysAgo(21)),
+  },
+];
+
 const IP_POLICIES_SEED: IpScopePolicy[] = [
   // Telmex restricts platform access to its corporate egress → whitelist (block by default).
   { scopeType: "project", scopeId: "prj-telmex", defaultPolicy: "block" },
@@ -281,6 +354,8 @@ export interface Dataset {
   issueCategories: IssueCategory[];
   thresholds: Threshold[];
   appUsers: AppUser[];
+  invoiceConfigs: InvoiceConfig[];
+  invoiceDowntimeExclusions: InvoiceDowntimeExclusion[];
 }
 
 export function buildDataset(): Dataset {
@@ -542,6 +617,8 @@ export function buildDataset(): Dataset {
     issueCategories: ISSUE_CATEGORIES_SEED,
     thresholds: THRESHOLDS_SEED,
     appUsers: APP_USERS_SEED,
+    invoiceConfigs: INVOICE_CONFIGS_SEED,
+    invoiceDowntimeExclusions: INVOICE_DOWNTIME_SEED,
   };
 }
 

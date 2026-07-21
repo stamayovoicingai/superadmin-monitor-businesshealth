@@ -54,6 +54,7 @@ export const NAV: NavSection[] = [
     label: "Business",
     items: [
       { title: "Business Health", href: "/business", icon: "TrendingUp", roles: FINANCIAL_ROLES },
+      { title: "Invoicing", href: "/invoicing", icon: "Receipt", roles: FINANCIAL_ROLES },
     ],
   },
   {
