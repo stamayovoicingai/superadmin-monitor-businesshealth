@@ -115,14 +115,28 @@ Homer's REST API (`homer-core` 4.0.2-draft OpenAPI spec) instead of reimplementi
 
 ---
 
-## 3. Information architecture
+## 3. Information architecture ✅ rebuilt (Jul 2026) to match Homer's real UI
 
 New sidebar entry under **Infra**: `Telephony` → `/infra/telephony`. 🔒-gated like Kubernetes/ELB.
 
+**Revision (Jul 2026):** after the user shared screenshots/exports of Voicing's actual Homer
+instance, the IA was rebuilt to faithfully replicate Homer's real interaction model — rebuilt with
+the platform's own design system (shadcn/ui, brand tokens), not a visual clone of Homer's CSS. Two
+decisions drove the rebuild:
+
+- **List granularity is message-level, not call-level.** The list is the raw SIP **Results Table**
+  (one row per SIP message: `timestamp, method, caller, callee, src_ip:port, dst_ip:port,
+  session_id, cid, ...`), matching Homer exactly, instead of a call-summary rollup.
+- **Interaction is via floating modals, not full-page navigation.** Clicking a row's Method opens a
+  **Message** modal (single raw message + Decode). Clicking a row's session_id / the "Tx" action
+  opens a **Transaction** modal (tabbed: Messages | Call Flow | QoS | Call Info | Export) — mirroring
+  Homer's own modal-driven UX. The `/infra/telephony/[callId]` route is retained as a secondary
+  deep-link surface that renders the same shared `TransactionPanel` content full-page.
+
 | Route | Purpose |
 |---|---|
-| `/infra/telephony` | Communications list (search/filter across all SIP dialogs) |
-| `/infra/telephony/[callId]` | Call detail — Resumen / Flujo / Mensajes / Calidad / Exportar |
+| `/infra/telephony` | Message-level Results Table (search/filter across raw SIP messages) |
+| `/infra/telephony/[callId]` | Deep-link detail page — reuses `TransactionPanel` (Messages / Call Flow / QoS / Call Info / Export) |
 
 Also: **Call Detail (doc 05)** gains a "View SIP Trace →" link when a `Call-ID` is resolvable, and
 this module's call detail gains a "View app call →" link back.
@@ -136,41 +150,36 @@ whichever role can reach it.
 
 ---
 
-## 4. Communications list (`/infra/telephony`)
+## 4. Results Table (`/infra/telephony`) ✅ rebuilt (Jul 2026, message-level)
 
-Real-time-leaning list (auto-refresh, pausable — like the reference screenshot's "5m/15m/.../2d" +
-Pausado toggle), not the snapshot+manual-refresh pattern used elsewhere, because SIP trunk health is
-inherently a live-operations concern.
+Message-level list — one row per raw SIP message, matching Homer's Results Table exactly.
 
-**Filters:** Origen (ANI) · Destino (DNIS) · Call-ID · time window (`5m·15m·30m·1h·3h·6h·12h·24h·2d`)
-· quick toggle `Todas` · Pausado/Live toggle.
+**Filters:** Session ID · Caller · Callee · Method (select) · Response code · Src IP · Dst IP ·
+User-Agent · Node · Live toggle (15s poll when on).
 
-**Columns:** Hora · Tipo (Entrante/Saliente) · Origen · Destino · Duración · Estado (`activa` ·
-`no contestó` · `Fallida` · `finalizada`) · Métodos (compact sequence chips, e.g. `100 INVITE 200
-ACK`) · Acciones (view · quick PCAP download).
+**Columns:** Timestamp · Method (color-coded badge: provisional/success/failure) · Caller · Callee ·
+Src (IP or resolved alias : port) · Dst (IP or resolved alias : port) · Actions (Msg / Tx icon
+buttons). Rows are visually tinted per `session_id` group so a full dialog reads as one visual block
+even though each row is a separate message.
 
-**Two view modes:** `Lista` (table above) and `Estadísticas` (aggregate: call volume, failure rate,
-avg setup time, top failure codes — by trunk/SBC hop and by time bucket).
+Clicking the Method badge, or the **Msg** action, opens the **Message** modal for that single raw
+message (UUID/timestamp/method/5-tuple/session/cid + Raw↔Decode payload toggle). Clicking the **Tx**
+action opens the **Transaction** modal, scoped to that message's `session_id`.
+
+*(Superseded: the previous call-summary list with a separate "Estadísticas" tab — aggregate
+volume/failure-rate/setup-time stats — was dropped in the rebuild to match Homer's flat message-table
+model. Aggregate stats may return later as a dedicated dashboard, not blocking this rebuild.)*
 
 ---
 
-## 5. Call detail (`/infra/telephony/[callId]`)
+## 5. Transaction modal / detail page (`/infra/telephony/[callId]` or floating)
 
-Header: `Call-ID` (monospace, full HEP Call-ID string) + status badge (Fallida/Activa/Finalizada).
-Five tabs:
+Shared `TransactionPanel` component, opened either as a floating **Transaction** modal (from the
+Results Table's Tx action) or as the full-page `/infra/telephony/[callId]` deep link — same content
+either way. Header: session/Call-ID (monospace) + status badge (Fallida/Activa/Finalizada). Tabs,
+renamed to match Homer's own tab set:
 
-### 5.1 Resumen
-At-a-glance: caller/callee, trunk/SBC hop(s) involved, start/end time, total duration, final SIP
-status code + reason, number of retransmissions (if any), codec negotiated (from SDP), linked
-Voicing `call_id` / project / org (when resolvable), and a "View app call →" link into doc 05's Call
-Detail.
-
-### 5.2 Flujo
-Visual SIP **ladder/sequence diagram** (caller ↔ SBC ↔ Asterisk ↔ callee lanes), each message as an
-arrow labeled with its method/code and timestamp offset — the classic sngrep/Wireshark call-flow
-view. Failure points (4xx/5xx, timeout, no-ACK) highlighted in red on the ladder.
-
-### 5.3 Mensajes
+### 5.1 Messages
 Flat, sortable table of every SIP message in the dialog, matching the reference screenshot:
 
 | # | Hora | Delta | Método | Tamaño | Origen → Destino | Proto |
@@ -179,12 +188,16 @@ Flat, sortable table of every SIP message in the dialog, matching the reference 
 | 2 | 18:20:33.017 | +2ms | `100` | 320 B | 10.124.193.33:5061 → 10.35.13.68:5061 | UDP |
 | … | | | | | | |
 
-Row-expand reveals a sub-tabbed message inspector: **Mensaje** (raw SIP text, syntax-highlighted,
-`Content-Type`/SDP body included), **SIP** (parsed headers: Via, From, To, Call-ID, CSeq, Contact),
-**SDP** (parsed media description: codecs, `rtpmap`, ptime, bandwidth), **Detalles** (transport
-5-tuple, HEP metadata, capture agent/node).
+Clicking a row opens the same **Message** modal used from the Results Table (consistent
+interaction — same component, same `uuid`-keyed lookup, whether reached from the flat list or from
+inside a transaction).
 
-### 5.4 Calidad
+### 5.2 Call Flow
+Visual SIP **ladder/sequence diagram** (caller ↔ SBC ↔ Asterisk ↔ callee lanes), each message as an
+arrow labeled with its method/code and timestamp offset — the classic sngrep/Wireshark call-flow
+view. Failure points (4xx/5xx, timeout, no-ACK) highlighted in red on the ladder.
+
+### 5.3 QoS
 RTP/RTCP-derived call quality, sampled periodically through the media session:
 - **Jitter** (ms) — timeseries, both directions.
 - **Packet loss** (%) — timeseries.
@@ -194,7 +207,13 @@ RTP/RTCP-derived call quality, sampled periodically through the media session:
 - A pass/fail badge against configurable quality thresholds (reuses the **Thresholds** control,
   doc 05, extended with a `telephony_quality` category — jitter/MOS/loss bands).
 
-### 5.5 Exportar
+### 5.4 Call Info
+Structured summary equivalent to the old "Resumen" tab: caller/callee, trunk/SBC hop(s) involved,
+start/end time, total duration, final SIP status code + reason, retransmission count, negotiated
+codec (from SDP), linked Voicing `call_id`/project/org (when resolvable), and a "View app call →"
+link into doc 05's Call Detail.
+
+### 5.5 Export
 Two downloads, matching the reference screenshot exactly:
 - **Captura PCAP** — "Archivo de captura de paquetes compatible con Wireshark." Reconstructed from
   the stored SIP messages (+ RTP headers if captured) into a valid `.pcap`/`.pcapng`.

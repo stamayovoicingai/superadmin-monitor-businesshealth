@@ -228,7 +228,7 @@ export function buildSipMessages(call: Call, summary: SipCallSummary): SipMessag
     const cancelMs = ringMs + rng.int(8000, 20000);
     push(cancelMs, "CANCEL", leg1.a, leg1.b, rawSip({ startLine: `CANCEL sip:${summary.destination}@${leg1.b} SIP/2.0`, callId: summary.sipCallId, from, to, cseq: `${cseq} CANCEL`, via: leg1.a }));
     push(cancelMs + 2, String(summary.finalStatusCode), leg1.b, leg1.a, rawSip({ startLine: `SIP/2.0 ${summary.finalStatusCode} ${summary.finalReason}`, callId: summary.sipCallId, from, to, cseq: `${cseq} INVITE`, via: leg1.a }));
-    return rows.map((r, i) => toSipMessage(r, i, t0));
+    return rows.map((r, i) => toSipMessage(r, i, t0, call.id));
   }
 
   if (summary.status === "fallida") {
@@ -236,7 +236,7 @@ export function buildSipMessages(call: Call, summary: SipCallSummary): SipMessag
     push(failMs, String(summary.finalStatusCode), leg2.b, leg2.a, rawSip({ startLine: `SIP/2.0 ${summary.finalStatusCode} ${summary.finalReason}`, callId: summary.sipCallId, from, to, cseq: `${cseq} INVITE`, via: leg2.a }));
     push(failMs + 2, String(summary.finalStatusCode), leg1.b, leg1.a, rawSip({ startLine: `SIP/2.0 ${summary.finalStatusCode} ${summary.finalReason}`, callId: summary.sipCallId, from, to, cseq: `${cseq} INVITE`, via: leg1.a }));
     push(failMs + 4, "ACK", leg1.a, leg1.b, rawSip({ startLine: `ACK sip:${summary.destination}@${leg1.b} SIP/2.0`, callId: summary.sipCallId, from, to, cseq: `${cseq} ACK`, via: leg1.a }));
-    return rows.map((r, i) => toSipMessage(r, i, t0));
+    return rows.map((r, i) => toSipMessage(r, i, t0, call.id));
   }
 
   // Answered (active or completed): 200 both legs, then ACK both legs.
@@ -257,11 +257,12 @@ export function buildSipMessages(call: Call, summary: SipCallSummary): SipMessag
     push(byeMs + 5, "200", second.b, second.a, rawSip({ startLine: "SIP/2.0 200 OK", callId: summary.sipCallId, from, to, cseq: `${cseq} BYE`, via: second.a }));
   }
 
-  return rows.sort((a, b) => a.t - b.t).map((r, i) => toSipMessage(r, i, t0));
+  return rows.sort((a, b) => a.t - b.t).map((r, i) => toSipMessage(r, i, t0, call.id));
 }
 
-function toSipMessage(r: { t: number; method: string; src: string; dst: string; raw: string }, index: number, t0: number): SipMessage {
+function toSipMessage(r: { t: number; method: string; src: string; dst: string; raw: string }, index: number, t0: number, callId: string): SipMessage {
   return {
+    uuid: `${callId}::${index + 1}`,
     seq: index + 1,
     ts: new Date(t0 + r.t).toISOString(),
     deltaMs: r.t,

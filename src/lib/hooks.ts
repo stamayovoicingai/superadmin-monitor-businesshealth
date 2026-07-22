@@ -27,8 +27,6 @@ import type {
   IssuesResult,
   CreateThresholdInput,
   UpdateThresholdPatch,
-  SipCallFilter,
-  SipCallPage,
   CreateAppUserInput,
   UpdateAppUserInput,
   SaveInvoiceConfigInput,
@@ -36,6 +34,7 @@ import type {
   InvoiceScopeState,
   InvoicePreviewResult,
 } from "@/lib/data/source";
+import type { SipMessageFilter, SipMessagePage, SipMessagePayload } from "@/lib/telephony-source";
 import type { Agent, AppUser, CallFlag, FlagStatus, InvoiceRun, IpRule, IssueCategory, Organization, Project, SipCallDetail, Threshold } from "@/lib/types";
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -367,27 +366,40 @@ export function useInfraElb(range?: RangeState) {
   });
 }
 
-export function useTelephonyCalls(params: { page: number; pageSize: number } & SipCallFilter, live = false) {
+export function useTelephonyMessages(params: { page: number; pageSize: number } & SipMessageFilter, live = false) {
   const { query } = useView();
   const sp = new URLSearchParams(query);
   sp.set("page", String(params.page));
   sp.set("pageSize", String(params.pageSize));
-  if (params.origin) sp.set("origin", params.origin);
-  if (params.destination) sp.set("destination", params.destination);
-  if (params.sipCallId) sp.set("sipCallId", params.sipCallId);
-  if (params.status) sp.set("status", params.status);
+  if (params.sessionId) sp.set("sessionId", params.sessionId);
+  if (params.caller) sp.set("caller", params.caller);
+  if (params.callee) sp.set("callee", params.callee);
+  if (params.method) sp.set("method", params.method);
+  if (params.responseCode) sp.set("responseCode", params.responseCode);
+  if (params.srcIp) sp.set("srcIp", params.srcIp);
+  if (params.dstIp) sp.set("dstIp", params.dstIp);
+  if (params.userAgent) sp.set("userAgent", params.userAgent);
+  if (params.node) sp.set("node", params.node);
   const qs = sp.toString();
   return useQuery({
-    queryKey: ["telephony", qs],
-    queryFn: () => fetchJson<SipCallPage>(`/api/infra/telephony?${qs}`),
+    queryKey: ["telephony-messages", qs],
+    queryFn: () => fetchJson<SipMessagePage>(`/api/infra/telephony?${qs}`),
     refetchInterval: live ? 15_000 : false,
   });
 }
 
-export function useTelephonyCall(callId: string) {
+export function useSipMessagePayload(uuid: string | null) {
+  return useQuery({
+    queryKey: ["telephony-message-payload", uuid],
+    queryFn: () => fetchJson<SipMessagePayload>(`/api/infra/telephony/messages/${encodeURIComponent(uuid!)}`),
+    enabled: !!uuid,
+  });
+}
+
+export function useTelephonyCall(callId: string | null) {
   return useQuery({
     queryKey: ["telephony-call", callId],
-    queryFn: () => fetchJson<SipCallDetail>(`/api/infra/telephony/${callId}`),
+    queryFn: () => fetchJson<SipCallDetail>(`/api/infra/telephony/${encodeURIComponent(callId!)}`),
     enabled: !!callId,
   });
 }

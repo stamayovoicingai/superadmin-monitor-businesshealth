@@ -1,6 +1,6 @@
 /**
  * HomerTelephonySource — real HEP capture data via the Homer Next-Gen (v4) REST API, mapped onto
- * the platform's existing SipCallSummary/SipMessage/SipQualitySample/SipCallDetail shapes (PRD/19).
+ * the platform's SipMessageRow (list) / SipCallDetail (Transaction view) shapes (PRD/19).
  * Selected via TELEPHONY_DATA_SOURCE=homer (see lib/telephony-source.ts); the mock generator
  * (lib/telephony.ts) remains the default and the fallback when Homer isn't configured.
  *
@@ -10,21 +10,25 @@
  *   effectively platform-wide in Homer mode until a real node↔project mapping exists.
  * - No confirmed cross-reference to the app-level `Call` — `linkedCall` is always null. Wiring
  *   this needs the telephony layer (Asterisk/LiveKit) to record the real SIP Call-ID on our side.
+ * - List-row `caller` is best-effort ("—" unless resolvable): the documented `GET/POST
+ *   /transactions*` response (`CallElement`) doesn't carry `from_user`, only `ruri_user`
+ *   (destination) — Homer's own Results Table clearly joins more columns than this generic schema
+ *   documents. Filtering by caller still works (`filter.from_user` is accepted), display doesn't.
  * - `/transactions/callinfo` and the QoS row fields (jitter/loss/MOS) are read defensively against
  *   a draft/undocumented shape — verify field names against the real server and adjust extraction.
  */
 import type {
   SipCallDetail,
   SipCallStatus,
-  SipCallSummary,
   SipMessage,
+  SipMessageRow,
   SipQualitySample,
 } from "@/lib/types";
-import type { SipCallFilter, SipCallPage, SipCallStats } from "@/lib/data/source";
 import type { Scope } from "@/lib/data/source";
 import { extractSdpBody, parseSipHeaders, qualityVerdict } from "@/lib/telephony";
 import { homer, homerGetBinary, sleep } from "./client";
 import type {
+  HomerAliasListResponse,
   HomerCallElement,
   HomerCallInfo,
   HomerCallInfoListResponse,
@@ -33,9 +37,10 @@ import type {
   HomerExportStatusResponse,
   HomerMessage,
   HomerMessageListResponse,
+  HomerMessageResponse,
   HomerQosResponse,
 } from "./types";
-import type { TelephonySource } from "../telephony-source";
+import type { SipMessageFilter, SipMessagePage, SipMessagePayload, TelephonySource } from "../telephony-source";
 
 function numberish(v: unknown): number | undefined {
   const n = typeof v === "string" ? Number(v) : v;
@@ -76,14 +81,21 @@ function countRetransmissions(messages: SipMessage[]): number {
 }
 
 export class HomerTelephonySource implements TelephonySource {
-  async listSipCalls(scope: Scope, filter: SipCallFilter, page: number, pageSize: number): Promise<SipCallPage> {
+  private aliasCache: Map<string, string> | null = null;
+
+  async listSipMessages(scope: Scope, filter: SipMessageFilter, page: number, pageSize: number): Promise<SipMessagePage> {
     const from = scope.from ? new Date(scope.from).getTime() : Date.now() - 24 * 3600_000;
     const to = scope.to ? new Date(scope.to).getTime() : Date.now();
 
-    const searchFilter: Record<string, unknown> = { event_type: "call", proto_type: 1 };
-    if (filter.sipCallId) searchFilter.call_id = filter.sipCallId;
-    if (filter.origin) searchFilter.from_user = filter.origin;
-    if (filter.destination) searchFilter.ruri_user = filter.destination;
+    const searchFilter: Record<string, unknown> = {};
+    if (filter.sessionId) searchFilter.call_id = filter.sessionId;
+    if (filter.caller) searchFilter.from_user = filter.caller;
+    if (filter.callee) searchFilter.ruri_user = filter.callee;
+    if (filter.method) searchFilter.method = filter.method;
+    if (filter.srcIp) searchFilter.src_ip = filter.srcIp;
+    if (filter.dstIp) searchFilter.dst_ip = filter.dstIp;
+    if (filter.userAgent) searchFilter.user_agent = filter.userAgent;
+    if (filter.node) searchFilter.node = filter.node;
 
     // Homer's advanced search is cursor-paginated; we approximate numeric "page" by fetching
     // page*pageSize items (capped at Homer's max) and slicing — correct for shallow pagination,
@@ -98,20 +110,39 @@ export class HomerTelephonySource implements TelephonySource {
     const items = res.data?.items ?? [];
     const sliceStart = (page - 1) * pageSize;
     const pageItems = items.slice(sliceStart, sliceStart + pageSize);
+    const aliasMap = await this.getAliasMap();
 
-    const infoMap = await this.fetchCallInfo(pageItems.map((i) => i.sid).filter(Boolean), from, to);
-    const rows = pageItems.map((item) => {
-      const summary = this.toSummary(item, infoMap.get(item.sid));
-      return { ...summary, projectName: "—", orgName: "—" };
-    });
+    let rows = pageItems.map((item) => this.toMessageRow(item, aliasMap));
+    if (filter.responseCode) rows = rows.filter((r) => r.method === filter.responseCode);
 
-    return {
-      rows,
-      total: res.meta?.pagination?.total ?? items.length,
-      page,
-      pageSize,
-      stats: this.computeStats(items, infoMap),
-    };
+    return { rows, total: res.meta?.pagination?.total ?? items.length, page, pageSize };
+  }
+
+  async getSipMessagePayload(uuid: string): Promise<SipMessagePayload | null> {
+    try {
+      const res = await homer.get<HomerMessageResponse>(`/messages/${encodeURIComponent(uuid)}`);
+      const m = res.data;
+      if (!m) return null;
+      const sipMsg = this.toSipMessage(m, 0);
+      const [srcIp, srcPortStr] = sipMsg.src.split(":");
+      const [dstIp, dstPortStr] = sipMsg.dst.split(":");
+      return {
+        uuid,
+        sessionId: m.sid,
+        cid: m.sid,
+        timestamp: sipMsg.ts,
+        method: sipMsg.method,
+        srcIp,
+        srcPort: Number(srcPortStr ?? 0),
+        dstIp,
+        dstPort: Number(dstPortStr ?? 0),
+        raw: sipMsg.raw,
+        headers: sipMsg.headers,
+        sdp: sipMsg.sdp,
+      };
+    } catch {
+      return null;
+    }
   }
 
   async getSipCallDetail(callId: string): Promise<SipCallDetail | null> {
@@ -155,38 +186,39 @@ export class HomerTelephonySource implements TelephonySource {
 
   /* ---- internals ---- */
 
-  private toSummary(item: HomerCallElement, info: HomerCallInfo | undefined): SipCallSummary {
-    const startMs = item.micro_ts ? Math.floor(item.micro_ts / 1000) : (item.create_date ?? Date.now());
-    const durationSecs = numberish(info?.call_duration_seconds) ?? 0;
-    const statusRaw = info?.status != null ? String(info.status) : undefined;
-    const finalStatusCode = statusRaw && /^\d+$/.test(statusRaw) ? Number(statusRaw) : null;
-
-    let status: SipCallStatus = "activa";
-    if (finalStatusCode != null) {
-      status = finalStatusCode >= 400 ? "fallida" : durationSecs > 0 ? "finalizada" : "activa";
-    } else if (durationSecs > 0) {
-      status = "finalizada";
+  private async getAliasMap(): Promise<Map<string, string>> {
+    if (this.aliasCache) return this.aliasCache;
+    const map = new Map<string, string>();
+    try {
+      const res = await homer.get<HomerAliasListResponse>("/aliases?page[limit]=1000");
+      for (const a of res.data?.items ?? []) {
+        if (a.ip && a.alias) map.set(a.ip, a.alias);
+      }
+    } catch {
+      // Alias resolution is cosmetic (raw IPs still work) — never block the list on it.
     }
+    this.aliasCache = map;
+    return map;
+  }
 
+  private toMessageRow(item: HomerCallElement, aliasMap: Map<string, string>): SipMessageRow {
+    const startMs = item.micro_ts ? Math.floor(item.micro_ts / 1000) : (item.create_date ?? Date.now());
     return {
-      id: `homer-${item.sid}`,
-      sipCallId: item.sid,
-      linkedCallId: null,
-      orgId: "",
-      projectId: "",
-      direction: "inbound",
-      origin: info?.from_party ?? "—",
-      destination: info?.ruri_party ?? item.ruri_user ?? "—",
-      startTime: new Date(startMs).toISOString(),
-      endTime: durationSecs > 0 ? new Date(startMs + durationSecs * 1000).toISOString() : null,
-      durationSecs,
-      status,
-      finalStatusCode,
-      finalReason: statusRaw ?? null,
-      trunkHops: [item.alias_src, item.alias_dst].filter((v): v is string => !!v),
-      methodsSequence: [item.method || item.method_text || "INVITE"],
-      retransmissions: 0,
-      codec: Array.isArray(info?.codecs) ? info.codecs.join(", ") : ((info?.codecs as string) ?? ""),
+      uuid: String(item.id ?? item.sid),
+      sessionId: item.sid,
+      cid: item.sid,
+      timestamp: new Date(startMs).toISOString(),
+      method: item.method || item.method_text || "—",
+      cseqMethod: item.method || item.method_text || "—",
+      caller: "—", // see module doc comment — not available on the documented list-row shape
+      callee: item.ruri_user ?? "—",
+      srcIp: item.src_ip ?? "—",
+      srcPort: item.src_port ?? 0,
+      dstIp: item.dst_ip ?? "—",
+      dstPort: item.dst_port ?? 0,
+      srcAlias: item.src_ip ? (aliasMap.get(item.src_ip) ?? item.alias_src ?? null) : (item.alias_src ?? null),
+      dstAlias: item.dst_ip ? (aliasMap.get(item.dst_ip) ?? item.alias_dst ?? null) : (item.alias_dst ?? null),
+      transport: item.protocol === 6 ? "TCP" : "UDP",
     };
   }
 
@@ -196,6 +228,7 @@ export class HomerTelephonySource implements TelephonySource {
     const raw = m.raw ?? "";
     const method = extractMethodOrCode(raw) ?? m.data_header?.method ?? "UNKNOWN";
     return {
+      uuid: m.id != null ? String(m.id) : `${m.sid}::${index + 1}`,
       seq: index + 1,
       ts: new Date(tsMs).toISOString(),
       deltaMs: 0,
@@ -210,7 +243,7 @@ export class HomerTelephonySource implements TelephonySource {
     };
   }
 
-  private buildSummaryFromMessages(sid: string, messages: SipMessage[], info: HomerCallInfo | null): SipCallSummary {
+  private buildSummaryFromMessages(sid: string, messages: SipMessage[], info: HomerCallInfo | null) {
     const first = messages[0];
     const last = messages[messages.length - 1];
     const finalMsg = [...messages].reverse().find((m) => /^\d{3}$/.test(m.method));
@@ -235,7 +268,7 @@ export class HomerTelephonySource implements TelephonySource {
       linkedCallId: null,
       orgId: "",
       projectId: "",
-      direction: "inbound",
+      direction: "inbound" as const,
       origin: info?.from_party ?? extractUser(first.headers["From"]) ?? "—",
       destination: info?.ruri_party ?? extractUser(first.headers["To"]) ?? "—",
       startTime: first.ts,
@@ -271,31 +304,6 @@ export class HomerTelephonySource implements TelephonySource {
       // callinfo is an enrichment (richer status/duration/codec), never a hard dependency — degrade gracefully.
       return new Map();
     }
-  }
-
-  private computeStats(items: HomerCallElement[], infoMap: Map<string, HomerCallInfo>): SipCallStats {
-    const totalCalls = items.length;
-    const codeCounts = new Map<number, number>();
-    let failed = 0;
-    for (const item of items) {
-      const info = infoMap.get(item.sid);
-      const statusRaw = info?.status != null ? String(info.status) : undefined;
-      const code = statusRaw && /^\d+$/.test(statusRaw) ? Number(statusRaw) : null;
-      if (code != null && code >= 400) {
-        failed++;
-        codeCounts.set(code, (codeCounts.get(code) ?? 0) + 1);
-      }
-    }
-    const topFailureCodes = Array.from(codeCounts.entries())
-      .map(([code, count]) => ({ code, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-    return {
-      totalCalls,
-      failureRate: totalCalls > 0 ? +((failed / totalCalls) * 100).toFixed(1) : 0,
-      avgSetupMs: 0, // needs 100→200 timing per call from /transactions/messages — not computed at list scale
-      topFailureCodes,
-    };
   }
 
   private async fetchQuality(sid: string): Promise<SipQualitySample[]> {

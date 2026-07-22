@@ -421,6 +421,7 @@ export interface SipCallSummary {
 }
 
 export interface SipMessage {
+  uuid: string; // stable id for this single message (opens the Message modal)
   seq: number;
   ts: string; // ISO
   deltaMs: number; // offset from message #1
@@ -452,6 +453,30 @@ export interface SipCallDetail {
   messages: SipMessage[];
   quality: SipQualitySample[];
   qualityVerdict: SipQualityVerdict;
+}
+
+/**
+ * One row in the Communications search results — one raw SIP message (not a call summary).
+ * Mirrors Homer's own "Results Table" (Home dashboard): message-level rows grouped visually by
+ * `sessionId`, drill-in via a Message modal (this row's payload) or a Transaction modal (the full
+ * dialog via `sessionId`). See PRD/19 §4.
+ */
+export interface SipMessageRow {
+  uuid: string; // opaque per-message id — pass to getSipMessagePayload, not necessarily human-meaningful
+  sessionId: string; // SIP Call-ID — pass to getSipCallDetail for the Transaction modal
+  cid: string; // correlation id (equals sessionId unless a correlation script merges legs)
+  timestamp: string; // ISO
+  method: string; // request method ("INVITE") or numeric response code ("200")
+  cseqMethod: string; // the method the CSeq refers to (same as `method` for requests)
+  caller: string;
+  callee: string;
+  srcIp: string;
+  srcPort: number;
+  dstIp: string;
+  dstPort: number;
+  srcAlias: string | null; // human label if the src IP matches a configured alias (e.g. "Asterisk (privada)")
+  dstAlias: string | null;
+  transport: SipTransport;
 }
 
 /* ----- Access Management (User Provisioning) — PRD/20 ----- */

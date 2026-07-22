@@ -66,6 +66,25 @@ export interface HomerMessageListResponse {
   data: { items: HomerMessage[] };
 }
 
+export interface HomerMessageResponse {
+  data: HomerMessage;
+}
+
+/** GET /aliases — IP→friendly-name mapping (`"Asterisk (privada)"` etc.), used to label list rows. */
+export interface HomerAlias {
+  id?: number;
+  alias?: string;
+  ip?: string;
+  mask?: number;
+  port?: number;
+  capture_id?: string;
+  status?: boolean;
+}
+
+export interface HomerAliasListResponse {
+  data: { items: HomerAlias[] };
+}
+
 /**
  * Response shape of POST /transactions/callinfo — described in the spec's
  * TransactionSessionRequest doc comment ("ringing_seconds, call_duration_seconds, codecs,

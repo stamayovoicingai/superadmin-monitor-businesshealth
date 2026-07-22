@@ -1100,10 +1100,27 @@ export class MockAdapter implements DataSource {
 
   async getSipCallDetail(sipCallId: string): Promise<SipCallDetail | null> {
     const { calls, projects, orgs } = getDataset();
-    const call = calls.find((c) => c.callId === sipCallId || c.id === sipCallId || `sip-${c.id}` === sipCallId);
-    if (!call) return null;
+    let call = calls.find((c) => c.callId === sipCallId || c.id === sipCallId || `sip-${c.id}` === sipCallId);
+    let summary = call ? buildSipSummary(call, projects.find((p) => p.id === call!.projectId)!) : undefined;
+
+    // Not found by app-level id — the Communications list (PRD/19 §4) links by the *generated*
+    // hex SIP Call-ID, which isn't derivable from the id directly. buildSipSummary is cheap
+    // (no message/raw-text generation), so a full scan here stays fast even at seed-dataset scale.
+    if (!call) {
+      for (const c of calls) {
+        const project = projects.find((p) => p.id === c.projectId);
+        if (!project) continue;
+        const s = buildSipSummary(c, project);
+        if (s.sipCallId === sipCallId) {
+          call = c;
+          summary = s;
+          break;
+        }
+      }
+    }
+    if (!call || !summary) return null;
+
     const project = projects.find((p) => p.id === call.projectId)!;
-    const summary = buildSipSummary(call, project);
     const linkedCall = {
       callId: call.callId,
       projectName: project.name,
