@@ -175,14 +175,25 @@ function rawSip(opts: {
   return lines.join("\r\n");
 }
 
-function parseHeaders(raw: string): Record<string, string> {
+/** Parses SIP headers from raw message text. Exported for reuse by the Homer adapter (real capture text may use bare \n). */
+export function parseSipHeaders(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const line of raw.split("\r\n").slice(1)) {
+  for (const line of raw.replace(/\r\n/g, "\n").split("\n").slice(1)) {
     if (!line) break;
     const i = line.indexOf(":");
     if (i > 0) out[line.slice(0, i).trim()] = line.slice(i + 1).trim();
   }
   return out;
+}
+
+/** Extracts the SDP body (if any) from raw SIP message text. Exported for reuse by the Homer adapter. */
+export function extractSdpBody(raw: string): string | null {
+  const idx = raw.indexOf("v=0");
+  return idx === -1 ? null : raw.slice(idx);
+}
+
+function parseHeaders(raw: string): Record<string, string> {
+  return parseSipHeaders(raw);
 }
 
 /** Full message-by-message reconstruction for one call — expensive, call-detail only. */

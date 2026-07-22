@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDataSource } from "@/lib/data";
+import { getTelephonySource } from "@/lib/telephony-source";
 import { scopeFromSearch } from "@/lib/scope";
 import type { SipCallFilter } from "@/lib/data/source";
 import type { SipCallStatus } from "@/lib/types";
@@ -15,6 +15,6 @@ export async function GET(req: NextRequest) {
   };
   const page = Math.max(1, Number(sp.get("page") ?? "1"));
   const pageSize = Math.min(100, Math.max(1, Number(sp.get("pageSize") ?? "25")));
-  const data = await getDataSource().listSipCalls(scope, filter, page, pageSize);
+  const data = await getTelephonySource().listSipCalls(scope, filter, page, pageSize);
   return NextResponse.json(data);
 }
