@@ -1,5 +1,14 @@
 # [BE] Telephony Observability · SIP capture · Schema + mock/Homer adapter
 
+> **Update (Jul 2026):** the "stub" `HomerAdapter` described below has been superseded by a real
+> implementation — `src/lib/homer/` integrates against Voicing's actual Homer Next-Gen (v4) REST API
+> (not a placeholder), selected via `TELEPHONY_DATA_SOURCE=homer`. Exercised against fixtures shaped
+> like Homer's documented schemas; **not yet verified against the live Homer server**. See
+> `PRD/19-module-telephony-observability.md` §2.2 for the full endpoint mapping and known gaps
+> (no org/project attribution from Homer, no confirmed `linkedCall` correlation, approximate deep
+> pagination). The `sip_call`/`sip_message`/`rtp_quality_sample` Postgres tables below are still
+> pending — the current adapter reads Homer live and maps in-memory, no local persistence yet.
+
 - **ID:** `TEL-BE1`
 - **Type:** Backend
 - **Epic:** Infra: Telephony Observability
